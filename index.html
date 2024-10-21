@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+  <script src="index.js"></script>
+  <script src="TypePlugin.js"></script>
+  <script src="inherentTypePlugin.js"></script>
+  <script src="SJQLEngine.js"></script>
+  <script src="constants.js"></script>
+</head>
+<body>
+
+<div id="table-container"></div>
+
+<script>
+    // Usage example
+    const data = [
+        { id: 1, name: 'John', age: 30, joined: '2021-01-15' },
+        { id: 2, name: 'Jane', age: 25, joined: '2022-03-20' },
+        { id: 3, name: 'Bob', age: 35, joined: '2020-11-05' }
+    ];
+
+    const table = new DynamicGrid();
+    table.setData(data);
+    table.setHeaderTypes({
+        id: 'number',
+        name: 'string',
+        age: 'number',
+        joined: 'date'
+    });
+
+    console.log(table.engine.parseQuery('name = "John" AND age > 25 AND age < 25 or age > 26'));
+</script>
+
+</body>
+</html>
