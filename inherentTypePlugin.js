@@ -7,7 +7,7 @@ class stringTypePlugin extends TypePlugin {
         return typeof value === 'string';
     }
 
-    getHeaderFormat(value) {
+    getJSQLFormat(value) {
         //remove first and last character (only if they are both quotes)
         if ((value[0] === '"' && value[value.length - 1] === '"') || (value[0] === "'" && value[value.length - 1] === "'")) {
             return value.substring(1, value.length - 1);
@@ -61,7 +61,7 @@ class numberTypePlugin extends TypePlugin {
         return !isNaN(Number(value));
     }
 
-    getHeaderFormat(value) {
+    getJSQLFormat(value) {
         if (isNaN(Number(value))) {
             throw new Error('Value is not a number');
         }
@@ -115,7 +115,7 @@ class dateTypePlugin extends TypePlugin {
         return !isNaN(Date.parse(value));
     }
 
-    getHeaderFormat(value) {
+    getJSQLFormat(value) {
         if (isNaN(Date.parse(value))) {
             throw new Error('Value is not a date');
         }
@@ -209,3 +209,52 @@ class dateTypePlugin extends TypePlugin {
         }
     }
 }
+
+class booleanTypePlugin extends TypePlugin {
+    constructor() {
+        super();
+    }
+
+    validate(value) {
+        if (typeof value === 'boolean')
+            return true;
+        else if (typeof value === 'string')
+            return value === 'true' || value === 'false';
+
+        return false;
+    }
+
+    getJSQLFormat(value) {
+        return value === 'true';
+    }
+
+    evaluate(query, data) {
+        const {field, operator, value} = query;
+        return data.filter(item => {
+            return this._evaluate(item[field], operator, value);
+        });
+    }
+
+    _evaluate(dataValue, operator, value) {
+        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
+            return value.forEach(val => {
+                if (this._evaluate(dataValue, operator, val)) {
+                    return true;
+                }
+            });
+        }
+
+        if (typeof value === 'boolean') {
+            switch (operator) {
+                case 'eq':
+                    return dataValue === value;
+                case 'neq':
+                    return dataValue !== value;
+            }
+        }
+
+        return false;
+    }
+}
+
+//TODO: add the following types: array, object, null, undefined, function, symbol, bigint

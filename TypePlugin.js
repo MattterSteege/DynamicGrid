@@ -3,11 +3,8 @@ class TypePlugin {
         this.name = this.constructor.name;
     }
 
-    // These methods are only used by the parent class
-
-
     // These methods should be overridden by the child class
-    getHeaderFormat(value) {
+    getJSQLFormat(value) {
         console.warn("getHeaderFormat not implemented for plugin: ", this.name);
         value.toString();
     }

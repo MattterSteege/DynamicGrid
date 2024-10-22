@@ -1,9 +1,10 @@
 class SJQLEngine {
     constructor(DynamicGrid) {
         this.data = [];
-        this.headers = DynamicGrid.headers; //['name:string', 'age:number', 'dob:date'] -> string = stringTypePlugin...
-        this.plugins = DynamicGrid.plugins;
-        this.DynamicGrid = DynamicGrid;
+        this.headers = []; //['name:string', 'age:number', 'dob:date'] -> string = stringTypePlugin...
+        this.plugins = [];
+        this.constants = new DynamicGridConstants();
+        this.currentQuery = {};
     }
 
     parseData(data) {
@@ -26,40 +27,87 @@ class SJQLEngine {
             subQueries[i] = subQueries[i].trim();
             const key = subQueries[i].split(' ')[0];
             const pluginType = this.headers[key];
-            const plugin = this.DynamicGrid.getPlugin(pluginType);
+            const plugin = this.getPlugin(pluginType);
             if (!plugin) {
                 throw new Error('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
 
             let [field, operator, value] = subQueries[i].split(' ');
 
-            operator = this.DynamicGrid.constants.getOperator(operator);
+            operator = this.constants.getOperator(operator);
 
             if (!operator) {
-                throw new Error('\n\nInvalid operator:    ' + subQueries[i].split(' ')[1] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + this.DynamicGrid.constants.getOperatorSymbols().join(', ') + '\n');
+                throw new Error('\n\nInvalid operator:    ' + subQueries[i].split(' ')[1] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + this.constants.getOperatorSymbols().join(', ') + '\n');
             }
 
             if (plugin.validate(value)) {
-                value = plugin.getHeaderFormat(value);
+                value = plugin.getJSQLFormat(value);
             }
 
             const type = this.headers[key];
 
             subQueries[i] = {type, field, operator: operator.name, value};
         }
-
-        console.log(subQueries);
-
         return subQueries;
     }
 
     query(query) {
+
+        if (!this.data || this.data.length === 0) {
+            console.warn('No data provided, returning empty array');
+            return [];
+        }
+
+        if (!query) {
+            console.warn('No query provided, returning all data');
+            return this.data;
+        }
+
         let data = this.data;
         let subQueries = this.parseQuery(query);
         for (let i = 0; i < subQueries.length; i++) {
-            data = this.DynamicGrid.getPlugin(subQueries[i].type).evaluate(subQueries[i], data); //set data to the result of the query, so that the next query can be performed on the result of the previous query
+            data = this.getPlugin(subQueries[i].type).evaluate(subQueries[i], data); //set data to the result of the query, so that the next query can be performed on the result of the previous query
         }
+
+        this.currentQuery = subQueries;
         return data;
+    }
+
+    //================================================== PLUGIN SYSTEM ==================================================
+    addPlugin(plugin) {
+        if (!(plugin instanceof TypePlugin)) {
+            throw new Error('Plugin must extend TypePlugin');
+        }
+
+        //if already exists, remove it and add the new one, while warning the user
+        const existingPlugin = this.getPlugin(plugin.name, true);
+        if (existingPlugin) {
+            console.warn('Plugin already exists, removing the old plugin');
+            this.plugins = this.plugins.filter(plugin => plugin.name !== existingPlugin.name);
+        }
+
+        this.plugins.push(plugin);
+    }
+
+    getPlugin(name, justChecking = false) {
+        if (!name) {
+            throw new Error('Plugin name not provided');
+        }
+
+        if (!name.endsWith('TypePlugin')) {
+            name = name + 'TypePlugin';
+        }
+
+        const plugin = this.plugins.find(plugin => plugin.name === name);
+
+        if (!plugin && !justChecking) {
+            throw new Error('Plugin not found');
+        }
+        else if (!plugin && justChecking) {
+            return false;
+        }
+
+        return plugin;
     }
 }
 
