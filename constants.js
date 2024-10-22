@@ -15,6 +15,20 @@ class DynamicGridConstants {
     }
 
     getOperator(operatorOrName) {
-        return this.operators.find(op => op.name === operatorOrName || op.operator === operatorOrName);
+        try {
+            return this.operators.find(op => op.name === operatorOrName || op.operator === operatorOrName);
+        }
+        catch (e) {
+            console.error(e);
+            return undefined;
+        }
+    }
+
+    getOperatorNames() {
+        return this.operators.map(op => op.name);
+    }
+
+    getOperatorSymbols() {
+        return this.operators.map(op => op.operator);
     }
 }

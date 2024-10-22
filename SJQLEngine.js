@@ -18,35 +18,26 @@ class SJQLEngine {
         });
     }
 
-    //filter the data based on the query
-    //query = 'name == John and age > 25'
-    filterData(query) {
-        //replace all the field names with their internal names (name -> name:string)
-        //split the query into tokens
-        //parse the tokens into an array of objects
-        //filter the data
-        const internalQuery = this.parseQuery(query);
-        return this.filterDataInternal(internalQuery);
-    }
-
     //query = 'name == John and age > 25'
     // the output is meant to be right as: query AND THEN query AND THEN query, so building on the previous query
     parseQuery(query) {
-
-        query = query.toLocaleLowerCase();
-        let subQueries = query.split(/and/);
+        let subQueries = query.split(/and|anD|aNd|aND|And|AnD|ANd|AND/);
         for (let i = 0; i < subQueries.length; i++) {
             subQueries[i] = subQueries[i].trim();
             const key = subQueries[i].split(' ')[0];
-            const pluginType = this.headers[key] + 'TypePlugin';
-            const plugin = this.plugins.find(plugin => plugin.name === pluginType);
+            const pluginType = this.headers[key];
+            const plugin = this.DynamicGrid.getPlugin(pluginType);
             if (!plugin) {
                 throw new Error('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
 
             let [field, operator, value] = subQueries[i].split(' ');
 
-            operator = this.DynamicGrid.constants.getOperator(operator).name;
+            operator = this.DynamicGrid.constants.getOperator(operator);
+
+            if (!operator) {
+                throw new Error('\n\nInvalid operator:    ' + subQueries[i].split(' ')[1] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + this.DynamicGrid.constants.getOperatorSymbols().join(', ') + '\n');
+            }
 
             if (plugin.validate(value)) {
                 value = plugin.getHeaderFormat(value);
@@ -54,15 +45,21 @@ class SJQLEngine {
 
             const type = this.headers[key];
 
-            subQueries[i] = {type, field, operator, value};
+            subQueries[i] = {type, field, operator: operator.name, value};
         }
+
+        console.log(subQueries);
 
         return subQueries;
     }
 
-
-    filterDataInternal(query) {
-
+    query(query) {
+        let data = this.data;
+        let subQueries = this.parseQuery(query);
+        for (let i = 0; i < subQueries.length; i++) {
+            data = this.DynamicGrid.getPlugin(subQueries[i].type).evaluate(subQueries[i], data); //set data to the result of the query, so that the next query can be performed on the result of the previous query
+        }
+        return data;
     }
 }
 

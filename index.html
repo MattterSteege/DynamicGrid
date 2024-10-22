@@ -17,9 +17,38 @@
     // Usage example
     const data = [
         { id: 1, name: 'John', age: 30, joined: '2021-01-15' },
-        { id: 2, name: 'Jane', age: 25, joined: '2022-03-20' },
-        { id: 3, name: 'Bob', age: 35, joined: '2020-11-05' }
+        { id: 2, name: 'John', age: 31, joined: '2022-01-15' },
+        { id: 3, name: 'John', age: 32, joined: '2021-01-15' },
+        { id: 4, name: 'John', age: 33, joined: '2021-01-15' },
+        { id: 5, name: 'Jane', age: 25, joined: '2022-03-20' },
+        { id: 6, name: 'Bob', age: 35, joined: '2020-11-05' },
+        { id: 7, name: 'Alice', age: 29, joined: '2021-05-10' },
+        { id: 8, name: 'Charlie', age: 28, joined: '2023-04-18' },
+        { id: 9, name: 'David', age: 45, joined: '2019-08-22' },
+        { id: 10, name: 'Eva', age: 38, joined: '2022-02-13' },
+        { id: 11, name: 'Frank', age: 41, joined: '2020-12-30' },
+        { id: 12, name: 'Grace', age: 26, joined: '2023-07-01' },
+        { id: 13, name: 'Hannah', age: 27, joined: '2022-09-19' },
+        { id: 14, name: 'Ivy', age: 34, joined: '2021-11-09' },
+        { id: 15, name: 'Jack', age: 40, joined: '2020-01-15' },
+        { id: 16, name: 'Karen', age: 36, joined: '2023-06-15' },
+        { id: 17, name: 'Leo', age: 24, joined: '2022-12-12' },
+        { id: 18, name: 'Mia', age: 33, joined: '2019-10-07' },
+        { id: 19, name: 'Noah', age: 29, joined: '2023-05-25' },
+        { id: 20, name: 'Olivia', age: 31, joined: '2020-04-18' },
+        { id: 21, name: 'Paul', age: 50, joined: '2018-07-13' },
+        { id: 22, name: 'Quincy', age: 44, joined: '2021-08-19' },
+        { id: 23, name: 'Rachel', age: 38, joined: '2020-06-21' },
+        { id: 24, name: 'Steve', age: 37, joined: '2019-03-11' },
+        { id: 25, name: 'Tina', age: 22, joined: '2023-09-08' },
+        { id: 26, name: 'Uma', age: 35, joined: '2021-02-14' },
+        { id: 27, name: 'Victor', age: 28, joined: '2022-07-07' },
+        { id: 28, name: 'Wendy', age: 32, joined: '2023-03-04' },
+        { id: 29, name: 'Xander', age: 39, joined: '2020-09-01' },
+        { id: 30, name: 'Yvonne', age: 30, joined: '2021-12-15' },
+        { id: 31, name: 'Zack', age: 23, joined: '2022-05-09' }
     ];
+
 
     const table = new DynamicGrid();
     table.setData(data);
@@ -30,7 +59,10 @@
         joined: 'date'
     });
 
-    console.log(table.engine.parseQuery('name = "John" AND age > 25 AND age < 25 or age > 26'));
+    const startTimestamp = new Date().getTime();
+    const result = table.engine.query('age >= 32 AND joined < 2022-01-01');
+    const endTimestamp = new Date().getTime();
+    console.log(result, endTimestamp - startTimestamp + 'ms');
 </script>
 
 </body>

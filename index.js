@@ -8,6 +8,7 @@ class DynamicGrid {
         //PLUGIN SYSTEM
         this.addPlugin(new stringTypePlugin());
         this.addPlugin(new numberTypePlugin());
+        this.addPlugin(new dateTypePlugin());
 
         //CONSTANTS
         this.constants = new DynamicGridConstants();
@@ -21,6 +22,20 @@ class DynamicGrid {
 
         this.plugins.push(plugin);
         this.engine.plugins = this.plugins;
+    }
+
+    getPlugin(name) {
+        if (!name.endsWith('TypePlugin')) {
+            name = name + 'TypePlugin';
+        }
+
+        const plugin = this.plugins.find(plugin => plugin.name === name);
+
+        if (!plugin) {
+            throw new Error('Plugin not found');
+        }
+
+        return plugin;
     }
     //END PLUGIN SYSTEM
 
