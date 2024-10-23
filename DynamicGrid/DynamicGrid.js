@@ -2,7 +2,6 @@
 class DynamicGrid {
     constructor() {
         this.engine = new SJQLEngine(this);
-        this.currentQuery = {};
 
         //PLUGIN SYSTEM
         this.engine.addPlugin(new stringTypePlugin());
@@ -20,4 +19,13 @@ class DynamicGrid {
         this.engine.headers = headers;
     }
     //END DATA SYSTEM
+
+    //RENDERING SYSTEM
+    render() {
+
+    }
+
+    renderHeader() {
+        console.log(this.engine.headers);
+    }
 }

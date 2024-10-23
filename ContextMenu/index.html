@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+  <script src="ContextMenu.js"></script>
+  <link rel="stylesheet" href="ContextMenu.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body>
+
+    <div id="table-container">
+        <button oncontextmenu="contextMenu.show(event.target); return false;">Right click me</button>
+    </div>
+
+    <script>
+        const subMenu2 = new ContextMenu();
+        subMenu2.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+            console.log('Edit2');
+        }})
+        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
+            console.log('Delete2');
+        }});
+
+        const subMenu = new ContextMenu();
+        subMenu.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+            console.log('Edit1');
+        }})
+        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
+            console.log('Delete1');
+        }})
+        .addSeparator()
+        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu2});
+
+        const contextMenu = new ContextMenu();
+        contextMenu.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+            console.log('Edit');
+        }})
+        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
+            console.log('Delete');
+        }})
+        .addSeparator()
+        .addButton({icon: 'fa fa-plus', text: 'Add', action: () => {
+            console.log('Add');
+        }})
+        .addSeparator()
+        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu});
+    </script>
+</body>
+</html>

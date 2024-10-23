@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-  <script src="DynamicGrid.js"></script>
-  <script src="TypePlugin.js"></script>
-  <script src="inherentTypePlugin.js"></script>
-  <script src="SJQLEngine.js"></script>
-  <script src="constants.js"></script>
+    <link rel="stylesheet" href="DynamicGrid.css">
+    <link rel="stylesheet" href="https://fa.kronk.tech">
+  <script src="DynamicGrid/DynamicGrid.js"></script>
+  <script src="DynamicGrid/TypePlugin.js"></script>
+  <script src="DynamicGrid/InherentTypePlugin.js"></script>
+  <script src="DynamicGrid/SJQLEngine.js"></script>
+  <script src="DynamicGrid/Constants.js"></script>
+    <script src="ContextMenu/ContextMenu.js"></script>
 </head>
 <body>
 
@@ -16,30 +19,31 @@
 <div id="table-container"></div>
 
 <script>
-    const table = new DynamicGrid();
     function handleFile(file) {
         const reader = new FileReader();
         reader.onload = function (e) {
             const data = JSON.parse(e.target.result);
-            table.setData(data);
-            table.setHeaderTypes({
-                id: 'number',
-                guid: 'string',
-                isActive: 'boolean',
-                balance: 'number',
-                age: 'number',
-                name: 'string',
-                gender: 'string',
-                email: 'string'
-            });
-
-            console.time('executionFunctionToBeMeasured');
-            const result = table.engine.query('id > 500000 and age <= 30 and isActive = true and gender = "female"');
-            console.timeEnd('executionFunctionToBeMeasured');
-            console.log(result);
+            createTable(data);
         }
         reader.readAsText(file);
+    }
 
+    const table = new DynamicGrid();
+    function createTable(data) {
+        table.setData(data);
+        table.setHeaderTypes({
+            id: 'number',
+            guid: 'string',
+            isActive: 'boolean',
+            balance: 'number',
+            age: 'number',
+            name: 'string',
+            gender: 'string',
+            email: 'string'
+        });
+
+        const result = table.engine.query('id > 500000 and age <= 30 and isActive = true and gender = "female"');
+        console.log(result);
     }
 </script>
 

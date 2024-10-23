@@ -1,6 +1,6 @@
 class DynamicGridConstants {
 
-    constructor(props) {
+    constructor() {
         this.operators =
         [
             {name: 'eq', operator: '='},
