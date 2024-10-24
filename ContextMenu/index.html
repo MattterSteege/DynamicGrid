@@ -14,24 +14,24 @@
     </div>
 
     <script>
-        const subMenu2 = new ContextMenu();
-        subMenu2.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+        const subMenu2 = new ContextMenu({animationDuration: 200})
+        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
             console.log('Edit2');
         }})
         .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
             console.log('Delete2');
         }});
 
-        const subMenu3 = new ContextMenu();
-        subMenu3.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
-                console.log('Edit2');
-            }})
-            .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
-                    console.log('Delete2');
-                }});
+        const subMenu3 = new ContextMenu({animationDuration: 200})
+        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+            console.log('Edit2');
+        }})
+        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
+            console.log('Delete2');
+        }});
 
-        const subMenu = new ContextMenu();
-        subMenu.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+        const subMenu = new ContextMenu({animationDuration: 200})
+        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
             console.log('Edit1');
         }})
         .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
@@ -41,8 +41,8 @@
         .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu2})
         .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu3})
 
-        const contextMenu = new ContextMenu();
-        contextMenu.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+        const contextMenu = new ContextMenu({animationDuration: 200, animationTiming: 'ease-out'})
+        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
             console.log('Edit');
         }})
         .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
@@ -53,7 +53,7 @@
             console.log('Add');
         }})
         .addSeparator()
-        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu, tryShowSide: 'right'});
+        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu});
     </script>
 </body>
 </html>

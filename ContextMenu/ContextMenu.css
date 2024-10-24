@@ -16,6 +16,10 @@
     box-shadow: var(--menu-shadow);
     padding: 0;
     margin: 0;
+
+    /* Animation */
+    opacity: 0;
+    transition-property: opacity, transform;
 }
 
 /* Dark theme */

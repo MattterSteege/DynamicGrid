@@ -1,6 +1,3 @@
-//TODO: Add window resize handling
-//TODO: Add animation support
-
 class ContextMenu {
     constructor(data = {}) {
         this.buttons = [];
@@ -14,6 +11,13 @@ class ContextMenu {
             initialYOffset: 10, //pixels between the bottom of the element and the top of the first menu
             initialXOffset: 0, //pixels between the left of the element and the left of the first menu
         }
+
+        // Animation configuration
+        this.animation = {
+            type: data.animationType || 'fade', // 'fade', 'slide', 'scale', 'none'
+            duration: data.animationDuration || 200, // milliseconds
+            timing: data.animationTiming || 'ease-out' // CSS timing function
+        };
 
         //event listeners
         this.handleClick = this.click.bind(this);
@@ -287,10 +291,22 @@ class ContextMenu {
         };
 
         const position = calculatePosition(element, isRoot);
-        contextMenu.style.left = `${position.left}px`;
-        contextMenu.style.top = `${position.top}px`;
+        if (this.animation.animationDuration === 0) {
+            contextMenu.style.left = `${position.left}px`;
+            contextMenu.style.top = `${position.top}px`;
+        } else {
+            contextMenu.style.left = `${position.left}px`;
+            contextMenu.style.top = `${position.top}px`;
+            contextMenu.style.transition = `opacity ${this.animation.duration}ms ${this.animation.timing}`;
 
-        !isRoot ? contextMenu.style.display = 'none' : null;
+            requestAnimationFrame(() => {
+                contextMenu.style.opacity = 1;
+            });
+        }
+
+        if (!isRoot)
+            contextMenu.style.display = 'none'
+
         this.isRoot = isRoot;
 
         contextMenu.querySelectorAll('.' + ContextMenu.CLASSNAMES.BUTTON).forEach(_button => {
