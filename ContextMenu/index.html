@@ -22,6 +22,14 @@
             console.log('Delete2');
         }});
 
+        const subMenu3 = new ContextMenu();
+        subMenu3.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
+                console.log('Edit2');
+            }})
+            .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
+                    console.log('Delete2');
+                }});
+
         const subMenu = new ContextMenu();
         subMenu.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
             console.log('Edit1');
@@ -30,7 +38,8 @@
             console.log('Delete1');
         }})
         .addSeparator()
-        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu2});
+        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu2})
+        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu3})
 
         const contextMenu = new ContextMenu();
         contextMenu.addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
@@ -44,7 +53,7 @@
             console.log('Add');
         }})
         .addSeparator()
-        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu});
+        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu, tryShowSide: 'right'});
     </script>
 </body>
 </html>
