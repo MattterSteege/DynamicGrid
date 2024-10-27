@@ -14,7 +14,6 @@ class ContextMenu {
 
         // Animation configuration
         this.animation = {
-            type: data.animationType || 'fade', // 'fade', 'slide', 'scale', 'none'
             duration: data.animationDuration || 200, // milliseconds
             timing: data.animationTiming || 'ease-out' // CSS timing function
         };
@@ -257,6 +256,48 @@ class ContextMenu {
         return this;
     }
 
+    showAt(x, y) {
+        const existingContextMenu = document.getElementById(this.id);
+        if (existingContextMenu) {
+            return;
+        }
+
+        let contextMenu = this.render();
+
+        this.addEventListeners();
+
+        document.body.appendChild(contextMenu);
+
+        contextMenu.style.left = `${x - 5}px`;
+        contextMenu.style.top = `${y - 5}px`;
+        contextMenu.style.position = 'fixed';
+        if (this.animation.duration !== 0) {
+            contextMenu.style.transition = `opacity ${this.animation.duration}ms ${this.animation.timing}`;
+
+            requestAnimationFrame(() => {
+                contextMenu.style.opacity = 1;
+            });
+        }
+
+        this.isRoot = true;
+
+        contextMenu.querySelectorAll('.' + ContextMenu.CLASSNAMES.BUTTON).forEach(_button => {
+            const id = _button.id;
+            _button.addEventListener('click', () => {
+                const button = this.buttons.find(b => b.position == id);
+                if (button) {
+                    button.action();
+                }
+            });
+        });
+
+        contextMenu.querySelector('.' + ContextMenu.CLASSNAMES.BUTTON).focus();
+
+        this.addEventListeners();
+
+        return contextMenu;
+    }
+
     show(element, isRoot = true, dontAutoAdd = false) {
         const existingContextMenu = document.getElementById(this.id);
         if (existingContextMenu) {
@@ -291,12 +332,10 @@ class ContextMenu {
         };
 
         const position = calculatePosition(element, isRoot);
-        if (this.animation.animationDuration === 0) {
-            contextMenu.style.left = `${position.left}px`;
-            contextMenu.style.top = `${position.top}px`;
-        } else {
-            contextMenu.style.left = `${position.left}px`;
-            contextMenu.style.top = `${position.top}px`;
+        contextMenu.style.left = `${position.left}px`;
+        contextMenu.style.top = `${position.top}px`;
+        contextMenu.style.position = 'fixed';
+        if (this.animation.animationDuration !== 0) {
             contextMenu.style.transition = `opacity ${this.animation.duration}ms ${this.animation.timing}`;
 
             requestAnimationFrame(() => {

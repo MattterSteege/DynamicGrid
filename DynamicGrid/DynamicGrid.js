@@ -22,10 +22,14 @@ class DynamicGrid {
 
     //RENDERING SYSTEM
     render() {
-
+        this.renderHeader();
     }
 
     renderHeader() {
-        console.log(this.engine.headers);
+        const header = document.createElement('tr');
+        Object.entries(table.engine.headers).forEach(([key, value]) => {
+            header.append(this.engine.getPlugin(value).renderHeader(key));
+        });
+        document.getElementById('table').appendChild(header);
     }
 }

@@ -3,7 +3,6 @@ class SJQLEngine {
         this.data = [];
         this.headers = []; //['name:string', 'age:number', 'dob:date'] -> string = stringTypePlugin...
         this.plugins = [];
-        this.constants = new DynamicGridConstants();
         this.currentQuery = {};
     }
 
@@ -22,7 +21,7 @@ class SJQLEngine {
     //query = 'name == John and age > 25'
     // the output is meant to be right as: query AND THEN query AND THEN query, so building on the previous query
     parseQuery(query) {
-        let subQueries = query.split(/and|anD|aNd|aND|And|AnD|ANd|AND/);
+        let subQueries = query.split(/and/i);
         for (let i = 0; i < subQueries.length; i++) {
             subQueries[i] = subQueries[i].trim();
             const key = subQueries[i].split(' ')[0];
@@ -34,10 +33,10 @@ class SJQLEngine {
 
             let [field, operator, value] = subQueries[i].split(' ');
 
-            operator = this.constants.getOperator(operator);
+            operator = plugin.getOperator(operator);
 
             if (!operator) {
-                throw new Error('\n\nInvalid operator:    ' + subQueries[i].split(' ')[1] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + this.constants.getOperatorSymbols().join(', ') + '\n');
+                throw new Error('\n\nInvalid operator:    ' + subQueries[i].split(' ')[1] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + plugin.getOperatorSymbols().join(', ') + '\n');
             }
 
             if (plugin.validate(value)) {

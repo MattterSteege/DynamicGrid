@@ -9,14 +9,13 @@
   <script src="DynamicGrid/TypePlugin.js"></script>
   <script src="DynamicGrid/InherentTypePlugin.js"></script>
   <script src="DynamicGrid/SJQLEngine.js"></script>
-  <script src="DynamicGrid/Constants.js"></script>
     <script src="ContextMenu/ContextMenu.js"></script>
 </head>
 <body>
 
 <input type="file" id="file" accept=".json" onchange="handleFile(this.files[0])">
 
-<div id="table-container"></div>
+<table id="table"></table>
 
 <script>
     function handleFile(file) {
@@ -41,8 +40,9 @@
             gender: 'string',
             email: 'string'
         });
+        table.render();
 
-        const result = table.engine.query('id > 500000 and age <= 30 and isActive = true and gender = "female"');
+        const result = table.engine.query('id > 500000 and age <= 30 and isActive == true and gender == "female"');
         console.log(result);
     }
 </script>

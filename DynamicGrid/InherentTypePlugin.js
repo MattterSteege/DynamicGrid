@@ -1,6 +1,14 @@
 class stringTypePlugin extends TypePlugin {
     constructor() {
         super();
+
+        this.operators.push(...[
+            { name: 'swi', operator: '%=' },  // Starts with
+            { name: 'ewi', operator: '=%' },  // Ends with
+            { name: 'co', operator: '*=' },   // Contains
+            { name: 'nco', operator: '!*=' }, // Does not contain
+            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+        ]);
     }
 
     validate(value) {
@@ -50,11 +58,26 @@ class stringTypePlugin extends TypePlugin {
 
         return false;
     }
+
+    //render the header of the column
+    renderHeader(key) {
+        const elem = document.createElement('th');
+        elem.innerHTML = key;
+        return elem;
+    }
 }
 
 class numberTypePlugin extends TypePlugin {
     constructor() {
         super();
+
+        this.operators.push(...[
+            { name: 'gt', operator: '>' },    // Greater than
+            { name: 'lt', operator: '<' },    // Less than
+            { name: 'gte', operator: '>=' },  // Greater than or equals
+            { name: 'lte', operator: '<=' },  // Less than or equals
+            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+        ]);
     }
 
     validate(value) {
@@ -104,11 +127,26 @@ class numberTypePlugin extends TypePlugin {
 
         return false;
     }
+
+    //render the header of the column
+    renderHeader(key) {
+        const elem = document.createElement('th');
+        elem.innerHTML = key;
+        return elem;
+    }
 }
 
 class dateTypePlugin extends TypePlugin {
     constructor() {
         super();
+
+        this.operators.push(...[
+            { name: 'gt', operator: '>' },    // Greater than
+            { name: 'lt', operator: '<' },    // Less than
+            { name: 'gte', operator: '>=' },  // Greater than or equals
+            { name: 'lte', operator: '<=' },  // Less than or equals
+            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+        ]);
     }
 
     validate(value) {
@@ -208,6 +246,13 @@ class dateTypePlugin extends TypePlugin {
             return new Date(Number(date) * 1000);
         }
     }
+
+    //render the header of the column
+    renderHeader(key) {
+        const elem = document.createElement('th');
+        elem.innerHTML = key;
+        return elem;
+    }
 }
 
 class booleanTypePlugin extends TypePlugin {
@@ -225,7 +270,7 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     getJSQLFormat(value) {
-        return value === 'true';
+        return value.toLowerCase() === 'true';
     }
 
     evaluate(query, data) {
@@ -254,6 +299,13 @@ class booleanTypePlugin extends TypePlugin {
         }
 
         return false;
+    }
+
+    //render the header of the column
+    renderHeader(key) {
+        const elem = document.createElement('th');
+        elem.innerHTML = key;
+        return elem;
     }
 }
 

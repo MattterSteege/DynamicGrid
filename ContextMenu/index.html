@@ -2,58 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-  <script src="ContextMenu.js"></script>
-  <link rel="stylesheet" href="ContextMenu.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContextMenu Example</title>
+    <link rel="stylesheet" href="ContextMenu.css">
 </head>
 <body>
 
-    <div id="table-container">
-        <button oncontextmenu="contextMenu.show(event.target); return false;">Right click me</button>
-    </div>
+<div id="content" style="width: 300px; height: 200px; border: 1px solid #ccc; padding: 10px;">
+    Right-click anywhere in this area to see the context menu.
+</div>
 
-    <script>
-        const subMenu2 = new ContextMenu({animationDuration: 200})
-        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
-            console.log('Edit2');
-        }})
-        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
-            console.log('Delete2');
-        }});
+<script src="ContextMenu.js"></script>
+<script>
+    // Initialize and configure the context menu
+    //SUB CONTEXT MENU
+    const subMenu = new ContextMenu({
+        animationDuration: 200,
+        animationTiming: 'ease-out'
+    });
 
-        const subMenu3 = new ContextMenu({animationDuration: 200})
-        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
-            console.log('Edit2');
-        }})
-        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
-            console.log('Delete2');
-        }});
+    subMenu.addButton({
+        text: 'Submenu Item 1',
+        icon: 'sub-icon',
+        action: () => {
+            alert('Submenu Item 1 selected')
+        }
+    })
+    .addButton({
+        text: 'Submenu Item 2',
+        icon: 'sub-icon',
+        action: () => {
+            alert('Submenu Item 2 selected')
+        }
+    });
 
-        const subMenu = new ContextMenu({animationDuration: 200})
-        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
-            console.log('Edit1');
-        }})
-        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
-            console.log('Delete1');
-        }})
-        .addSeparator()
-        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu2})
-        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu3})
+    //MAIN CONTEXT MENU
+    const menu = new ContextMenu({
+        animationDuration: 200,
+        animationTiming: 'ease-out'
+    });
 
-        const contextMenu = new ContextMenu({animationDuration: 200, animationTiming: 'ease-out'})
-        .addButton({icon: 'fa fa-edit', text: 'Edit', action: () => {
-            console.log('Edit');
-        }})
-        .addButton({icon: 'fa fa-trash', text: 'Delete', action: () => {
-            console.log('Delete');
-        }})
-        .addSeparator()
-        .addButton({icon: 'fa fa-plus', text: 'Add', action: () => {
-            console.log('Add');
-        }})
-        .addSeparator()
-        .addSubMenu({icon: 'fa fa-cog', text: 'Settings', subMenu: subMenu});
-    </script>
+    menu.addButton({
+        text: 'Edit',
+        icon: 'edit-icon',
+        action: () => {
+            alert('Edit selected')
+        }
+    })
+    .addSeparator()
+    .addButton({
+        text: 'Delete',
+        icon: 'delete-icon',
+        action: () => {
+            alert('Delete selected')
+        }
+    })
+    .addSeparator()
+    .addSubMenu({
+        text: 'Submenu',
+        icon: 'sub-icon',
+        subMenu: subMenu
+    });
+
+    // Display the context menu on right-click within #content
+    document.getElementById('content').addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        menu.showAt(e.clientX, e.clientY);
+    });
+</script>
+
 </body>
 </html>
