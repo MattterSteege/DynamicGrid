@@ -42,8 +42,11 @@
         });
         table.render();
 
-        const result = table.engine.query('id > 500000 and age <= 30 and isActive == true and gender == "female"');
+        console.time('Query');
+        const result = table.engine.query('name in ["Leah Austin", "Amelia Mcdonald", "Myers Everett"]');
+        console.timeStamp('Query');
         console.log(result);
+        console.timeLog('Query');
     }
 </script>
 

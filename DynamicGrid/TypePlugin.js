@@ -1,13 +1,10 @@
 class TypePlugin {
     constructor() {
         this.name = this.constructor.name;
+        this.operators = [];
 
-        this.operators = [
-            { name: 'eq', operator: '==' },   // Equals
-            { name: 'neq', operator: '!=' },  // Not equals
-            { name: 'em', operator: '""' },   // Is empty (double quotes to indicate empty)
-            { name: 'nem', operator: '!""' }  // Is not empty
-        ];
+        //initialize the operators
+        this.addOperators();
     }
 
     // These methods should be overridden by the child class
@@ -29,6 +26,16 @@ class TypePlugin {
     }
 
     //================================================== OPERATOR SYSTEM ==================================================
+    addOperators() {
+        this.operators = [
+            { name: 'eq', operator: '==' },   // Equals
+            { name: 'neq', operator: '!=' },  // Not equals
+            { name: 'em', operator: '""' },   // Is empty (double quotes to indicate empty)
+            { name: 'nem', operator: '!""' }, // Is not empty
+            { name: 'in', operator: 'in' },   // In
+        ];
+    }
+
     getOperator(operatorOrName) {
         try {
             return this.operators.find(op => op.name === operatorOrName || op.operator === operatorOrName);

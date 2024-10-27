@@ -23,20 +23,29 @@ class SJQLEngine {
     parseQuery(query) {
         let subQueries = query.split(/and/i);
         for (let i = 0; i < subQueries.length; i++) {
-            subQueries[i] = subQueries[i].trim();
-            const key = subQueries[i].split(' ')[0];
+            //subQueries[i] = subQueries[i].trim();
+            const partsRegex = /([A-Za-z]+)\s+(\S+)\s+(.+)/;
+            // ↳ [1] = key, [2] = operator, [3] = value
+            const parts = partsRegex.exec(subQueries[i]);
+            if (!parts) {
+                throw new Error('Invalid query: ' + subQueries[i]);
+            }
+
+            const key = parts[1];
             const pluginType = this.headers[key];
             const plugin = this.getPlugin(pluginType);
             if (!plugin) {
                 throw new Error('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
 
-            let [field, operator, value] = subQueries[i].split(' ');
+            let field = parts[1];
+            let operator = parts[2];
+            let value = parts[3];
 
             operator = plugin.getOperator(operator);
 
             if (!operator) {
-                throw new Error('\n\nInvalid operator:    ' + subQueries[i].split(' ')[1] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + plugin.getOperatorSymbols().join(', ') + '\n');
+                throw new Error('\n\nInvalid operator:    ' + parts[2] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + plugin.getOperatorSymbols().join(', ') + '\n');
             }
 
             if (plugin.validate(value)) {

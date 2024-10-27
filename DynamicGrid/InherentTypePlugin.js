@@ -1,14 +1,6 @@
 class stringTypePlugin extends TypePlugin {
     constructor() {
         super();
-
-        this.operators.push(...[
-            { name: 'swi', operator: '%=' },  // Starts with
-            { name: 'ewi', operator: '=%' },  // Ends with
-            { name: 'co', operator: '*=' },   // Contains
-            { name: 'nco', operator: '!*=' }, // Does not contain
-            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
-        ]);
     }
 
     validate(value) {
@@ -20,39 +12,48 @@ class stringTypePlugin extends TypePlugin {
         if ((value[0] === '"' && value[value.length - 1] === '"') || (value[0] === "'" && value[value.length - 1] === "'")) {
             return value.substring(1, value.length - 1);
         }
+
+        return value;
     }
 
     //query = {field: 'name', operator: 'eq', value: 'John'}
     evaluate(query, data) {
-        const {field, operator, value} = query;
+        let {field, operator, value} = query;
+
+        if (operator === 'in') {
+            value = JSON.parse(value);
+        }
+
         return data.filter(item => {
             return this._evaluate(item[field], operator, value);
         });
     }
 
+    //dataValue is the value of the field in the data, value is the value in the query
     _evaluate(dataValue, operator, value) {
-        //if the value is an array, then we need to check if the name is in the array
+
         if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.forEach(val => {
-                if (this._evaluate(dataValue, operator, val)) {
-                    return true;
-                }
-            });
+            return value.includes(dataValue);
         }
 
-        //if the value is a string, then we need to check if the name is equal to the value
         if (typeof value === 'string') {
             switch (operator) {
                 case 'eq':
                     return dataValue === value;
                 case 'neq':
                     return dataValue !== value;
-                case 'contains':
-                    return dataValue.includes(value);
-                case 'start':
+                case 'em':
+                    return (!value || value.length === 0);
+                case 'nem':
+                    return (value && value.length > 0);
+                case 'swi':
                     return dataValue.startsWith(value);
-                case 'end':
+                case 'ewi':
                     return dataValue.endsWith(value);
+                case 'co':
+                    return dataValue.includes(value);
+                case 'nco':
+                    return !dataValue.includes(value);
             }
         }
 
@@ -65,19 +66,23 @@ class stringTypePlugin extends TypePlugin {
         elem.innerHTML = key;
         return elem;
     }
+
+    //==================================================================================================================
+    addOperators() {
+        super.addOperators();
+        this.operators.push(...[
+            { name: 'swi', operator: '%=' },  // Starts with
+            { name: 'ewi', operator: '=%' },  // Ends with
+            { name: 'co', operator: '*=' },   // Contains
+            { name: 'nco', operator: '!*=' }, // Does not contain
+            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+        ]);
+    }
 }
 
 class numberTypePlugin extends TypePlugin {
     constructor() {
         super();
-
-        this.operators.push(...[
-            { name: 'gt', operator: '>' },    // Greater than
-            { name: 'lt', operator: '<' },    // Less than
-            { name: 'gte', operator: '>=' },  // Greater than or equals
-            { name: 'lte', operator: '<=' },  // Less than or equals
-            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
-        ]);
     }
 
     validate(value) {
@@ -134,12 +139,10 @@ class numberTypePlugin extends TypePlugin {
         elem.innerHTML = key;
         return elem;
     }
-}
 
-class dateTypePlugin extends TypePlugin {
-    constructor() {
-        super();
-
+    //==================================================================================================================
+    addOperators() {
+        super.addOperators();
         this.operators.push(...[
             { name: 'gt', operator: '>' },    // Greater than
             { name: 'lt', operator: '<' },    // Less than
@@ -147,6 +150,12 @@ class dateTypePlugin extends TypePlugin {
             { name: 'lte', operator: '<=' },  // Less than or equals
             { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
         ]);
+    }
+}
+
+class dateTypePlugin extends TypePlugin {
+    constructor() {
+        super();
     }
 
     validate(value) {
@@ -252,6 +261,18 @@ class dateTypePlugin extends TypePlugin {
         const elem = document.createElement('th');
         elem.innerHTML = key;
         return elem;
+    }
+
+    //==================================================================================================================
+    addOperators() {
+        super.addOperators();
+        this.operators.push(...[
+            { name: 'gt', operator: '>' },    // Greater than
+            { name: 'lt', operator: '<' },    // Less than
+            { name: 'gte', operator: '>=' },  // Greater than or equals
+            { name: 'lte', operator: '<=' },  // Less than or equals
+            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+        ]);
     }
 }
 
