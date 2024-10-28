@@ -9,6 +9,7 @@
   <script src="DynamicGrid/TypePlugin.js"></script>
   <script src="DynamicGrid/InherentTypePlugin.js"></script>
   <script src="DynamicGrid/SJQLEngine.js"></script>
+  <script src="DynamicGrid/QueryParser.js"></script>
     <script src="ContextMenu/ContextMenu.js"></script>
 </head>
 <body>
@@ -43,7 +44,7 @@
         table.render();
 
         console.time('Query');
-        const result = table.engine.query('name in ["Leah Austin", "Amelia Mcdonald", "Myers Everett"]');
+        const result = table.engine.query('sort name asc and limit 13 and id > 50 and sort id desc');
         console.timeStamp('Query');
         console.log(result);
         console.timeLog('Query');

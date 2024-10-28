@@ -25,6 +25,18 @@ class TypePlugin {
         return data;
     }
 
+    sort(query, data) {
+        const {field, value} = query;
+        return data.sort((a, b) => {
+            if (value === 'asc') {
+                return a[field].localeCompare(b[field]);
+            }
+            else if (value === 'desc') {
+                return b[field].localeCompare(a[field]);
+            }
+        });
+    }
+
     //================================================== OPERATOR SYSTEM ==================================================
     addOperators() {
         this.operators = [

@@ -6,7 +6,6 @@ class DynamicGrid {
         //PLUGIN SYSTEM
         this.engine.addPlugin(new stringTypePlugin());
         this.engine.addPlugin(new numberTypePlugin());
-        this.engine.addPlugin(new dateTypePlugin());
         this.engine.addPlugin(new booleanTypePlugin());
     }
 
@@ -16,7 +15,13 @@ class DynamicGrid {
     }
 
     setHeaderTypes(headers) {
-        this.engine.headers = headers;
+        //Array.from(headers).forEach(header => {
+        //    const [key, type] = header.split(':');
+        //    this.engine.headers[key] = type;
+        //});
+        Object.entries(headers).forEach(([key, value]) => {
+            this.engine.headers[key] = value.toLowerCase();
+        });
     }
     //END DATA SYSTEM
 

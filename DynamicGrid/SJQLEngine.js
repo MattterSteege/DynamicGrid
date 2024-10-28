@@ -4,6 +4,7 @@ class SJQLEngine {
         this.headers = []; //['name:string', 'age:number', 'dob:date'] -> string = stringTypePlugin...
         this.plugins = [];
         this.currentQuery = {};
+        this.QueryParser = new QueryParser(this);
     }
 
     parseData(data) {
@@ -16,47 +17,6 @@ class SJQLEngine {
             }
             return newItem;
         });
-    }
-
-    //query = 'name == John and age > 25'
-    // the output is meant to be right as: query AND THEN query AND THEN query, so building on the previous query
-    parseQuery(query) {
-        let subQueries = query.split(/and/i);
-        for (let i = 0; i < subQueries.length; i++) {
-            //subQueries[i] = subQueries[i].trim();
-            const partsRegex = /([A-Za-z]+)\s+(\S+)\s+(.+)/;
-            // ↳ [1] = key, [2] = operator, [3] = value
-            const parts = partsRegex.exec(subQueries[i]);
-            if (!parts) {
-                throw new Error('Invalid query: ' + subQueries[i]);
-            }
-
-            const key = parts[1];
-            const pluginType = this.headers[key];
-            const plugin = this.getPlugin(pluginType);
-            if (!plugin) {
-                throw new Error('No plugin found for header (' + pluginType + ') for key (' + key + ')');
-            }
-
-            let field = parts[1];
-            let operator = parts[2];
-            let value = parts[3];
-
-            operator = plugin.getOperator(operator);
-
-            if (!operator) {
-                throw new Error('\n\nInvalid operator:    ' + parts[2] + '\n       For query:    ' + subQueries[i] + '\n     options are:    ' + plugin.getOperatorSymbols().join(', ') + '\n');
-            }
-
-            if (plugin.validate(value)) {
-                value = plugin.getJSQLFormat(value);
-            }
-
-            const type = this.headers[key];
-
-            subQueries[i] = {type, field, operator: operator.name, value};
-        }
-        return subQueries;
     }
 
     query(query) {
@@ -72,12 +32,19 @@ class SJQLEngine {
         }
 
         let data = this.data;
-        let subQueries = this.parseQuery(query);
-        for (let i = 0; i < subQueries.length; i++) {
-            data = this.getPlugin(subQueries[i].type).evaluate(subQueries[i], data); //set data to the result of the query, so that the next query can be performed on the result of the previous query
+        this.currentQuery = this.QueryParser.parseQuery(query);
+        for (let i = 0; i < this.currentQuery.length; i++) {
+            if (this.currentQuery[i].queryType === 'SORT') {
+                data = this.getPlugin(this.currentQuery[i].type).sort(this.currentQuery[i], data);
+            }
+            if (this.currentQuery[i].queryType === 'LIMIT') {
+                data = data.slice(0, this.currentQuery[i].value);
+            }
+            if (this.currentQuery[i].queryType === 'SELECT') {
+                data = this.getPlugin(this.currentQuery[i].type).evaluate(this.currentQuery[i], data); //set data to the result of the query, so that the next query can be performed on the result of the previous query
+            }
         }
 
-        this.currentQuery = subQueries;
         return data;
     }
 
