@@ -68,9 +68,6 @@ class SJQLEngine {
             if (this.currentQuery[i].queryType === 'SORT') {
                 data = this.getPlugin(this.currentQuery[i].type).sort(this.currentQuery[i], data);
             }
-            if (this.currentQuery[i].queryType === 'OFFSET'){
-                data = data.slice(this.currentQuery[i].value)
-            }
             if (this.currentQuery[i].queryType === 'RANGE') {
                 //value can be like this: 10, 20-30, ^10 (last 10)
                 const lower = this.currentQuery[i].lower;
@@ -84,6 +81,9 @@ class SJQLEngine {
                 else {
                     data = data.slice(lower, upper);
                 }
+            }
+            if (this.currentQuery[i].queryType === 'SELECT') {
+                data = this.getPlugin(this.currentQuery[i].type).evaluate(this.currentQuery[i], data);
             }
         }
 

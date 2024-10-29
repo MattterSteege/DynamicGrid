@@ -5,11 +5,12 @@
     <title>Title</title>
     <link rel="stylesheet" href="DynamicGrid.css">
     <link rel="stylesheet" href="https://fa.kronk.tech">
-  <script src="DynamicGrid/DynamicGrid.js"></script>
-  <script src="DynamicGrid/TypePlugin.js"></script>
-  <script src="DynamicGrid/InherentTypePlugin.js"></script>
-  <script src="DynamicGrid/SJQLEngine.js"></script>
-  <script src="DynamicGrid/QueryParser.js"></script>
+<!--  <script src="DynamicGrid/DynamicGrid.js"></script>-->
+<!--  <script src="DynamicGrid/TypePlugin.js"></script>-->
+<!--  <script src="DynamicGrid/InherentTypePlugin.js"></script>-->
+<!--  <script src="DynamicGrid/SJQLEngine.js"></script>-->
+<!--  <script src="DynamicGrid/QueryParser.js"></script>-->
+    <script src="/dist/DynamicGrid.js"></script>
 </head>
 <body>
 
@@ -43,7 +44,7 @@
         // });
         //table.render();
 
-        const result = table.engine.query('range -0');
+        const result = table.engine.query('age > 30 and isActive == true');
         console.log(result);
     }
 
