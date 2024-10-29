@@ -37,6 +37,9 @@ class SJQLEngine {
             if (this.currentQuery[i].queryType === 'SORT') {
                 data = this.getPlugin(this.currentQuery[i].type).sort(this.currentQuery[i], data);
             }
+            if (this.currentQuery[i].queryType === 'OFFSET'){
+                data = data.slice(this.currentQuery[i].value)
+            }
             if (this.currentQuery[i].queryType === 'LIMIT') {
                 data = data.slice(0, this.currentQuery[i].value);
             }

@@ -2,7 +2,8 @@ class QueryParser {
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
         LIMIT: /limit\s+(\d+)/,                 //'limit [value]', limit the number of results
-        SORT: /sort\s+([A-Za-z]+)\s+(asc|desc)/,//SORT: 'sort [key] [value]', sort by key (sort name asc)
+        OFFSET: /offset\s+(\d+)/,               //'offset [value]', offsets the 0th row of data by [value] places
+        SORT: /sort\s+([A-Za-z]+)\s+(asc|desc)/,//'sort [key] [value]', sort by key (sort name asc)
         SELECT: /([A-Za-z]+)\s+(\S+)\s+(.+)/    //'[key] [operator] [value]', select items where key is value
     };
 
@@ -62,6 +63,9 @@ class QueryParser {
         }
         if (type === 'LIMIT') {
             return {operator: "limit", value: match[1], queryType: 'LIMIT'};
+        }
+        if (type === 'OFFSET') {
+            return {operator: 'offset', value: match[1], queryType: 'OFFSET'}
         }
     }
 
