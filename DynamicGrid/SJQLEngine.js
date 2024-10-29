@@ -1,4 +1,7 @@
-class SJQLEngine {
+import { QueryParser } from './QueryParser.js';
+import { TypePlugin } from './TypePlugin.js';
+
+export class SJQLEngine {
     constructor(DynamicGrid) {
         this.data = [];
         this.headers = []; //['name:string', 'age:number', 'dob:date'] -> string = stringTypePlugin...
@@ -40,11 +43,19 @@ class SJQLEngine {
             if (this.currentQuery[i].queryType === 'OFFSET'){
                 data = data.slice(this.currentQuery[i].value)
             }
-            if (this.currentQuery[i].queryType === 'LIMIT') {
-                data = data.slice(0, this.currentQuery[i].value);
-            }
-            if (this.currentQuery[i].queryType === 'SELECT') {
-                data = this.getPlugin(this.currentQuery[i].type).evaluate(this.currentQuery[i], data); //set data to the result of the query, so that the next query can be performed on the result of the previous query
+            if (this.currentQuery[i].queryType === 'RANGE') {
+                //value can be like this: 10, 20-30, ^10 (last 10)
+                const lower = this.currentQuery[i].lower;
+                const upper = this.currentQuery[i].upper;
+                console.log(lower, upper)
+                //if upper is not provided, get the last n elements
+                //if lower or upper are negative, get the last n elements
+                if (upper === undefined) {
+                    data = data.slice(lower);
+                }
+                else {
+                    data = data.slice(lower, upper);
+                }
             }
         }
 

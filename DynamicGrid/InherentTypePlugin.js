@@ -1,4 +1,6 @@
-class stringTypePlugin extends TypePlugin {
+import { TypePlugin } from './TypePlugin.js';
+
+export class stringTypePlugin extends TypePlugin {
     constructor() {
         super();
     }
@@ -80,7 +82,7 @@ class stringTypePlugin extends TypePlugin {
     }
 }
 
-class numberTypePlugin extends TypePlugin {
+export class numberTypePlugin extends TypePlugin {
     constructor() {
         super();
     }
@@ -166,7 +168,7 @@ class numberTypePlugin extends TypePlugin {
     }
 }
 
-class booleanTypePlugin extends TypePlugin {
+export class booleanTypePlugin extends TypePlugin {
     constructor() {
         super();
     }

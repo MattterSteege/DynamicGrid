@@ -1,8 +1,7 @@
-class QueryParser {
+export class QueryParser {
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
-        LIMIT: /limit\s+(\d+)/,                 //'limit [value]', limit the number of results
-        OFFSET: /offset\s+(\d+)/,               //'offset [value]', offsets the 0th row of data by [value] places
+        RANGE: /range\s+(-?\d+)-?(-?\d+)?/,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+([A-Za-z]+)\s+(asc|desc)/,//'sort [key] [value]', sort by key (sort name asc)
         SELECT: /([A-Za-z]+)\s+(\S+)\s+(.+)/    //'[key] [operator] [value]', select items where key is value
     };
@@ -61,11 +60,9 @@ class QueryParser {
 
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
         }
-        if (type === 'LIMIT') {
-            return {operator: "limit", value: match[1], queryType: 'LIMIT'};
-        }
-        if (type === 'OFFSET') {
-            return {operator: 'offset', value: match[1], queryType: 'OFFSET'}
+        if (type === 'RANGE') {
+            let [_, lower, upper] = match;
+            return {type: 'range', field: 'range', operator: 'range', lower, upper, queryType: 'RANGE'};
         }
     }
 

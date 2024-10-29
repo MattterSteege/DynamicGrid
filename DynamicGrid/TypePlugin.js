@@ -1,4 +1,4 @@
-class TypePlugin {
+export class TypePlugin {
     constructor() {
         this.name = this.constructor.name;
         this.operators = [];

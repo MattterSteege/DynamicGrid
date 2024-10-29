@@ -1,5 +1,10 @@
+import { SJQLEngine } from './SJQLEngine.js';
+import { stringTypePlugin } from './InherentTypePlugin.js';
+import { numberTypePlugin } from './InherentTypePlugin.js';
+import { booleanTypePlugin } from './InherentTypePlugin.js';
+
 // Table component (basic implementation)
-class DynamicGrid {
+export class DynamicGrid {
     constructor() {
         this.engine = new SJQLEngine(this);
 
