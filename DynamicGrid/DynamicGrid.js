@@ -1,17 +1,23 @@
-import { SJQLEngine } from './SJQLEngine.js';
-import { stringTypePlugin } from './InherentTypePlugin.js';
-import { numberTypePlugin } from './InherentTypePlugin.js';
-import { booleanTypePlugin } from './InherentTypePlugin.js';
-
 // Table component (basic implementation)
-export class DynamicGrid {
-    constructor() {
+class DynamicGrid {
+    constructor(data) {
         this.engine = new SJQLEngine(this);
 
+        //initialize the header types
+        Object.entries(data.headers ?? {}).forEach(([key, value]) => {
+            this.engine.headers[key] = value.toLowerCase();
+        });
+
+
+
+
         //PLUGIN SYSTEM
-        this.engine.addPlugin(new stringTypePlugin());
-        this.engine.addPlugin(new numberTypePlugin());
-        this.engine.addPlugin(new booleanTypePlugin());
+        this.engine.plugins = data.plugins ?? [];
+
+        this.engine.addPlugin(new stringTypePlugin(), true);
+        this.engine.addPlugin(new numberTypePlugin(), true);
+        this.engine.addPlugin(new booleanTypePlugin(), true);
+
     }
 
     //DATA SYSTEM
@@ -20,10 +26,6 @@ export class DynamicGrid {
     }
 
     setHeaderTypes(headers) {
-        //Array.from(headers).forEach(header => {
-        //    const [key, type] = header.split(':');
-        //    this.engine.headers[key] = type;
-        //});
         Object.entries(headers).forEach(([key, value]) => {
             this.engine.headers[key] = value.toLowerCase();
         });

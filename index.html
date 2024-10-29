@@ -5,59 +5,20 @@
     <title>Title</title>
     <link rel="stylesheet" href="DynamicGrid.css">
     <link rel="stylesheet" href="https://fa.kronk.tech">
-  <script src="DynamicGrid/DynamicGrid.js" type="module"></script>
+  <script src="DynamicGrid/DynamicGrid.js"></script>
+  <script src="DynamicGrid/TypePlugin.js"></script>
+  <script src="DynamicGrid/InherentTypePlugin.js"></script>
+  <script src="DynamicGrid/SJQLEngine.js"></script>
+  <script src="DynamicGrid/QueryParser.js"></script>
 </head>
 <body>
 
 <input type="file" id="file" accept=".json" onchange="handleFile(this.files[0])">
 
 <table id="table"></table>
-
-<!--For testing the compiled source-->
-<!--<script src="dist/DynamicGrid.js"></script>-->
-<!--<script>-->
-<!--    function handleFile(file) {-->
-<!--        const reader = new FileReader();-->
-<!--        reader.onload = function (e) {-->
-<!--            const data = JSON.parse(e.target.result);-->
-<!--            createTable(data);-->
-<!--        }-->
-<!--        reader.readAsText(file);-->
-<!--    }-->
-
-<!--    const table = new DynamicGrid();-->
-<!--    function createTable(data) {-->
-<!--        table.setData(data);-->
-<!--        table.setHeaderTypes({-->
-<!--            id: 'number',-->
-<!--            guid: 'string',-->
-<!--            isActive: 'boolean',-->
-<!--            balance: 'number',-->
-<!--            age: 'number',-->
-<!--            name: 'string',-->
-<!--            gender: 'string',-->
-<!--            email: 'string'-->
-<!--        });-->
-<!--        table.render();-->
-
-<!--        console.time('Query');-->
-<!--        const result = table.engine.query('range -10');-->
-<!--        console.timeStamp('Query');-->
-<!--        console.log(result);-->
-<!--        console.timeLog('Query');-->
-<!--    }-->
-<!--</script>-->
-
-<script type="module">
-    import {DynamicGrid} from './DynamicGrid/DynamicGrid.js';
-    window.dynamicGrid = new DynamicGrid();
-</script>
 <script>
-    let table;
-    function createTable(data) {
-        table = window.dynamicGrid;
-        table.setData(data);
-        table.setHeaderTypes({
+    let table = new DynamicGrid({
+        headers: {
             id: 'number',
             guid: 'string',
             isActive: 'boolean',
@@ -66,15 +27,34 @@
             name: 'string',
             gender: 'string',
             email: 'string'
-        });
-        table.render();
+        }
+    });
+    function createTable(data) {
+        table.setData(data);
+        // table.setHeaderTypes({
+        //     id: 'number',
+        //     guid: 'string',
+        //     isActive: 'boolean',
+        //     balance: 'number',
+        //     age: 'number',
+        //     name: 'string',
+        //     gender: 'string',
+        //     email: 'string'
+        // });
+        //table.render();
 
-        console.time('Query');
-        const result = table.engine.query('range -10');
-        console.timeStamp('Query');
+        const result = table.engine.query('range -0');
         console.log(result);
-        console.timeLog('Query');
     }
+
+
+
+
+
+
+
+
+
 
     function handleFile(file) {
         const reader = new FileReader();

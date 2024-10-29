@@ -1,4 +1,4 @@
-export class QueryParser {
+class QueryParser {
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
         RANGE: /range\s+(-?\d+)-?(-?\d+)?/,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
