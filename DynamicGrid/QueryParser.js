@@ -26,6 +26,8 @@ class QueryParser {
                 return this.parseMatch(match, type) || {};
             }
         }
+        console.warn('Invalid query: ' + subQuery + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());
+        return {};
     }
 
     parseMatch(match, type) {
@@ -50,7 +52,7 @@ class QueryParser {
 
             return {type: pluginType, field, operator: operatorObj.name, value, queryType: 'SELECT'};
         }
-        if (type === 'SORT') {
+        else if (type === 'SORT') {
             let [_, key, value] = match;
             const pluginType = this.engine.headers[key];
             const plugin = this.engine.getPlugin(pluginType);
@@ -60,8 +62,14 @@ class QueryParser {
 
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
         }
-        if (type === 'RANGE') {
+        else if (type === 'RANGE') {
             let [_, lower, upper] = match;
+            if (upper === undefined) {
+                upper = lower;
+                lower = 0;
+            }
+            lower = parseInt(lower);
+            upper = parseInt(upper);
             return {type: 'range', field: 'range', operator: 'range', lower, upper, queryType: 'RANGE'};
         }
     }

@@ -67,6 +67,12 @@ class stringTypePlugin extends TypePlugin {
         return elem;
     }
 
+    renderCell(value) {
+        const elem = document.createElement('td');
+        elem.innerHTML = value;
+        return elem;
+    }
+
     //==================================================================================================================
     addOperators() {
         super.addOperators();
@@ -138,6 +144,12 @@ class numberTypePlugin extends TypePlugin {
     renderHeader(key) {
         const elem = document.createElement('th');
         elem.innerHTML = key;
+        return elem;
+    }
+
+    renderCell(value) {
+        const elem = document.createElement('td');
+        elem.innerHTML = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); //add dots for thousands
         return elem;
     }
 
@@ -228,6 +240,17 @@ class booleanTypePlugin extends TypePlugin {
     renderHeader(key) {
         const elem = document.createElement('th');
         elem.innerHTML = key;
+        return elem;
+    }
+
+    renderCell(value) {
+        //render a checkbox that is checked if value is true
+        const elem = document.createElement('td');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = value;
+        checkbox.disabled = true;
+        elem.appendChild(checkbox);
         return elem;
     }
 }

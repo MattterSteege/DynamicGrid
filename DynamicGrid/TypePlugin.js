@@ -67,4 +67,11 @@ class TypePlugin {
         elem.innerHTML = key;
         return elem;
     }
+
+    renderCell(value) {
+        console.warn("renderCell not implemented for plugin: ", this.name);
+        const elem = document.createElement('td');
+        elem.innerHTML = value;
+        return elem;
+    }
 }

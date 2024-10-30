@@ -5,20 +5,22 @@
     <title>Title</title>
     <link rel="stylesheet" href="DynamicGrid.css">
     <link rel="stylesheet" href="https://fa.kronk.tech">
-<!--  <script src="DynamicGrid/DynamicGrid.js"></script>-->
-<!--  <script src="DynamicGrid/TypePlugin.js"></script>-->
-<!--  <script src="DynamicGrid/InherentTypePlugin.js"></script>-->
-<!--  <script src="DynamicGrid/SJQLEngine.js"></script>-->
-<!--  <script src="DynamicGrid/QueryParser.js"></script>-->
-    <script src="/dist/DynamicGrid.js"></script>
+  <script src="DynamicGrid/DynamicGrid.js"></script>
+  <script src="DynamicGrid/DynamicGridUI.js"></script>
+  <script src="DynamicGrid/TypePlugin.js"></script>
+  <script src="DynamicGrid/InherentTypePlugin.js"></script>
+  <script src="DynamicGrid/SJQLEngine.js"></script>
+  <script src="DynamicGrid/QueryParser.js"></script>
+<!--    <script src="/dist/DynamicGrid.js"></script>-->
 </head>
 <body>
 
 <input type="file" id="file" accept=".json" onchange="handleFile(this.files[0])">
 
-<table id="table"></table>
+<div id="gridContainer"></div>
+
 <script>
-    let table = new DynamicGrid({
+    let grid = new DynamicGrid({
         headers: {
             id: 'number',
             guid: 'string',
@@ -28,24 +30,12 @@
             name: 'string',
             gender: 'string',
             email: 'string'
-        }
+        },
+        containerId: '#gridContainer',
     });
     function createTable(data) {
-        table.setData(data);
-        // table.setHeaderTypes({
-        //     id: 'number',
-        //     guid: 'string',
-        //     isActive: 'boolean',
-        //     balance: 'number',
-        //     age: 'number',
-        //     name: 'string',
-        //     gender: 'string',
-        //     email: 'string'
-        // });
-        //table.render();
-
-        const result = table.engine.query('age > 30 and isActive == true');
-        console.log(result);
+        grid.setData(data);
+        grid.render();
     }
 
 

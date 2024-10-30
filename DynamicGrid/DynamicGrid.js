@@ -1,47 +1,40 @@
-// Table component (basic implementation)
 class DynamicGrid {
-    constructor(data) {
+    constructor(config) {
+        // Initialize the query engine
         this.engine = new SJQLEngine(this);
+        this.ui = new DynamicGridUI(this, config.containerId);
 
-        //initialize the header types
-        Object.entries(data.headers ?? {}).forEach(([key, value]) => {
-            this.engine.headers[key] = value.toLowerCase();
-        });
+        // Set up headers
+        if (config.headers) {
+            Object.entries(config.headers).forEach(([key, value]) => {
+                this.engine.headers[key] = value.toLowerCase();
+            });
+        }
 
-
-
-
-        //PLUGIN SYSTEM
-        this.engine.plugins = data.plugins ?? [];
-
-        this.engine.addPlugin(new stringTypePlugin(), true);
-        this.engine.addPlugin(new numberTypePlugin(), true);
-        this.engine.addPlugin(new booleanTypePlugin(), true);
-
+        // Initialize plugins
+        this.engine.plugins = config.plugins ?? [];
+        this.engine.addPlugin(new stringTypePlugin, true);
+        this.engine.addPlugin(new numberTypePlugin, true);
+        this.engine.addPlugin(new booleanTypePlugin, true);
     }
 
-    //DATA SYSTEM
+
+
+    // Set or update data
     setData(data) {
         this.engine.data = this.engine.parseData(data);
     }
 
+    // Set or update header types
     setHeaderTypes(headers) {
         Object.entries(headers).forEach(([key, value]) => {
             this.engine.headers[key] = value.toLowerCase();
         });
     }
-    //END DATA SYSTEM
 
-    //RENDERING SYSTEM
-    render() {
-        this.renderHeader();
-    }
+    //wrapper methods
+    render = () => this.ui.render(this.engine.query());
+    //query the data and render the results
+    query = (query) => this.ui.render(this.engine.query(query));
 
-    renderHeader() {
-        const header = document.createElement('tr');
-        Object.entries(table.engine.headers).forEach(([key, value]) => {
-            header.append(this.engine.getPlugin(value).renderHeader(key));
-        });
-        document.getElementById('table').appendChild(header);
-    }
 }
