@@ -12,10 +12,26 @@ class QueryParser {
 
     //MAIN PARSING FUNCTION
     parseQuery(query) {
-        return query
+        const parsedQuery = query
             .split(/\s+and\s+/i)
             .map(subQuery => this.parseSubQuery(subQuery.trim()))
             .filter(query => query.queryType);
+
+        //remove any consecutive sort queries (preserver the last one)
+        let previousQueryType = '';
+        for (let i = 0; i < parsedQuery.length; i++) {
+            if (parsedQuery[i].queryType === 'SORT' && previousQueryType === 'SORT') {
+                parsedQuery.splice(i - 1, 1);
+                i--;
+            }
+            else if (parsedQuery[i].queryType === 'RANGE' && previousQueryType === 'RANGE') {
+                parsedQuery.splice(i - 1, 1);
+                i--;
+            }
+            previousQueryType = parsedQuery[i].queryType;
+        }
+
+        return parsedQuery;
     }
 
     parseSubQuery(subQuery) {

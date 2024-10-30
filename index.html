@@ -36,16 +36,8 @@
     function createTable(data) {
         grid.setData(data);
         grid.render();
+        grid.query('id > 40 and id < 50 and age > 30');
     }
-
-
-
-
-
-
-
-
-
 
     function handleFile(file) {
         const reader = new FileReader();

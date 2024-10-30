@@ -115,7 +115,7 @@ class SJQLEngine {
         const plugin = this.plugins[name.replace("TypePlugin", "")];
 
         if (!plugin && !justChecking) {
-            throw new Error('Plugin not found');
+            throw new Error('Plugin not found: ' + name);
         }
         else if (!plugin && justChecking) {
             return false;

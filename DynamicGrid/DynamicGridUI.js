@@ -2,8 +2,6 @@ class DynamicGridUI {
     constructor(dynamicGrid, containerId) {
         this.dynamicGrid = dynamicGrid;
         this.sortState = {};
-        this.filterState = {};
-        this.originalData = [];
 
         this.init(containerId);
     }
@@ -56,15 +54,12 @@ class DynamicGridUI {
             sortButton.onclick = () => this.handleSort(key);
             titleWrapper.appendChild(sortButton);
 
-            headerContent.appendChild(titleWrapper);
+            const moreButton = document.createElement('button');
+            moreButton.className = 'more-button';
+            moreButton.innerHTML = '<span class="more-icon">&#10247;</span>';
+            titleWrapper.appendChild(moreButton);
 
-            // Filter input
-            const filterInput = document.createElement('input');
-            filterInput.type = 'text';
-            filterInput.className = 'filter-input';
-            filterInput.placeholder = `Filter ${key}...`;
-            filterInput.oninput = (e) => this.handleFilter(key, e.target.value, type);
-            headerContent.appendChild(filterInput);
+            headerContent.appendChild(titleWrapper);
 
             th.appendChild(headerContent);
             headerRow.appendChild(th);
@@ -83,9 +78,7 @@ class DynamicGridUI {
             tr.className = index % 2 === 0 ? 'row-even' : 'row-odd';
 
             Object.keys(this.dynamicGrid.engine.headers).forEach(key => {
-                const td = document.createElement('td');
-                td.textContent = this.formatCellValue(row[key]);
-                tr.appendChild(td);
+                tr.append(this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[key]).renderCell(row[key]));
             });
 
             tbody.appendChild(tr);
@@ -94,71 +87,23 @@ class DynamicGridUI {
         return tbody;
     }
 
-    // Update table body with new data
-    updateBody(data) {
-        const oldTbody = this.container.querySelector('tbody');
-        const newTbody = this.renderBody(data);
-        oldTbody.parentNode.replaceChild(newTbody, oldTbody);
-    }
-
-
     //==================================================================================================================
+    // EVENT HANDLERS
+    //==================================================================================================================
+    handleSort(key) {
+        //toggle this.sortState[key] between 'asc', 'desc', and delete any other keys
+        this.sortState[key] = this.sortState[key] === 'asc' ? 'desc' : 'asc';
+        Object.keys(this.sortState).forEach(k => {
+            if (k !== key) {
+                delete this.sortState[k];
+            }
+        });
 
-    // Handle column sorting
-    handleSort(field) {
-        console.error('MOVE TO TypePlugin');
-        this.sortState[field] = this.sortState[field] === 'asc' ? 'desc' : 'asc';
-
-        // Update sort button states
-        const buttons = document.querySelectorAll('.sort-button');
-        buttons.forEach(button => button.classList.remove('sort-asc', 'sort-desc'));
-        const currentButton = Array.from(buttons)
-            .find(button => button.parentElement.textContent.includes(field));
-        currentButton.classList.add(`sort-${this.sortState[field]}`);
-
-        // Apply sort
-        const query = `sort ${field} ${this.sortState[field]}`;
-        const sortedData = this.dynamicGrid.engine.query(query);
-        this.updateBody(sortedData);
-    }
-
-    // Handle column filtering
-    handleFilter(field, value, type) {
-        console.error('MOVE TO TypePlugin');
-        this.filterState[field] = value;
-
-        // Build combined filter query
-        const filterQueries = Object.entries(this.filterState)
-            .filter(([_, val]) => val)
-            .map(([key, val]) => {
-                switch (this.dynamicGrid.engine.headers[key]) {
-                    case 'string':
-                        return `${key} co "${val}"`;
-                    case 'number':
-                        return !isNaN(val) ? `${key} eq ${val}` : '';
-                    case 'boolean':
-                        return val.toLowerCase() === 'true' || val.toLowerCase() === 'false' ?
-                            `${key} eq ${val.toLowerCase()}` : '';
-                    default:
-                        return '';
-                }
-            })
-            .filter(q => q)
-            .join(' and ');
-
-        const filteredData = filterQueries ?
-            this.dynamicGrid.engine.query(filterQueries) :
-            this.originalData;
-
-        this.updateBody(filteredData);
-    }
-
-    // Format cell values for display
-    formatCellValue(value) {
-        console.error('MOVE TO TypePlugin');
-        if (typeof value === 'boolean') {
-            return value ? 'Yes' : 'No';
-        }
-        return value?.toString() ?? '';
+        const currentQuery = this.dynamicGrid.engine.currentQueryStr;
+        //remove any sort queries that are at the end of the query string
+        //const query = currentQuery.replace(/sort\([^)]+\)$/, '');, but only for the last sort query
+        const query = currentQuery.replace(/sort\([^)]+\)$/, '');
+        const sortQuery = `sort ${key} ${this.sortState[key]}`;
+        this.dynamicGrid.query(query + ' and ' + sortQuery);
     }
 }
