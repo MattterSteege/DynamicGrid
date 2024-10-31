@@ -136,4 +136,8 @@ class TypePlugin {
         elem.innerHTML = value;
         return elem;
     }
+
+    handleMore(key, dynamicGrid) {
+        console.warn("handleMore not implemented for plugin: ", this.name);
+    }
 }

@@ -33,8 +33,15 @@ class DynamicGrid {
     }
 
     //wrapper methods
-    render = () => this.ui.render(this.engine.query());
+    render = () => {
+        console.time('render');
+        this.ui.render(this.engine.query());
+        console.timeEnd('render');
+    }
     //query the data and render the results
-    query = (query) => this.ui.render(this.engine.query(query));
-
+    query = (query) => {
+        console.time('query');
+        this.ui.render(this.engine.query(query));
+        console.timeEnd('query');
+    }
 }

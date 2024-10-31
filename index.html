@@ -16,6 +16,7 @@
 <body>
 
 <input type="file" id="file" accept=".json" onchange="handleFile(this.files[0])">
+<input type="text" id="search" oninput="grid.query(this.value)">
 
 <div id="gridContainer"></div>
 
@@ -36,7 +37,6 @@
     function createTable(data) {
         grid.setData(data);
         grid.render();
-        grid.query('id > 40 and id < 50 and age > 30');
     }
 
     function handleFile(file) {

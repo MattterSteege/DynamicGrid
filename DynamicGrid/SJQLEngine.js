@@ -52,8 +52,7 @@ class SJQLEngine {
     }
 
     //query the data and return the results as an array
-    query(query) {
-
+    query(query = '') {
         if (!this.data || this.data.length === 0) {
             console.warn('No data provided, returning empty array');
             return [];
@@ -64,28 +63,40 @@ class SJQLEngine {
             return this.data;
         }
 
-        let data = this.data;
-        this.currentQuery = this.QueryParser.parseQuery(query);
+        const nextQuery = this.currentQueryStr === '' ? query : query + ' and ' + this.sortQuery;
+        this.currentQuery = this.QueryParser.parseQuery(nextQuery);
         this.currentQueryStr = query;
-        for (let i = 0; i < this.currentQuery.length; i++) {
-            if (this.currentQuery[i].queryType === 'SORT') {
-                data = this.getPlugin(this.currentQuery[i].type).sort(this.currentQuery[i], data);
+
+        return this._query(this.currentQuery);
+    }
+
+    _query(query) {
+        let data = this.data;
+        for (let i = 0; i < query.length; i++) {
+
+            if (query[i].queryType === 'SORT') {
+                data = this.getPlugin(query[i].type).sort(query[i], data);
             }
-            if (this.currentQuery[i].queryType === 'RANGE') {
+            if (query[i].queryType === 'RANGE') {
                 //value can be like this: 10, 20-30, ^10 (last 10)
-                const lower = this.currentQuery[i].lower || 0;
-                const upper = this.currentQuery[i].upper || data.length;
-                console.log(lower, upper);
+                const lower =query[i].lower || 0;
+                const upper =query[i].upper || data.length;
                 //if upper is not provided, get the last n elements
                 //if lower or upper are negative, get the last n elements
                 data = data.slice(lower, upper);
             }
-            if (this.currentQuery[i].queryType === 'SELECT') {
-                data = this.getPlugin(this.currentQuery[i].type).evaluate(this.currentQuery[i], data);
+            if (query[i].queryType === 'SELECT') {
+                data = this.getPlugin(query[i].type).evaluate(query[i], data);
             }
         }
 
         return data;
+    }
+
+    setSort(field, direction) {
+        this.sortQuery = 'sort ' + field + ' ' + direction;
+        const wholeQuery = this.currentQueryStr === '' ? this.sortQuery : this.currentQueryStr + ' and ' + this.sortQuery;
+        return this._query(this.QueryParser.parseQuery(wholeQuery));
     }
 
     //================================================== PLUGIN SYSTEM ==================================================
@@ -108,18 +119,14 @@ class SJQLEngine {
     }
 
     getPlugin(name, justChecking = false) {
-        if (!name) {
-            throw new Error('Plugin name not provided');
-        }
+        if (!name) throw new Error('Plugin name not provided');
+        if (typeof name !== 'string') return false;
 
         const plugin = this.plugins[name.replace("TypePlugin", "")];
 
-        if (!plugin && !justChecking) {
-            throw new Error('Plugin not found: ' + name);
-        }
-        else if (!plugin && justChecking) {
-            return false;
-        }
+        if (!plugin && !justChecking) throw new Error('Plugin not found: ' + name);
+        else if (!plugin && justChecking)  return false;
+
 
         return plugin;
     }

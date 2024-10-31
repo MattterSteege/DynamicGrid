@@ -34,6 +34,7 @@ class DynamicGridUI {
         const headerRow = document.createElement('tr');
 
         Object.entries(this.dynamicGrid.engine.headers).forEach(([key, type]) => {
+            const correspondingPlugin = this.dynamicGrid.engine.getPlugin(type);
             const th = document.createElement('th');
 
             // Header content wrapper
@@ -57,6 +58,7 @@ class DynamicGridUI {
             const moreButton = document.createElement('button');
             moreButton.className = 'more-button';
             moreButton.innerHTML = '<span class="more-icon">&#10247;</span>';
+            moreButton.onclick = () => correspondingPlugin.handleMore(key, this.dynamicGrid);
             titleWrapper.appendChild(moreButton);
 
             headerContent.appendChild(titleWrapper);
@@ -91,19 +93,8 @@ class DynamicGridUI {
     // EVENT HANDLERS
     //==================================================================================================================
     handleSort(key) {
-        //toggle this.sortState[key] between 'asc', 'desc', and delete any other keys
-        this.sortState[key] = this.sortState[key] === 'asc' ? 'desc' : 'asc';
-        Object.keys(this.sortState).forEach(k => {
-            if (k !== key) {
-                delete this.sortState[k];
-            }
-        });
-
-        const currentQuery = this.dynamicGrid.engine.currentQueryStr;
-        //remove any sort queries that are at the end of the query string
-        //const query = currentQuery.replace(/sort\([^)]+\)$/, '');, but only for the last sort query
-        const query = currentQuery.replace(/sort\([^)]+\)$/, '');
-        const sortQuery = `sort ${key} ${this.sortState[key]}`;
-        this.dynamicGrid.query(query + ' and ' + sortQuery);
+        this.sortState[key] = this.sortState[key] === "asc" ? "desc" : "asc";
+        const sortedData = this.dynamicGrid.engine.setSort(key, this.sortState[key]);
+        this.render(sortedData);
     }
 }
