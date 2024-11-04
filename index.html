@@ -16,9 +16,10 @@
 <body>
 
 <input type="file" id="file" accept=".json" onchange="handleFile(this.files[0])">
-<input type="text" id="search" oninput="grid.query(this.value)">
+<input type="text" id="search">
+<button onclick="grid.render(document.getElementById('search').value)">Search</button>
 
-<div id="gridContainer"></div>
+<div id="gridContainer" style="width: 100%; height: 100%; border-radius: 12px; overflow: auto;"></div>
 
 <script>
     let grid = new DynamicGrid({
@@ -32,7 +33,16 @@
             gender: 'string',
             email: 'string'
         },
-        containerId: '#gridContainer',
+        ui: {
+           rowHeight: 40,
+            visibleRows: 20,
+            virtualScrolling: true,
+            containerId: '#gridContainer'
+        },
+        engine: {
+            shouldCreateIndexes: true,
+            useOptimizedQueryOrder: true
+        }
     });
     function createTable(data) {
         grid.setData(data);

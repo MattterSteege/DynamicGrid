@@ -11,42 +11,42 @@ class QueryParser {
     }
 
     //MAIN PARSING FUNCTION
-    parseQuery(query) {
-        const parsedQuery = query
+    parseQuery(query, dataIndexes) {
+        let cleanedQueries = query
             .split(/\s+and\s+/i)
-            .map(subQuery => this.parseSubQuery(subQuery.trim()))
-            .filter(query => query.queryType);
+            .map(subQuery => this.parseSubQuery(subQuery.trim(), dataIndexes))
+            .filter(query => query.queryType)
+        //sort the SELECT queries from highest to lowest indexedItemsCount (so there specificity is higher)
+        cleanedQueries = cleanedQueries.sort((a, b) => {
+            if (a.indexedItemsCount < b.indexedItemsCount) {
+                return 1;
+            }
+            if (a.indexedItemsCount > b.indexedItemsCount) {
+                return -1;
+            }
+            return 0;
+        });
 
-        // //remove any consecutive sort queries (preserver the last one)
-        // let previousQueryType = '';
-        // for (let i = 0; i < parsedQuery.length; i++) {
-        //     if (parsedQuery[i].queryType === 'SORT' && previousQueryType === 'SORT') {
-        //         parsedQuery.splice(i - 1, 1);
-        //         i--;
-        //     }
-        //     else if (parsedQuery[i].queryType === 'RANGE' && previousQueryType === 'RANGE') {
-        //         parsedQuery.splice(i - 1, 1);
-        //         i--;
-        //     }
-        //     previousQueryType = parsedQuery[i].queryType;
-        // }
 
-        return parsedQuery;
+        console.log(cleanedQueries);
+
+        return cleanedQueries;
     }
 
-    parseSubQuery(subQuery) {
+    parseSubQuery(subQuery, dataIndexes) {
+        subQuery = subQuery.endsWith(' and') ? subQuery.slice(0, -4) : subQuery;
         //from bottom to top, check if the QUERIES matches the subquery
         for (const [type, regex] of Object.entries(QueryParser.QUERIES)) {
             const match = regex.exec(subQuery);
             if (match) {
-                return this.parseMatch(match, type) || {};
+                return this.parseMatch(match, type, dataIndexes) || {};
             }
         }
         console.warn('Invalid query: ' + subQuery + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());
         return {};
     }
 
-    parseMatch(match, type) {
+    parseMatch(match, type, dataIndexes) {
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
             const pluginType = this.engine.headers[key];
@@ -66,7 +66,7 @@ class QueryParser {
                 value = plugin.getJSQLFormat(value);
             }
 
-            return {type: pluginType, field, operator: operatorObj.name, value, queryType: 'SELECT'};
+            return (dataIndexes ? {type: pluginType, field, operator: operatorObj.name, value, queryType: 'SELECT', indexedItemsCount: dataIndexes[key].size} : {type: pluginType, field, operator: operatorObj.name, value, queryType: 'SELECT', indexedItemsCount: 0});
         }
         else if (type === 'SORT') {
             let [_, key, value] = match;

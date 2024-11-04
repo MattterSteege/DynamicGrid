@@ -1,9 +1,15 @@
 class DynamicGridUI {
-    constructor(dynamicGrid, containerId) {
+    constructor(dynamicGrid, ui_config) {
         this.dynamicGrid = dynamicGrid;
         this.sortState = {};
+        this.ui_config = {
+            virtualScrolling: ui_config.virtualScrolling,
+            rowHeight: ui_config.rowHeight,
+            visibleRows: ui_config.visibleRows,
+        }
+        this.containerId = ui_config.containerId;
 
-        this.init(containerId);
+        this.init(this.containerId);
     }
 
     // Initialize grid with container and data

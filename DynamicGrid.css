@@ -1,6 +1,13 @@
+/* hide scrollbar*/
+.dynamic-grid-container::-webkit-scrollbar {
+    display: none;
+}
+
+
+
+
 .dynamic-grid-container {
     font-family: system-ui, -apple-system, sans-serif;
-    padding: 1rem;
     max-width: 100%;
     overflow-x: auto;
     color: #374151;
