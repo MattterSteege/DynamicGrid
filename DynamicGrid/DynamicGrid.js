@@ -33,8 +33,6 @@ class DynamicGrid {
 
     //wrapper methods
     render(query) {
-        console.time('render');
         this.ui.render(this.engine.query(query));
-        console.timeEnd('render');
     }
 }

@@ -40,9 +40,10 @@ class TypePlugin {
      * Evaluate a query against a data row.
      * @param {Object} query - The query to evaluate
      * @param {*} data - The data to evaluate against
+     * @param {Array} dataIndexes - The indexes of data rows to evaluate
      * @returns {*} - The evaluated result
      */
-    evaluate(query, data) {
+    evaluate(query, data, dataIndexes) {
         console.warn("evaluate not implemented for plugin: ", this.name);
         return data;
     }

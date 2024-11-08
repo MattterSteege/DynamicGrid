@@ -17,16 +17,21 @@ class stringTypePlugin extends TypePlugin {
     }
 
     //query = {field: 'name', operator: 'eq', value: 'John'}
-    evaluate(query, data) {
-        let {field, operator, value} = query;
-
-        if (operator === 'in') {
-            value = JSON.parse(value);
+    evaluate(query, dataIndexes, indices) {
+        //loop over the indices and remove the ones that do not match the query
+        console.log('using ' + (dataIndexes.size <= indices.size ? 'dataIndexes' : 'indices') + ' sorting for stringTypePlugin');
+        if (dataIndexes.size <= indices.size) {
+            for (const index of dataIndexes.keys()) {
+                if (!this._evaluate(index, query.operator, query.value)) {
+                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
+                }
+            }
+        }
+        else {
+            console.error('using indices sorting for stringTypePlugin');
         }
 
-        return data.filter(item => {
-            return this._evaluate(item[field], operator, value);
-        });
+        return indices;
     }
 
     //dataValue is the value of the field in the data, value is the value in the query
@@ -98,45 +103,40 @@ class numberTypePlugin extends TypePlugin {
         return value.toString();
     }
 
-    evaluate(query, data) {
-        let {field, operator, value} = query;
+    //indices is a set of indices that match the query
+    evaluate(query, dataIndexes, indices) {
 
-        if (operator === 'in') {
-            value = JSON.parse(value);
+        //loop over the indices and remove the ones that do not match the query
+        console.log('using ' + (dataIndexes.size <= indices.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
+        if (dataIndexes.size <= indices.size) {
+            for (const index of dataIndexes.keys()) {
+                if (!this._evaluate(index, query.operator, query.value)) {
+                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
+                }
+            }
+        }
+        else {
+            console.error('using indices sorting for numberTypePlugin');
         }
 
-        if (!Array.isArray(value))
-            return this._evaluate(data, field, operator, value);
-
-
-        return data.filter(item => {
-            return this._evaluate(item[field], operator, value);
-        });
+        return indices;
     }
 
     _evaluate(dataValue, operator, value) {
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.includes(dataValue);
+        switch (operator) {
+            case '>':
+                return dataValue > value;
+            case '<':
+                return dataValue < value;
+            case '>=':
+                return dataValue >= value;
+            case '<=':
+                return dataValue <= value;
+            case '==':
+                return dataValue === value;
+            case '!=':
+                return dataValue !== value;
         }
-
-        if (typeof value === 'number') {
-            switch (operator) {
-                case '==':
-                    return dataValue === value;
-                case '!=':
-                    return dataValue !== value;
-                case '>':
-                    return dataValue > value;
-                case '<':
-                    return dataValue < value;
-                case '>=':
-                    return dataValue >= value;
-                case '<=':
-                    return dataValue <= value;
-            }
-        }
-
-        return false;
     }
 
     //render the header of the column
@@ -194,32 +194,12 @@ class booleanTypePlugin extends TypePlugin {
         return value.toLowerCase() === 'true';
     }
 
-    evaluate(query, data) {
-        const {field, operator, value} = query;
-        return data.filter(item => {
-            return this._evaluate(item[field], operator, value);
-        });
-    }
-
-    _evaluate(dataValue, operator, value) {
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.forEach(val => {
-                if (this._evaluate(dataValue, operator, val)) {
-                    return true;
-                }
-            });
-        }
-
-        if (typeof value === 'boolean') {
-            switch (operator) {
-                case 'eq':
-                    return dataValue === value;
-                case 'neq':
-                    return dataValue !== value;
-            }
-        }
-
-        return false;
+    evaluate(query, dataIndexes, indices) {
+        //since we have already filtered the data based on the value,
+        //we can just return the set of indices (because there are only two possible values)
+        const allowedValues = dataIndexes.get(query.value);
+        //get all the values that are inside the allowedValues set and the indices set
+        return new Set([...indices].filter(x => allowedValues.has(x)));
     }
 
     sort(query, data) {

@@ -9,7 +9,7 @@ class SJQLEngine {
 
         // Enhanced cache configuration
         this.config = {
-            shouldCreateIndexes: engine_config.shouldCreateIndexes ?? true,
+
         };
     }
 
@@ -40,8 +40,6 @@ class SJQLEngine {
     }
 
     createDataIndex() {
-        if (!this.config.shouldCreateIndexes) return;
-
         // Create indexes for faster querying
         this.dataIndexes = {};
         Object.keys(this.headers).forEach(header => {
@@ -116,7 +114,8 @@ class SJQLEngine {
             }
         }
 
-        for (let i = 0; i < this.data.length; i++) {
+        performance.mark('startQuery');
+/*        for (let i = 0; i < this.data.length; i++) {
             const row = this.data[i];
             let valid = true;
 
@@ -148,6 +147,17 @@ class SJQLEngine {
                 validIndices.add(i);
             }
         }
+*/
+        validIndices = new Set(this.data.map((_, i) => i));
+        for (const q of selectQueries) {
+            const plugin = this.getPlugin(q.type);
+            if (!plugin) {
+                throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
+            }
+
+            validIndices = plugin.evaluate(q, this.dataIndexes[q.field], validIndices);
+            console.log('validIndices:', validIndices);
+        }
 
         // Filter data based on valid row indices
         if (sortQuery) {
@@ -156,7 +166,14 @@ class SJQLEngine {
                     this.data.filter((_, i) => validIndices.has(i)));
         }
 
-        return this.data.filter((_, i) => validIndices.has(i));
+        const returnedData = this.data.filter((_, i) => validIndices.has(i));
+        performance.mark('endQuery');
+        performance.measure('queryTime', 'startQuery', 'endQuery');
+        console.log('Query time:', performance.getEntriesByName('queryTime')[0].duration + 'ms');
+        performance.clearMarks();
+        performance.clearMeasures();
+        performance.clearResourceTimings();
+        return returnedData;
     }
 
     setSort(field, direction) {
