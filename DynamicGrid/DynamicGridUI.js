@@ -16,7 +16,7 @@ class DynamicGridUI {
     init(containerId) {
         this.container = document.querySelector(containerId);
         if (!this.container) {
-            throw new Error(`Container with id "${containerId}" not found`);
+            throw new GridError(`Container with id "${containerId}" not found`);
         }
     }
 

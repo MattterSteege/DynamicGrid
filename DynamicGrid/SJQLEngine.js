@@ -5,12 +5,11 @@ class SJQLEngine {
         this.plugins = [];
         this.currentQuery = {};
         this.currentQueryStr = '';
-        this.QueryParser = new QueryParser(this);
+        this.QueryParser = new QueryParser();
 
         // Enhanced cache configuration
         this.config = {
             shouldCreateIndexes: engine_config.shouldCreateIndexes ?? true,
-            useOptimizedQueryOrder: engine_config.useOptimizedQueryOrder ?? true,
         };
     }
 
@@ -21,7 +20,7 @@ class SJQLEngine {
         }
 
         if (!Array.isArray(data)) {
-            throw new Error('Data must be an array');
+            throw new GridError('Data must be an array');
         }
 
         //if headers are not provided, auto detect them
@@ -85,71 +84,10 @@ class SJQLEngine {
             return this.data;
         }
 
-        this.currentQuery = (this.config.useOptimizedQueryOrder ?  this.QueryParser.parseQuery(query, this.dataIndexes) : this.QueryParser.parseQuery(query));
+        this.currentQuery = this.QueryParser.parseQuery(query, this.plugins, this.headers);
         this.currentQueryStr = query;
-        //console.log('Current query:', this.currentQuery);
         return this._query(this.currentQuery);
     }
-
-    // _query_1(query) {
-    //     let data = this.data;
-    //     for (let i = 0; i < query.length; i++) {
-    //
-    //         if (query[i].queryType === 'SORT') {
-    //             data = this.getPlugin(query[i].type).sort(query[i], data);
-    //         }
-    //         if (query[i].queryType === 'RANGE') {
-    //             //value can be like this: 10, 20-30, -10 (last 10)
-    //             const lower =query[i].lower || 0;
-    //             const upper =query[i].upper || data.length;
-    //             //if upper is not provided, get the last n elements
-    //             //if lower or upper are negative, get the last n elements
-    //             data = data.slice(lower, upper);
-    //         }
-    //         if (query[i].queryType === 'SELECT') {
-    //             data = this.getPlugin(query[i].type).evaluate(query[i], data);
-    //         }
-    //     }
-    //
-    //     return data;
-    // }
-    //
-    // _query_2(query) {
-    //     let data = [];
-    //     //if it exists* get the select, sort and range query/queries
-    //     const selectQueries = query.filter(q => q.queryType === 'SELECT');
-    //     const sortQuery = query.find(q => q.queryType === 'SORT');
-    //     const rangeQuery = query.find(q => q.queryType === 'RANGE');
-    //     let RangeDataCount = 0;
-    //     for (const row of this.data) {
-    //         for (let i = 0; i < selectQueries.length; i++) {
-    //             var plugin = this.getPlugin(query[i].type);
-    //             if (!plugin) {
-    //                 throw new Error('No plugin found for header (' + query[i].type + ') for key (' + query[i].field + ')');
-    //             }
-    //             if (!plugin.evaluate(query[i], row)) {
-    //                 console.log('early break (select)');
-    //                 break;
-    //             }
-    //         }
-    //
-    //         if (rangeQuery) {
-    //             RangeDataCount++;
-    //             if (RangeDataCount < rangeQuery.lower ) {
-    //                 continue;
-    //             } else if (RangeDataCount > rangeQuery.upper) {
-    //                 console.log('early break (range)');
-    //                 break;
-    //             }
-    //         }
-    //         data.push(row);
-    //     }
-    //
-    //     if (sortQuery) {
-    //         data = this.getPlugin(sortQuery.type).sort(sortQuery, data);
-    //     }
-    //     return data;
-    // }
 
     _query(query) {
         // Early exit if no queries
@@ -186,7 +124,7 @@ class SJQLEngine {
             for (const q of selectQueries) {
                 const plugin = this.getPlugin(q.type);
                 if (!plugin) {
-                    throw new Error('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
+                    throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
                 }
                 if (!plugin.evaluate(q, row, this.dataIndexes)) {
                     valid = false;
@@ -230,7 +168,7 @@ class SJQLEngine {
     //================================================== PLUGIN SYSTEM ==================================================
     addPlugin(plugin, dontOverride = false) {
         if (!(plugin instanceof TypePlugin)) {
-            throw new Error('Plugin must extend TypePlugin');
+            throw new GridError('Plugin must extend TypePlugin');
         }
 
         //if already exists, remove it and add the new one, while warning the user
@@ -247,12 +185,12 @@ class SJQLEngine {
     }
 
     getPlugin(name, justChecking = false) {
-        if (!name) throw new Error('Plugin name not provided');
+        if (!name) throw new GridError('Plugin name not provided');
         if (typeof name !== 'string') return false;
 
         const plugin = this.plugins[name.replace("TypePlugin", "")];
 
-        if (!plugin && !justChecking) throw new Error('Plugin not found: ' + name);
+        if (!plugin && !justChecking) throw new GridError('Plugin not found: ' + name);
         else if (!plugin && justChecking)  return false;
 
 

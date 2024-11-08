@@ -1,4 +1,6 @@
 class QueryParser {
+    constructor() {}
+
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
         RANGE: /range\s+(-?\d+)-?(-?\d+)?/,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
@@ -6,74 +8,53 @@ class QueryParser {
         SELECT: /([A-Za-z]+)\s+(\S+)\s+(.+)/    //'[key] [operator] [value]', select items where key is value
     };
 
-    constructor(engine) {
-        this.engine = engine;
-    }
-
     //MAIN PARSING FUNCTION
-    parseQuery(query, dataIndexes) {
-        let cleanedQueries = query
-            .split(/\s+and\s+/i)
-            .map(subQuery => this.parseSubQuery(subQuery.trim(), dataIndexes))
-            .filter(query => query.queryType)
-        //sort the SELECT queries from highest to lowest indexedItemsCount (so there specificity is higher)
-        cleanedQueries = cleanedQueries.sort((a, b) => {
-            if (a.indexedItemsCount < b.indexedItemsCount) {
-                return 1;
-            }
-            if (a.indexedItemsCount > b.indexedItemsCount) {
-                return -1;
-            }
-            return 0;
-        });
+    parseQuery = (query, plugins, headers) => query.split(/\s+and\s+/i)
+                            .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
+                            .filter(query => query.queryType);
 
 
-        console.log(cleanedQueries);
-
-        return cleanedQueries;
-    }
-
-    parseSubQuery(subQuery, dataIndexes) {
+    parseSubQuery(subQuery, plugins, headers) {
         subQuery = subQuery.endsWith(' and') ? subQuery.slice(0, -4) : subQuery;
         //from bottom to top, check if the QUERIES matches the subquery
         for (const [type, regex] of Object.entries(QueryParser.QUERIES)) {
             const match = regex.exec(subQuery);
             if (match) {
-                return this.parseMatch(match, type, dataIndexes) || {};
+                return this.parseMatch(match, type, plugins, headers) || {};
             }
         }
         console.warn('Invalid query: ' + subQuery + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());
         return {};
     }
 
-    parseMatch(match, type, dataIndexes) {
+    parseMatch(match, type, plugins, headers) {
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
-            const pluginType = this.engine.headers[key];
-            const plugin = this.engine.getPlugin(pluginType);
+            const pluginType = headers[key];
+            const plugin = plugins[pluginType];
             if (!plugin) {
-                throw new Error('No plugin found for header (' + pluginType + ') for key (' + key + ')');
+                throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
 
             let field = key;
-            let operatorObj = plugin.getOperator(operator);
+            let operatorObj = plugin.checkOperator(operator);
 
             if (!operatorObj) {
-                throw new Error(this.formatOperatorError(operator, field, plugin));
+                throw new GridError(this.formatOperatorError(operator, field, plugin));
             }
 
             if (plugin.validate(value)) {
                 value = plugin.getJSQLFormat(value);
             }
 
-            return (dataIndexes ? {type: pluginType, field, operator: operatorObj.name, value, queryType: 'SELECT', indexedItemsCount: dataIndexes[key].size} : {type: pluginType, field, operator: operatorObj.name, value, queryType: 'SELECT', indexedItemsCount: 0});
+            return {type: pluginType, field, operator: operatorObj, value, queryType: 'SELECT'};
         }
         else if (type === 'SORT') {
             let [_, key, value] = match;
-            const pluginType = this.engine.headers[key];
-            const plugin = this.engine.getPlugin(pluginType);
+            const pluginType = headers[key];
+            const plugin = plugins.getPlugin(pluginType);
             if (!plugin) {
-                throw new Error('No plugin found for header (' + pluginType + ') for key (' + key + ')');
+                throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
 
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
@@ -103,3 +84,4 @@ class QueryParser {
         ].join('\n');
     }
 }
+

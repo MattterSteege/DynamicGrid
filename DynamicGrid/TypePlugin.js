@@ -73,43 +73,28 @@ class TypePlugin {
      * Initialize the standard set of operators.
      */
     addOperators() {
-        this.operators = [
-            { name: 'eq', operator: '==' },   // Equals
-            { name: 'neq', operator: '!=' },  // Not equals
-            { name: 'em', operator: '""' },   // Is empty (double quotes to indicate empty)
-            { name: 'nem', operator: '!""' }, // Is not empty
-            { name: 'in', operator: 'in' },   // In
-        ];
+        this.operators = ['==', '!=', 'in'];
     }
 
     /**
      * Find an operator by its name or symbol.
-     * @param {string} operatorOrName - Operator name or symbol
+     * @param {string} operator - Operator name or symbol
      * @returns {Object|undefined} - The operator object or undefined if not found
      */
-    getOperator(operatorOrName) {
+    checkOperator(operator) {
         try {
-            return this.operators.find(op =>
-                op.name === operatorOrName || op.operator === operatorOrName
-            );
+            return this.operators.find(op => op === operator);
         }
         catch (e) {
-            console.error(e);
             return undefined;
         }
     }
 
     /**
      * Get all operator symbols.
-     * @returns {Array<string>} - Array of operator symbols
+     * @returns {Array} - The array of operator symbols
      */
-    getOperatorSymbols = () => this.operators.map(op => op.operator);
-
-    /**
-     * Get all operator names.
-     * @returns {Array<string>} - Array of operator names
-     */
-    getOperatorNames = () => this.operators.map(op => op.name);
+    getOperatorSymbols = () => this.operators;
 
     //==================================================
     // DOM RENDERING

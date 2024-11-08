@@ -38,21 +38,17 @@ class stringTypePlugin extends TypePlugin {
 
         if (typeof value === 'string') {
             switch (operator) {
-                case 'eq':
+                case '==':
                     return dataValue === value;
-                case 'neq':
+                case '!=':
                     return dataValue !== value;
-                case 'em':
-                    return (!value || value.length === 0);
-                case 'nem':
-                    return (value && value.length > 0);
-                case 'swi':
+                case '%=':
                     return dataValue.startsWith(value);
-                case 'ewi':
+                case '=%':
                     return dataValue.endsWith(value);
-                case 'co':
+                case '*=':
                     return dataValue.includes(value);
-                case 'nco':
+                case '!*=':
                     return !dataValue.includes(value);
             }
         }
@@ -77,11 +73,10 @@ class stringTypePlugin extends TypePlugin {
     addOperators() {
         super.addOperators();
         this.operators.push(...[
-            { name: 'swi', operator: '%=' },  // Starts with
-            { name: 'ewi', operator: '=%' },  // Ends with
-            { name: 'co', operator: '*=' },   // Contains
-            { name: 'nco', operator: '!*=' }, // Does not contain
-            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+            '%=',   // Starts with
+            '=%',   // Ends with
+            '*=',   // Contains
+            '!*=',  // Does not contain
         ]);
     }
 }
@@ -97,10 +92,10 @@ class numberTypePlugin extends TypePlugin {
 
     getJSQLFormat(value) {
         if (isNaN(Number(value))) {
-            throw new Error('Value is not a number');
+            throw new GridError('Value is not a number');
         }
 
-        return Number(value);
+        return value.toString();
     }
 
     evaluate(query, data) {
@@ -109,6 +104,10 @@ class numberTypePlugin extends TypePlugin {
         if (operator === 'in') {
             value = JSON.parse(value);
         }
+
+        if (!Array.isArray(value))
+            return this._evaluate(data, field, operator, value);
+
 
         return data.filter(item => {
             return this._evaluate(item[field], operator, value);
@@ -122,17 +121,17 @@ class numberTypePlugin extends TypePlugin {
 
         if (typeof value === 'number') {
             switch (operator) {
-                case 'eq':
+                case '==':
                     return dataValue === value;
-                case 'neq':
+                case '!=':
                     return dataValue !== value;
-                case 'gt':
+                case '>':
                     return dataValue > value;
-                case 'lt':
+                case '<':
                     return dataValue < value;
-                case 'gte':
+                case '>=':
                     return dataValue >= value;
-                case 'lte':
+                case '<=':
                     return dataValue <= value;
             }
         }
@@ -169,11 +168,10 @@ class numberTypePlugin extends TypePlugin {
     addOperators() {
         super.addOperators();
         this.operators.push(...[
-            { name: 'gt', operator: '>' },    // Greater than
-            { name: 'lt', operator: '<' },    // Less than
-            { name: 'gte', operator: '>=' },  // Greater than or equals
-            { name: 'lte', operator: '<=' },  // Less than or equals
-            { name: 'in', operator: 'in' }    // In (square brackets indicate inclusion)
+            '>',    // Greater than
+            '<',    // Less than
+            '>=',   // Greater than or equals
+            '<=',   // Less than or equals
         ]);
     }
 }
