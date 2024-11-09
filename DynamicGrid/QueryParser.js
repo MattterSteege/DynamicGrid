@@ -40,7 +40,7 @@ class QueryParser {
             let operatorObj = plugin.checkOperator(operator);
 
             if (!operatorObj) {
-                throw new GridError(this.formatOperatorError(operator, field, plugin));
+                throw new GridError(this.formatOperatorError(operator, field + ' ' + operator + ' ' + value, plugin));
             }
 
             if (plugin.validate(value)) {
