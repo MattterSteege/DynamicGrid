@@ -17,25 +17,29 @@ class stringTypePlugin extends TypePlugin {
     }
 
     //query = {field: 'name', operator: 'eq', value: 'John'}
-    evaluate(query, dataIndexes, indices) {
+    evaluate(query, dataIndexes, data, indices) {
         //loop over the indices and remove the ones that do not match the query
-        console.log('using ' + (dataIndexes.size <= indices.size ? 'dataIndexes' : 'indices') + ' sorting for stringTypePlugin');
-        if (dataIndexes.size <= indices.size) {
+        //console.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for stringTypePlugin');
+        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
             for (const index of dataIndexes.keys()) {
-                if (!this._evaluate(index, query.operator, query.value)) {
+                if (!this.evaluateCondition(index, query.operator, query.value)) {
                     dataIndexes.get(index).forEach(idx => indices.delete(idx));
                 }
             }
         }
         else {
-            console.error('using indices sorting for stringTypePlugin');
+            for (const index of indices) {
+                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+                    indices.delete(index);
+                }
+            }
         }
 
         return indices;
     }
 
     //dataValue is the value of the field in the data, value is the value in the query
-    _evaluate(dataValue, operator, value) {
+    evaluateCondition(dataValue, operator, value) {
 
         if (Array.isArray(value) && value.length > 0 && operator === 'in') {
             return value.includes(dataValue);
@@ -104,25 +108,29 @@ class numberTypePlugin extends TypePlugin {
     }
 
     //indices is a set of indices that match the query
-    evaluate(query, dataIndexes, indices) {
+    evaluate(query, dataIndexes, data, indices) {
 
         //loop over the indices and remove the ones that do not match the query
-        console.log('using ' + (dataIndexes.size <= indices.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
-        if (dataIndexes.size <= indices.size) {
+        //.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
+        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
             for (const index of dataIndexes.keys()) {
-                if (!this._evaluate(index, query.operator, query.value)) {
+                if (!this.evaluateCondition(index, query.operator, query.value)) {
                     dataIndexes.get(index).forEach(idx => indices.delete(idx));
                 }
             }
         }
         else {
-            console.error('using indices sorting for numberTypePlugin');
+            for (const index of indices) {
+                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+                    indices.delete(index);
+                }
+            }
         }
 
         return indices;
     }
 
-    _evaluate(dataValue, operator, value) {
+    evaluateCondition(dataValue, operator, value) {
         switch (operator) {
             case '>':
                 return dataValue > value;
@@ -194,12 +202,23 @@ class booleanTypePlugin extends TypePlugin {
         return value.toLowerCase() === 'true';
     }
 
-    evaluate(query, dataIndexes, indices) {
-        //since we have already filtered the data based on the value,
-        //we can just return the set of indices (because there are only two possible values)
-        const allowedValues = dataIndexes.get(query.value);
-        //get all the values that are inside the allowedValues set and the indices set
-        return new Set([...indices].filter(x => allowedValues.has(x)));
+    evaluate(query, dataIndexes, data, indices) {
+        if (dataIndexes){
+            //since we have already filtered the data based on the value,
+            //we can just return the set of indices (because there are only two possible values)
+            const allowedValues = dataIndexes.get(query.value);
+            //get all the values that are inside the allowedValues set and the indices set
+            return new Set([...indices].filter(x => allowedValues.has(x)));
+        }
+        else {
+            return new Set(data
+                .map((row, i) => row[query.field] === query.value ? i : null)
+                .filter(x => x !== null));
+        }
+    }
+
+    evaluateCondition(dataValue, operator, value) {
+        return dataValue === value;
     }
 
     sort(query, data) {

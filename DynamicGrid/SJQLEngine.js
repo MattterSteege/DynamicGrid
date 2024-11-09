@@ -7,9 +7,9 @@ class SJQLEngine {
         this.currentQueryStr = '';
         this.QueryParser = new QueryParser();
 
-        // Enhanced cache configuration
         this.config = {
-
+            UseDataEnumeration: engine_config.UseDataEnumeration || false,
+            UseDataIndexing: engine_config.UseDataIndexing || true,
         };
     }
 
@@ -40,6 +40,8 @@ class SJQLEngine {
     }
 
     createDataIndex() {
+        if (!this.config.UseDataIndexing) return;
+
         // Create indexes for faster querying
         this.dataIndexes = {};
         Object.keys(this.headers).forEach(header => {
@@ -115,48 +117,54 @@ class SJQLEngine {
         }
 
         performance.mark('startQuery');
-/*        for (let i = 0; i < this.data.length; i++) {
-            const row = this.data[i];
-            let valid = true;
+        validIndices = new Set(this.data.map((_, i) => i));
+        if (this.config.UseDataEnumeration) {
+            for (let i = 0; i < this.data.length; i++) {
+                const row = this.data[i];
+                let valid = true;
 
-            // Evaluate SELECT queries
+                // Evaluate SELECT queries
+                for (const q of selectQueries) {
+                    const plugin = this.getPlugin(q.type);
+                    if (!plugin) {
+                        throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
+                    }
+                    if (!plugin.evaluateCondition(row[q.field], q.operator, q.value)) {
+                        valid = false;
+                        //console.log('early break (select), query: ' + q.field + ' ' + q.operator + ' ' + q.value);
+                        break;
+                    }
+                }
+
+                // Evaluate RANGE query
+                if (rangeQuery && valid) {
+                    if (rangeQuery.lower > i) {
+                        valid = false;
+                    } else if (rangeQuery.upper < i) {
+                        //console.log('early break (range), row:', row, 'query:', rangeQuery);
+                        break;
+                    }
+                }
+
+                if (!valid) {
+                    validIndices.delete(i);
+                }
+            }
+        }
+        else {
             for (const q of selectQueries) {
                 const plugin = this.getPlugin(q.type);
                 if (!plugin) {
                     throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
                 }
-                if (!plugin.evaluate(q, row, this.dataIndexes)) {
-                    valid = false;
-                    //console.log('early break (select), query: ' + q.field + ' ' + q.operator + ' ' + q.value);
-                    break;
-                }
+                validIndices = plugin.evaluate(q,  this.dataIndexes[q.field], this.data, validIndices);
+                //console.log('validIndices:', validIndices);
             }
 
             // Evaluate RANGE query
-            if (rangeQuery && valid) {
-                if (rangeQuery.lower > i) {
-                    valid = false;
-                }
-                else if (rangeQuery.upper < i) {
-                    //console.log('early break (range), row:', row, 'query:', rangeQuery);
-                    break;
-                }
+            if (rangeQuery) {
+                validIndices = validIndices.filter(i => i >= rangeQuery.lower && i <= rangeQuery.upper);
             }
-
-            if (valid) {
-                validIndices.add(i);
-            }
-        }
-*/
-        validIndices = new Set(this.data.map((_, i) => i));
-        for (const q of selectQueries) {
-            const plugin = this.getPlugin(q.type);
-            if (!plugin) {
-                throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
-            }
-
-            validIndices = plugin.evaluate(q, this.dataIndexes[q.field], validIndices);
-            console.log('validIndices:', validIndices);
         }
 
         // Filter data based on valid row indices
@@ -166,14 +174,7 @@ class SJQLEngine {
                     this.data.filter((_, i) => validIndices.has(i)));
         }
 
-        const returnedData = this.data.filter((_, i) => validIndices.has(i));
-        performance.mark('endQuery');
-        performance.measure('queryTime', 'startQuery', 'endQuery');
-        console.log('Query time:', performance.getEntriesByName('queryTime')[0].duration + 'ms');
-        performance.clearMarks();
-        performance.clearMeasures();
-        performance.clearResourceTimings();
-        return returnedData;
+        return this.data.filter((_, i) => validIndices.has(i));
     }
 
     setSort(field, direction) {

@@ -39,13 +39,26 @@ class TypePlugin {
     /**
      * Evaluate a query against a data row.
      * @param {Object} query - The query to evaluate
-     * @param {*} data - The data to evaluate against
-     * @param {Array} dataIndexes - The indexes of data rows to evaluate
+     * @param {Map} dataIndexes - The map of data indexes
+     * @param {Array} data - The data to evaluate
+     * @param {Set} indices - The set of indices to evaluate
      * @returns {*} - The evaluated result
      */
-    evaluate(query, data, dataIndexes) {
+    evaluate(query, dataIndexes, data, indices) {
         console.warn("evaluate not implemented for plugin: ", this.name);
         return data;
+    }
+
+    /**
+     * Evaluate a condition against a data value.
+     * @param {*} dataValue - The data value to evaluate
+     * @param {string} operator - The operator to use
+     * @param {*} value - The value to compare against
+     * @returns {boolean} - The result of the evaluation
+     */
+    evaluateCondition(dataValue, operator, value) {
+        console.warn("evaluateCondition not implemented for plugin: ", this.name);
+        return false;
     }
 
     /**
