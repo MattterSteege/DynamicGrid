@@ -9,7 +9,7 @@ class QueryParser {
     };
 
     //MAIN PARSING FUNCTION
-    parseQuery = (query, plugins, headers) => query.split(/\s+and\s+/i)
+    parseQuery = (query, plugins, headers) => query.split(/\s+and\s+|\s+&&\s+/i)
                             .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
                             .filter(query => query.queryType);
 
@@ -52,7 +52,7 @@ class QueryParser {
         else if (type === 'SORT') {
             let [_, key, value] = match;
             const pluginType = headers[key];
-            const plugin = plugins.getPlugin(pluginType);
+            const plugin = plugins[pluginType];
             if (!plugin) {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
@@ -67,7 +67,7 @@ class QueryParser {
             }
             lower = parseInt(lower);
             upper = parseInt(upper);
-            return {type: 'range', field: 'range', operator: 'range', lower, upper, queryType: 'RANGE'};
+            return {type: 'range', lower, upper, queryType: 'RANGE'};
         }
         else {
             console.warn('Invalid query: ' + match + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());

@@ -1,15 +1,12 @@
 class DynamicGridUI {
     constructor(dynamicGrid, ui_config) {
         this.dynamicGrid = dynamicGrid;
-        this.sortState = {};
-        this.ui_config = {
-            virtualScrolling: ui_config.virtualScrolling,
-            rowHeight: ui_config.rowHeight,
-            visibleRows: ui_config.visibleRows,
-        }
         this.containerId = ui_config.containerId;
 
         this.init(this.containerId);
+
+        this.cachedHeader = null;
+        this.cacheCheck = null;
     }
 
     // Initialize grid with container and data
@@ -22,13 +19,22 @@ class DynamicGridUI {
 
     // Main render method
     render(data) {
+        const headerNames = Object.keys(this.dynamicGrid.engine.headers).join(',');
+
         this.container.className = 'dynamic-grid-container';
         this.container.innerHTML = ''; // Clear container
 
         const table = document.createElement('table');
         table.className = 'dynamic-grid';
 
-        table.appendChild(this.renderHeader());
+        const hash = FastHash(headerNames);
+        if (!this.cachedHeader || this.cacheCheck !== hash) {
+            this.cachedHeader = this.renderHeader();
+            //create a hash of the first row to check if the data has changed
+            this.cacheCheck = hash;
+        }
+
+        table.appendChild(this.cachedHeader);
         table.appendChild(this.renderBody(data));
 
         this.container.appendChild(table);
@@ -94,13 +100,17 @@ class DynamicGridUI {
 
         return tbody;
     }
-
-    //==================================================================================================================
-    // EVENT HANDLERS
-    //==================================================================================================================
-    handleSort(key) {
-        this.sortState[key] = this.sortState[key] === "asc" ? "desc" : "asc";
-        const sortedData = this.dynamicGrid.engine.setSort(key, this.sortState[key]);
-        this.render(sortedData);
-    }
 }
+
+
+/*
+
+optimizations:
+[ ] Cache the header row
+[ ] Limit DOM Manipulations
+[ ] Cache the domElement when no query is applied
+[ ] Cache as much variables as possible
+[ ] Use Document Fragments (https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment , Document.createDocumentFragment())
+[ ] add one event listener to the table and use event delegation (use e.target to get the clicked element)
+
+*/

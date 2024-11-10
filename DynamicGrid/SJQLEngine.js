@@ -132,17 +132,13 @@ class SJQLEngine {
                     if (!plugin.evaluateCondition(row[q.field], q.operator, q.value)) {
                         valid = false;
                         //console.log('early break (select), query: ' + q.field + ' ' + q.operator + ' ' + q.value);
-                        break;
                     }
                 }
 
                 // Evaluate RANGE query
                 if (rangeQuery && valid) {
                     if (rangeQuery.lower > i) {
-                        valid = false;
-                    } else if (rangeQuery.upper < i) {
-                        //console.log('early break (range), row:', row, 'query:', rangeQuery);
-                        break;
+                        continue;
                     }
                 }
 
@@ -163,7 +159,19 @@ class SJQLEngine {
 
             // Evaluate RANGE query
             if (rangeQuery) {
-                validIndices = validIndices.filter(i => i >= rangeQuery.lower && i <= rangeQuery.upper);
+                const first = validIndices.values().next().value;
+                const lower = Math.max(0, first + rangeQuery.lower);
+                const upper = Math.min(this.data.length - 1, first + rangeQuery.upper);
+
+                // Pre-allocate approximate size
+                const result = new Set();
+
+                // Start from lower bound directly
+                for (let i = lower; i <= upper; i++) {
+                    result.add(i);
+                }
+
+                validIndices = result;
             }
         }
 
@@ -175,12 +183,6 @@ class SJQLEngine {
         }
 
         return this.data.filter((_, i) => validIndices.has(i));
-    }
-
-    setSort(field, direction) {
-        this.sortQuery = 'sort ' + field + ' ' + direction;
-        const wholeQuery = this.currentQueryStr === '' ? this.sortQuery : this.currentQueryStr + ' and ' + this.sortQuery;
-        return this._query(this.QueryParser.parseQuery(wholeQuery));
     }
 
     //================================================== PLUGIN SYSTEM ==================================================
