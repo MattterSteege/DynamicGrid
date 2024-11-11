@@ -1,5 +1,5 @@
 class SJQLEngine {
-    constructor(engine_config) {
+    constructor(engine_config, parser_config) {
         this.data = [];
         this.headers = [];
         this.plugins = [];
@@ -11,32 +11,6 @@ class SJQLEngine {
             UseDataEnumeration: engine_config.UseDataEnumeration || false,
             UseDataIndexing: engine_config.UseDataIndexing || true,
         };
-    }
-
-    parseData(data) {
-        if (data.length === 0) {
-            console.warn('No data provided');
-            return [];
-        }
-
-        if (!Array.isArray(data)) {
-            throw new GridError('Data must be an array');
-        }
-
-        //if headers are not provided, auto detect them
-        if (Object.keys(this.headers).length === 0) {
-            console.warn('No headers provided, auto detecting headers, please provide headers for better performance');
-            this.autoDetectHeaders(data[0]);
-        }
-
-        this.data = data.map((item, index) => {
-            const newItem = {};
-            newItem['internal_id'] = index
-            for (const key of Object.keys(item)) {
-                newItem[key] = item[key];
-            }
-            return newItem;
-        });
     }
 
     createDataIndex() {
@@ -215,5 +189,46 @@ class SJQLEngine {
 
 
         return plugin;
+    }
+
+    //================================================== DATA PARSER ==================================================
+    importData(data, type) {
+        if (type === 'json') {
+            this.parseJsonData(data);
+        } else if (type === 'csv') {
+            this.parseCSVData(data);
+        } else {
+            throw new GridError('Invalid data type');
+        }
+    }
+
+    parseJsonData(data) {
+        if (data.length === 0) {
+            console.warn('No data provided');
+            return [];
+        }
+
+        if (!Array.isArray(data)) {
+            throw new GridError('Data must be an array');
+        }
+
+        //if headers are not provided, auto detect them
+        if (Object.keys(this.headers).length === 0) {
+            console.warn('No headers provided, auto detecting headers, please provide headers for better performance');
+            this.autoDetectHeaders(data[0]);
+        }
+
+        this.data = data.map((item, index) => {
+            const newItem = {};
+            newItem['internal_id'] = index
+            for (const key of Object.keys(item)) {
+                newItem[key] = item[key];
+            }
+            return newItem;
+        });
+    }
+
+    parseCSVData(data) {
+
     }
 }
