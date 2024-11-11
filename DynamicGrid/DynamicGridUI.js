@@ -6,7 +6,14 @@ class DynamicGridUI {
         this.init(this.containerId);
 
         this.cachedHeader = null;
+        this.cachedPagination = null;
         this.cacheCheck = null;
+
+        this.config = {
+            usePagination: ui_config.usePagination ?? true,
+            paginationPageSize: ui_config.paginationPageSize ?? 100,
+            paginationPage: ui_config.paginationPage ?? 1,
+        }
     }
 
     // Initialize grid with container and data
@@ -28,16 +35,29 @@ class DynamicGridUI {
         table.className = 'dynamic-grid';
 
         const hash = FastHash(headerNames);
-        if (!this.cachedHeader || this.cacheCheck !== hash) {
+        const dataHash = FastHash(headerNames + '-' + data.length);
+        if ((!this.cachedHeader || this.cacheCheck !== hash)) {
             this.cachedHeader = this.renderHeader();
-            //create a hash of the first row to check if the data has changed
             this.cacheCheck = hash;
         }
+        //else
+            //console.log('using cached header');
+
+        if (this.config.usePagination && (!this.cachedPagination || this.cacheDataCheck !== dataHash)) {
+            this.config.paginationPage = 1;
+            this.cachedPagination = this.renderPagination(data);
+            this.cacheDataCheck = dataHash;
+        }
+        //else
+            //console.log('using cached pagination');
+
 
         table.appendChild(this.cachedHeader);
         table.appendChild(this.renderBody(data));
 
         this.container.appendChild(table);
+
+        this.config.usePagination && this.container.appendChild(this.cachedPagination);
     }
 
     // Render table header with sorting and filtering
@@ -87,7 +107,12 @@ class DynamicGridUI {
     renderBody(data) {
         const tbody = document.createElement('tbody');
 
-        data.forEach((row, index) => {
+        for (let index = 0; index < data.length; index++){
+
+            if (this.config.usePagination && index >= this.config.paginationPage * this.config.paginationPageSize) break;
+            if (this.config.usePagination && index < (this.config.paginationPage - 1) * this.config.paginationPageSize) continue;
+
+            const row = data[index];
             const tr = document.createElement('tr');
             tr.className = index % 2 === 0 ? 'row-even' : 'row-odd';
 
@@ -96,9 +121,33 @@ class DynamicGridUI {
             });
 
             tbody.appendChild(tr);
-        });
+        }
 
         return tbody;
+    }
+
+    //render the bottom pagination (if enabled)
+    renderPagination(data) {
+        const pagination = document.createElement('div');
+        pagination.className = 'pagination';
+
+        const totalPages = Math.ceil(data.length / this.config.paginationPageSize);
+
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.onclick = () => {
+                this.config.paginationPage = i;
+                //set button active, and remove active from other buttons
+                const buttons = pagination.querySelectorAll('button');
+                buttons.forEach(button => button.classList.remove('active'));
+                pageButton.classList.add('active');
+                this.render(data);
+            }
+            pagination.appendChild(pageButton);
+        }
+
+        return pagination;
     }
 }
 
@@ -106,11 +155,10 @@ class DynamicGridUI {
 /*
 
 optimizations:
-[ ] Cache the header row
+[x] Cache the header row
 [ ] Limit DOM Manipulations
 [ ] Cache the domElement when no query is applied
 [ ] Cache as much variables as possible
-[ ] Use Document Fragments (https://developer.mozilla.org/en-US/docs/Web/API/DocumentFragment , Document.createDocumentFragment())
 [ ] add one event listener to the table and use event delegation (use e.target to get the clicked element)
 
 */
