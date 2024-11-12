@@ -66,6 +66,8 @@ class DynamicGridUI {
         const headerRow = document.createElement('tr');
 
         Object.entries(this.dynamicGrid.engine.headers).forEach(([key, type]) => {
+            if (key === 'internal_id') return;
+
             const correspondingPlugin = this.dynamicGrid.engine.getPlugin(type);
             const th = document.createElement('th');
 
@@ -117,6 +119,7 @@ class DynamicGridUI {
             tr.className = index % 2 === 0 ? 'row-even' : 'row-odd';
 
             Object.keys(this.dynamicGrid.engine.headers).forEach(key => {
+                if (key === 'internal_id') return;
                 tr.append(this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[key]).renderCell(row[key]));
             });
 

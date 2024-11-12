@@ -1,5 +1,5 @@
 class SJQLEngine {
-    constructor(engine_config, parser_config) {
+    constructor(engine_config) {
         this.data = [];
         this.headers = [];
         this.plugins = [];
@@ -135,7 +135,7 @@ class SJQLEngine {
             if (rangeQuery) {
                 const first = validIndices.values().next().value;
                 const lower = Math.max(0, first + rangeQuery.lower);
-                const upper = Math.min(this.data.length - 1, first + rangeQuery.upper);
+                const upper = Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
 
                 // Pre-allocate approximate size
                 const result = new Set();
@@ -192,30 +192,36 @@ class SJQLEngine {
     }
 
     //================================================== DATA PARSER ==================================================
-    importData(data, type) {
-        if (type === 'json') {
-            this.parseJsonData(data);
-        } else if (type === 'csv') {
-            this.parseCSVData(data);
+    importData(data, config) {
+        if (config.type === 'json') {
+            this.parseJsonData(data, config);
+        } else if (config.type === 'csv') {
+            this.parseCSVData(data, config);
         } else {
             throw new GridError('Invalid data type');
         }
+
+        //if headers are not provided, auto-detect them
+        if (Object.keys(this.headers).length === 0) {
+            console.warn('No headers provided, auto detecting headers, please provide so the system can you more optimal plugins');
+            this.autoDetectHeaders(this.data[0]);
+        }
     }
 
-    parseJsonData(data) {
-        if (data.length === 0) {
-            console.warn('No data provided');
-            return [];
+    parseJsonData(data, config) {
+        if (!(typeof data === 'string')) {
+            throw new GridError('Data must be a string (raw JSON)');
         }
+
+        data = JSON.parse(data);
 
         if (!Array.isArray(data)) {
             throw new GridError('Data must be an array');
         }
 
-        //if headers are not provided, auto detect them
-        if (Object.keys(this.headers).length === 0) {
-            console.warn('No headers provided, auto detecting headers, please provide headers for better performance');
-            this.autoDetectHeaders(data[0]);
+        if (data.length === 0) {
+            console.warn('No data provided');
+            return [];
         }
 
         this.data = data.map((item, index) => {
@@ -228,7 +234,19 @@ class SJQLEngine {
         });
     }
 
-    parseCSVData(data) {
-
+    parseCSVData(data, config) {
+        const lines = data.split('\n');
+        //split by the config.delimiter character, but only if it's not inside quotes
+        const headers = lines[0].split(",").map(header => header.replace(/"/g, '').replace(" ", "_"));
+        this.data = lines.slice(1).map((line, index) => {
+            const values = line.split(/(?!"[a-zA-z0-9\s.()]*)(?:,|,"|",)(?![a-zA-z0-9\s.()]*")/mgi);
+            const newItem = {};
+            newItem['internal_id'] = index;
+            headers.forEach((header, i) => {
+                newItem[header] = values[i];
+            });
+            return newItem;
+        })
+        .slice(0, -1);
     }
 }

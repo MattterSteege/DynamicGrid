@@ -142,3 +142,9 @@
     background: #2563eb;
     color: white;
 }
+
+/* ====== DEBUG ====== */
+.error {
+    background: red;
+    font-weight: 600;
+}

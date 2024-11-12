@@ -16,7 +16,7 @@
 </head>
 <body>
 
-<input type="file" id="file" accept=".json" onchange="handleFile(this.files[0])">
+<input type="file" id="file" accept=".csv, .json" onchange="handleFile(this.files[0])">
 <input type="text" id="search" style="width: 50%;">
 <button onclick="grid.render(document.getElementById('search').value)">Search</button>
 
@@ -24,16 +24,16 @@
 
 <script>
     let grid = new DynamicGrid({
-        headers: {
-            id: 'number',
-            guid: 'string',
-            isActive: 'boolean',
-            balance: 'number',
-            age: 'number',
-            name: 'string',
-            gender: 'string',
-            email: 'string'
-        },
+        // headers: {
+        //     id: 'number',
+        //     guid: 'string',
+        //     isActive: 'boolean',
+        //     balance: 'number',
+        //     age: 'number',
+        //     name: 'string',
+        //     gender: 'string',
+        //     email: 'string'
+        // },
         ui: {
             containerId: '#gridContainer',
             paginationPageSize: 100,
@@ -41,18 +41,21 @@
         engine: {
             UseDataEnumeration: false,
             UseDataIndexing: true,
+        },
+        parser: {
+            StrictCase: false,
         }
     });
     function createTable(data) {
-        grid.importData(data, "json");
+        grid.importData(data, {type: "csv", delimiter: ","});
         grid.render();
     }
 
     function handleFile(file) {
         const reader = new FileReader();
         reader.onload = function (e) {
-            const data = JSON.parse(e.target.result);
-            createTable(data);
+            grid.importData(e.target.result, {type: file.type.split("/")[1], delimiter: ","});
+            grid.render();
         }
         reader.readAsText(file);
     }
