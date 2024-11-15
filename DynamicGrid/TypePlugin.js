@@ -132,7 +132,7 @@ class TypePlugin {
      * @param {Object} dynamicGrid Grid instance
      * @abstract
      */
-    handleMore(key, dynamicGrid) {
-        throw new Error('handleMore must be implemented by subclass');
+    showMore(key, dynamicGrid) {
+        throw new GridError('handleMore must be implemented by subclass');
     }
 }

@@ -64,6 +64,23 @@ class DynamicGridUI {
     renderHeader() {
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
+        headerRow.addEventListener("click", (e) => {
+            e.preventDefault();
+
+            const target = e.target;
+            const clickable = target.getAttribute('header-clickable');
+            if (!clickable) return;
+
+            const key = target.getAttribute('data-key');
+            const type = target.getAttribute('data-type');
+
+            if (clickable === 'sort') {
+                this.sortedState = {key, state: this.sortedState?.key === key ? (this.sortedState.state === 'asc' ? 'desc' : 'asc') : 'asc'};
+                this.render(this.dynamicGrid.engine.sort(this.sortedState.key, this.sortedState.state));
+            } else if (clickable === 'more') {
+                this.dynamicGrid.engine.plugins[type].showMore(key);
+            }
+        });
 
         Object.entries(this.dynamicGrid.engine.headers).forEach(([key, type]) => {
             if (key === 'internal_id') return;
@@ -85,14 +102,18 @@ class DynamicGridUI {
 
             const sortButton = document.createElement('button');
             sortButton.className = 'sort-button';
-            sortButton.innerHTML = '<span class="sort-icon"></span>';
-            sortButton.onclick = () => this.handleSort(key);
+            sortButton.innerHTML = '<span style="pointer-events: none" class="sort-icon"></span>';
+            sortButton.setAttribute('header-clickable', 'sort');
+            sortButton.setAttribute('data-key', key);
+            sortButton.setAttribute('data-type', type);
             titleWrapper.appendChild(sortButton);
 
             const moreButton = document.createElement('button');
             moreButton.className = 'more-button';
-            moreButton.innerHTML = '<span class="more-icon">&#10247;</span>';
-            moreButton.onclick = () => correspondingPlugin.handleMore(key, this.dynamicGrid);
+            moreButton.innerHTML = '<span style="pointer-events: none" class="more-icon">&#10247;</span>';
+            moreButton.setAttribute('header-clickable', 'more');
+            moreButton.setAttribute('data-key', key);
+            moreButton.setAttribute('data-type', type);
             titleWrapper.appendChild(moreButton);
 
             headerContent.appendChild(titleWrapper);
@@ -156,12 +177,7 @@ class DynamicGridUI {
 
 
 /*
-
 optimizations:
-[x] Cache the header row
-[ ] Limit DOM Manipulations
-[ ] Cache the domElement when no query is applied
-[ ] Cache as much variables as possible
+[ ] virtual scrolling
 [ ] add one event listener to the table and use event delegation (use e.target to get the clicked element)
-
 */

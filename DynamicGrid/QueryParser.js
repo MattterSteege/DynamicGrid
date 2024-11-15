@@ -1,11 +1,16 @@
 class QueryParser {
-    constructor() {}
+    constructor(config) {
+        this.config = {
+            useStrictCase: config.useStrictCase || false,
+            SymbolsToIgnore: config.SymbolsToIgnore || [' ', '_', '-']
+        }
+    }
 
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
-        RANGE: /range\s+(-?\d+)-?(-?\d+)?/,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
-        SORT: /sort\s+([A-Za-z]+)\s+(asc|desc)/,//'sort [key] [value]', sort by key (sort name asc)
-        SELECT: /([A-Za-z]+)\s+(\S+)\s+(.+)/    //'[key] [operator] [value]', select items where key is value
+        RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
+        SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
+        SELECT: /([A-Za-z]+)\s+(\S+)\s+(.+)/i    //'[key] [operator] [value]', select items where key is value
     };
 
     //MAIN PARSING FUNCTION
@@ -28,12 +33,14 @@ class QueryParser {
     }
 
     parseMatch(match, type, plugins, headers) {
+        //console.log(match, type);
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
+            key = MeantIndexKey(Object.keys(headers), key, this.config);
             const pluginType = headers[key];
             const plugin = plugins[pluginType];
             if (!plugin) {
-                throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
+                throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')\nDo you know certain that the name of the key is correct?');
             }
 
             let field = key;
@@ -56,7 +63,6 @@ class QueryParser {
             if (!plugin) {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
-
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
         }
         else if (type === 'RANGE') {

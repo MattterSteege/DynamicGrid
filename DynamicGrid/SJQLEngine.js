@@ -1,15 +1,17 @@
 class SJQLEngine {
-    constructor(engine_config) {
+    constructor(engine_config, parser_config) {
         this.data = [];
         this.headers = [];
         this.plugins = [];
         this.currentQuery = {};
         this.currentQueryStr = '';
-        this.QueryParser = new QueryParser();
+        this.QueryParser = new QueryParser(parser_config);
 
         this.config = {
             UseDataEnumeration: engine_config.UseDataEnumeration || false,
             UseDataIndexing: engine_config.UseDataIndexing || true,
+            useStrictCase: engine_config.useStrictCase || false,
+            SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
         };
     }
 
@@ -58,12 +60,12 @@ class SJQLEngine {
             return this.data;
         }
 
-        this.currentQuery = this.QueryParser.parseQuery(query, this.plugins, this.headers);
-        this.currentQueryStr = query;
-        return this._query(this.currentQuery);
+        return this._query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
 
     _query(query) {
+        //console.log('query:', query);
+
         // Early exit if no queries
         if (!query || query.length === 0) return this.data;
 
@@ -90,45 +92,49 @@ class SJQLEngine {
             }
         }
 
+        this.currentQuery = selectQueries;
+        this.currentQueryStr = selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(' and ');
+
         performance.mark('startQuery');
         validIndices = new Set(this.data.map((_, i) => i));
         if (this.config.UseDataEnumeration) {
-            for (let i = 0; i < this.data.length; i++) {
-                const row = this.data[i];
-                let valid = true;
-
-                // Evaluate SELECT queries
-                for (const q of selectQueries) {
-                    const plugin = this.getPlugin(q.type);
-                    if (!plugin) {
-                        throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
-                    }
-                    if (!plugin.evaluateCondition(row[q.field], q.operator, q.value)) {
-                        valid = false;
-                        //console.log('early break (select), query: ' + q.field + ' ' + q.operator + ' ' + q.value);
-                    }
-                }
-
-                // Evaluate RANGE query
-                if (rangeQuery && valid) {
-                    if (rangeQuery.lower > i) {
-                        continue;
-                    }
-                }
-
-                if (!valid) {
-                    validIndices.delete(i);
-                }
-            }
+            // for (let i = 0; i < this.data.length; i++) {
+            //     const row = this.data[i];
+            //     let valid = true;
+            //
+            //     // Evaluate SELECT queries
+            //     for (const q of selectQueries) {
+            //         const plugin = this.getPlugin(q.type);
+            //         if (!plugin) {
+            //             throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
+            //         }
+            //         if (!plugin.evaluateCondition(row[q.field], q.operator, q.value)) {
+            //             valid = false;
+            //             //console.log('early break (select), query: ' + q.field + ' ' + q.operator + ' ' + q.value);
+            //         }
+            //     }
+            //
+            //     // Evaluate RANGE query
+            //     if (rangeQuery && valid) {
+            //         if (rangeQuery.lower > i) {
+            //             continue;
+            //         }
+            //     }
+            //
+            //     if (!valid) {
+            //         validIndices.delete(i);
+            //     }
+            // }
+            console.warn('Data enumeration is not implemented yet');
         }
         else {
             for (const q of selectQueries) {
+                q.field = MeantIndexKey(Object.keys(this.data[0]), q.field, this.config);
                 const plugin = this.getPlugin(q.type);
                 if (!plugin) {
                     throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
                 }
                 validIndices = plugin.evaluate(q,  this.dataIndexes[q.field], this.data, validIndices);
-                //console.log('validIndices:', validIndices);
             }
 
             // Evaluate RANGE query
@@ -157,6 +163,18 @@ class SJQLEngine {
         }
 
         return this.data.filter((_, i) => validIndices.has(i));
+    }
+
+    sort(key, direction) {
+        console.log('sort:', key, direction);
+        let query;
+        //if query is only a sort query, then prepend it with the this.currentQueryStr
+        if (this.currentQuery.length === 0)
+            query = 'sort ' + key + ' ' + direction;
+        else
+            query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
+
+        return this.query(query);
     }
 
     //================================================== PLUGIN SYSTEM ==================================================
@@ -243,6 +261,8 @@ class SJQLEngine {
             const newItem = {};
             newItem['internal_id'] = index;
             headers.forEach((header, i) => {
+                if (typeof values[i] === 'string')
+                    values[i].endsWith('"') ? values[i] = values[i].slice(0, -1) : values[i];
                 newItem[header] = values[i];
             });
             return newItem;

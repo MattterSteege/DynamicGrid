@@ -1,17 +1,16 @@
-- **Sorting and Filtering**: The current implementation supports basic sorting by clicking on the column headers. You could expand on this by:
-   - Adding multi-column sorting, allowing the user to sort by multiple columns in sequence.
-   - Implementing advanced filtering, with the ability to create complex filter conditions using the various operators supported by the type plugins.
-   - Providing a UI for the user to easily configure sorting and filtering, such as dropdown menus, input fields, and buttons.
-   - Add grouping, so that the user can group data by one or more columns, and expand/collapse groups to view the underlying data.
-- **Column Resizing and Reordering**: Allow the user to resize columns by dragging the column borders. You could also implement the ability to reorder columns by dragging and dropping them.
-- **Inline Editing**: Enable the user to edit cell values directly in the grid, with the changes persisting in the underlying data.
-- **Pagination and Infinite Scrolling**: Enhance the pagination functionality to provide a smoother user experience, such as displaying page numbers, jump-to-page controls, and infinite scrolling.
-- **Row Selection and Actions**: Add the ability for the user to select one or more rows, and provide actions that can be performed on the selected rows, such as deleting, exporting, or performing bulk updates.
-- **Frozen Columns and Rows**: Implement the ability to "freeze" certain columns or rows, so they remain visible while the user scrolls the rest of the grid.
-- **Row Grouping and Aggregation**: Provide the ability to group rows by one or more columns, and display aggregated data (e.g., sum, average, count) for each group.
-- **Custom Cell Rendering**: Extend the cell rendering functionality to allow for more complex cell content, such as displaying icons, progress bars, or custom UI components.
-- **Export and Import**: Implement the ability to export the grid data to various formats (e.g., CSV, Excel, JSON) and import data into the grid.
-- **Accessibility and Keyboard Navigation**: Ensure the grid component is accessible to users with disabilities by providing proper keyboard navigation, screen reader support, and compliance with WCAG guidelines.
-- **Theming and Customization**: Allow the grid to be easily themed and customized, enabling users to change the look and feel to match the branding and design of the application.
-- **Performance Optimization**: Continuously monitor and optimize the grid's performance, especially for large data sets, by leveraging techniques like virtualization, debouncing, and efficient data manipulation.
-- **API Integration**: Integrate the grid with external data sources, allowing users to view and manipulate data from various APIs directly within the grid.
+- [ ] **Sorting and Filtering**: The current implementation supports basic sorting by clicking on the column headers. You could expand on this by:
+  - [ ]  Adding multi-column sorting, allowing the user to sort by multiple columns in sequence.
+  - [ ]  Implementing advanced filtering, with the ability to create complex filter conditions using the various operators supported by the type plugins.
+  - [ ]  Providing a UI for the user to easily configure sorting and filtering, such as dropdown menus, input fields, and buttons.
+  - [ ]  Add grouping, so that the user can group data by one or more columns, and expand/collapse groups to view the underlying data.
+- [ ] **Column Resizing and Reordering**: Allow the user to resize columns by dragging the column borders. You could also implement the ability to reorder columns by dragging and dropping them.
+- [ ] **Inline Editing**: Enable the user to edit cell values directly in the grid, with the changes persisting in the underlying data.
+- [x] **Pagination and Infinite Scrolling**: Enhance the pagination functionality to provide a smoother user experience, such as displaying page numbers, jump-to-page controls, and infinite scrolling.
+- [ ] **Row Selection and Actions**: Add the ability for the user to select one or more rows, and provide actions that can be performed on the selected rows, such as deleting, exporting, or performing bulk updates.
+- [ ] **Frozen Columns and Rows**: Implement the ability to "freeze" certain columns or rows, so they remain visible while the user scrolls the rest of the grid.
+- [ ] **Row Grouping and Aggregation**: Provide the ability to group rows by one or more columns, and display aggregated data (e.g., sum, average, count) for each group.
+- [ ] **Export and Import**: Implement the ability to export the grid data to various formats (e.g., CSV, Excel, JSON) and import data into the grid.
+- [ ] **Accessibility and Keyboard Navigation**: Ensure the grid component is accessible to users with disabilities by providing proper keyboard navigation, screen reader support, and compliance with WCAG guidelines.
+- [ ] **Theming and Customization**: Allow the grid to be easily themed and customized, enabling users to change the look and feel to match the branding and design of the application.
+- [ ] **Performance Optimization**: Continuously monitor and optimize the grid's performance, especially for large data sets, by leveraging techniques like virtualization, debouncing, and efficient data manipulation.
+- [ ] **API Integration**: Integrate the grid with external data sources, allowing users to view and manipulate data from various APIs directly within the grid.
