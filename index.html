@@ -12,6 +12,7 @@
   <script src="DynamicGrid/SJQLEngine.js"></script>
   <script src="DynamicGrid/QueryParser.js"></script>
   <script src="DynamicGrid/DynamicGridUtils.js"></script>
+  <script src="DynamicGrid/ContextMenu.js"></script>
 <!--    <script src="/dist/DynamicGrid.js"></script>-->
 </head>
 <body>
@@ -20,7 +21,7 @@
 <input type="text" id="search" style="width: 50%;">
 <button onclick="grid.render(document.getElementById('search').value)">Search</button>
 
-<div id="gridContainer" style="width: 100%; height: 100%; border-radius: 12px; overflow: auto;"></div>
+<div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 10px; overflow: auto;"></div>
 
 <script>
     let grid = new DynamicGrid({
@@ -50,6 +51,9 @@
         grid.render();
     }
 
+
+
+
     function handleFile(file) {
         const reader = new FileReader();
         reader.onload = function (e) {
@@ -75,6 +79,50 @@
         performance.clearMarks();
         performance.clearMeasures();
     }
+
+    // Example usage:
+    const menu = new ContextMenu({
+        theme: 'dark',
+        width: 250,
+        animation: { duration: 150 },
+    });
+
+    menu.button('New File', () => console.log('New File'), { icon: '📄' })
+        .button('Open...', () => console.log('Open'), { icon: '📂' })
+        .separator()
+        .submenu('Recent Files', submenu => {
+            submenu.button('doc1.txt', () => console.log('doc1.txt'))
+                .button('doc2.txt', () => console.log('doc2.txt'));
+        },
+            {
+                icon: '🕒',
+                disabled: true
+            })
+        .separator()
+        .input('Search', {
+            placeholder: 'Type to search...',
+            onChange: value => console.log(value)
+        })
+        .dropdown('Sort by', [
+            { value: 'name', label: 'Name' },
+            { value: 'date', label: 'Date' }
+        ],
+        {
+            onChange: value => console.log(value)
+        })
+        .checkbox('Show Hidden Files', {
+            checked: true,
+            onChange: checked => console.log(checked)
+        })
+        .radioGroup('View', [
+            { text: 'List', value: 'list' },
+            { text: 'Grid', value: 'grid' }
+        ],{
+            onChange: value => console.log(value)
+        })
+    ;
+
+    menu.showAt(500, 100)
 </script>
 
 </body>

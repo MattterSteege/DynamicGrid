@@ -255,7 +255,8 @@ class SJQLEngine {
     parseCSVData(data, config) {
         const lines = data.split('\n');
         //split by the config.delimiter character, but only if it's not inside quotes
-        const headers = lines[0].split(",").map(header => header.replace(/"/g, '').replace(" ", "_"));
+        const headers = lines[0].split(",").map(header => header.replace(/"/g, '').replace(" ", "_").replace("\r", ''));
+        // console.log(headers);
         this.data = lines.slice(1).map((line, index) => {
             const values = line.split(/(?!"[a-zA-z0-9\s.()]*)(?:,|,"|",)(?![a-zA-z0-9\s.()]*")/mgi);
             const newItem = {};

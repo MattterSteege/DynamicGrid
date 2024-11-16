@@ -122,6 +122,9 @@ class DynamicGridUI {
             headerRow.appendChild(th);
         });
 
+        thead.style.position = 'sticky';
+        thead.style.top = '0';
+
         thead.appendChild(headerRow);
         return thead;
     }
@@ -172,6 +175,29 @@ class DynamicGridUI {
         }
 
         return pagination;
+    }
+
+    toggleColumn(key) {
+        const styles = document.querySelector(`style[id="dynamic-grid-styles"]`);
+        if (!styles) {
+            const style = document.createElement('style');
+            style.id = 'dynamic-grid-styles';
+            document.head.appendChild(style);
+        }
+
+        const hiddenColumns = styles.dataset.hiddenColumns ? styles.dataset.hiddenColumns.split(',') : [];
+        const headerKeys = Object.keys(this.dynamicGrid.engine.headers).filter(header => header !== 'internal_id');
+        const index = headerKeys.indexOf(key);
+        if (index === -1) return;
+
+        if (hiddenColumns.includes(key)) {
+            hiddenColumns.splice(hiddenColumns.indexOf(key), 1);
+        } else {
+            hiddenColumns.push(key);
+        }
+
+        styles.dataset.hiddenColumns = hiddenColumns.join(',');
+        styles.textContent = hiddenColumns.map(key => `th:nth-child(${headerKeys.indexOf(key) + 1}), td:nth-child(${headerKeys.indexOf(key) + 1}) { display: none; }`).join('');
     }
 }
 
