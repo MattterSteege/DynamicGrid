@@ -92,12 +92,16 @@
         .separator()
         .submenu('Recent Files', submenu => {
             submenu.button('doc1.txt', () => console.log('doc1.txt'))
-                .button('doc2.txt', () => console.log('doc2.txt'));
-        },
-            {
-                icon: '🕒',
-                disabled: true
-            })
+                    .button('doc2.txt', () => console.log('doc2.txt'))
+                    .submenu('Recent Files', submenu => {
+                            submenu.button('doc1.txt', () => console.log('doc1.txt'))
+                                    .button('doc2.txt', () => console.log('doc2.txt'))
+                                .submenu('Recent Files', submenu => {
+                                    submenu.button('doc1.txt', () => console.log('doc1.txt'))
+                                        .button('doc2.txt', () => console.log('doc2.txt'));
+                                },{icon: '🕒'});
+                    },{icon: '🕒'});
+        },{icon: '🕒'})
         .separator()
         .input('Search', {
             placeholder: 'Type to search...',

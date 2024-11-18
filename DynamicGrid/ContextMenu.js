@@ -48,9 +48,9 @@ class ContextMenu {
                     unselected: '○'
                 }
             },
-            isRoot: options.isRoot === undefined
+            indentLevel: options.indentLevel || 0,
+            isRoot: options.isRoot === undefined,
         };
-
         this.items = [];
         this.id = this._generateId();
         this.installStyles();
@@ -64,6 +64,10 @@ class ContextMenu {
             position: this.items.length,
             ...config
         };
+
+        if (item.type === ContextMenu.ITEM_TYPES.SUBMENU) {
+            item.submenu.options.indentLevel = (this.options.indentLevel || 0) + 1;
+        }
 
         // Validate based on type
         this._validateItem(item);
@@ -130,9 +134,13 @@ class ContextMenu {
     }
 
     submenu(text, submenuBuilder, config = {}) {
-        const options = {...this.options};
-        options.isRoot = false;
-        const submenu = new ContextMenu(options);
+        const options = {
+            ...this.options, // Inherit options from parent
+            isRoot: false,
+            indentLevel: (this.options.indentLevel || 0) + 1, // Increment indent level
+        };
+
+        const submenu = new ContextMenu(options); // Create submenu with updated options
         submenuBuilder(submenu);
 
         const items = this.addItem(ContextMenu.ITEM_TYPES.SUBMENU, {
@@ -140,20 +148,20 @@ class ContextMenu {
             submenu,
             icon: config.icon,
             ficon: config.ficon,
-        }).items
+        }).items;
 
         items[items.length - 1].id = submenu.id;
         return this;
     }
 
     // Show methods
-    showAt(x, y) {
+    showAt(x, y, autoAdd = true) {
         const menu = this._render();
-        document.body.appendChild(menu);
+        autoAdd ? document.body.appendChild(menu) : null;
         this._setupEventHandlers(menu);
-        this._positionMenu(menu, {x, y});
+        this._positionMenu(menu, {x, y, position: 'fixed'});
         this._animateIn(menu);
-        return this;
+        return menu;
     }
 
     destroy() {
@@ -167,6 +175,7 @@ class ContextMenu {
         document.removeEventListener('click', handleClick);
         document.removeEventListener('contextmenu', handleContextMenu);
         document.removeEventListener('mouseover', handleMouseOver);
+
 
         // Clean up references
         this.items = [];
@@ -199,134 +208,126 @@ class ContextMenu {
             }
         }
 
-        // Handles hover for submenus
         const handleMouseOver = (e) => {
             if (e.target.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)) {
-                const submenu = this.items.find(item => item.id === e.target.id);
+                const submenu = this.items.find(item => item.id === e.target.dataset.submenuId);
 
                 if (submenu) {
-                    // Hide other submenus at the same level
-                    const parentMenu = e.target.closest('.' + ContextMenu.CLASSNAMES.MENU);
-                    const siblingSubmenus = parentMenu.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
-                    siblingSubmenus.forEach(menu => {
-                        if (!menu.contains(e.target)) {
-                            menu.remove();
-                        }
-                    });
+                    const existingSubmenu = e.target.parentElement.querySelector('#' + submenu.submenu.id);
+                    if (existingSubmenu) return;
 
+                    const htmlElement = submenu.submenu._render();
+                    submenu.submenu._setupEventHandlers(htmlElement);
+                    submenu.submenu._positionMenu(htmlElement, { x: e.target.getBoundingClientRect().right, y: e.target.getBoundingClientRect().top });
 
-                    const subMenu = submenu.submenu._render();
-                    console.log(submenu, submenu.submenu, subMenu);
-                    if (!subMenu) return;
+                    htmlElement.style.position = 'absolute';
+                    htmlElement.style.left = this.options.width + 'px';
+                    htmlElement.style.top = e.target.getBoundingClientRect().top - e.target.parentElement.getBoundingClientRect().top + 'px';
 
+                    e.target.parentElement.appendChild(htmlElement);
 
-                    subMenu.style.left = `${e.target.getBoundingClientRect().right}px`;
-
-                    subMenu.style.top = `${e.target.getBoundingClientRect().top}px`;
-                    subMenu.style.display = 'block';
-
-                    e.target.parentElement.append(subMenu);
-
-                    e.troughTab ? subMenu.querySelector('.' + ContextMenu.CLASSNAMES.BUTTON).focus() : null;
-
-                    // Add mouseout handler to the submenu
-                    const handleMouseLeave = (event) => {
-                        const submenuEl = document.getElementById(subMenu.id);
-                        const relatedTarget = event.relatedTarget;
-
-                        if (!submenuEl) return;
-
-                        // Check if mouse moved to the parent button or the submenu itself
-                        if (!submenuEl.contains(relatedTarget) &&
-                            !e.target.contains(relatedTarget) &&
-                            relatedTarget !== e.target) {
-                            submenuEl.remove();
-                        }
-                    };
-
-                    subMenu.addEventListener('mouseleave', handleMouseLeave);
+                    // Add event listeners to prevent premature removal
+                    htmlElement.addEventListener('mouseleave', handleMouseLeave);
                     e.target.addEventListener('mouseleave', handleMouseLeave);
                 }
             }
         };
 
+        const handleMouseLeave = (event) => {
+            const target = event.target;
+
+            if (target.className === ContextMenu.CLASSNAMES.MENU) {
+                target.remove();
+                return;
+            }
+
+            // Schedule submenu removal only after verifying mouse is no longer over button or submenu
+            const submenu = document.getElementById(target.dataset?.submenuId);
+            const isMouseOverButton = target.matches(':hover');
+            const isMouseOverSubmenu = submenu?.matches(':hover');
+
+            if (!isMouseOverButton && !isMouseOverSubmenu) {
+                submenu?.remove();
+            }
+        };
+
         // Handles keyboard events
         const handleKeyPress = (e) => {
-            //first check if the active element is a button or a submenu
-            if (!document.activeElement) return;
-            if (!document.activeElement.classList.contains(ContextMenu.CLASSNAMES.BUTTON) &&
-                !document.activeElement.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)) return;
-
-
-            if (this.isKeyDown == e.type) return;
-            this.isKeyDown = e.type;
-            if (e.type === 'keyup') return;
-
-            if (e.key === 'Escape') {
-                const contextMenu = document.getElementById(this.id);
-                if (contextMenu) {
-                    contextMenu.remove();
-                }
-            }
-
-            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
-                const focused = document.activeElement;
-                if (focused.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)
-                    && focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON)) {
-                    this._eventHandlers.handleMouseOver({target: focused, troughTab: true});
-                    e.preventDefault();
-                    return;
-                }
-            }
-
-            //or if the current focused element is the top-most child and shift-tab is pressed
-            if (e.key === 'ArrowLeft') {
-                if (document.activeElement.parentElement.id !== this.id) return;
-                const id = document.activeElement.parentElement.id;
-                const submenu = document.querySelector(`[data-submenu="${id}"]`);
-                if (submenu) {
-                    submenu.focus();
-                }
-            }
-
-            //with arrow up and down, get the previous or next CLASSES.BUTTON element
-            if (e.key === 'ArrowDown') {
-                let focused = document.activeElement;
-                if (!focused) return;
-
-                focused = focused.nextElementSibling;
-                while (!focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON) && focused.nextElementSibling) {
-                    focused = focused.nextElementSibling;
-                }
-
-                if (focused) {
-                    focused.focus();
-                }
-
-                //any child of the parent of this element that is a submenu, remove it
-                const parent = focused.parentElement;
-                const submenus = parent.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
-                submenus.forEach(menu => menu.remove());
-            }
-
-            if (e.key === 'ArrowUp') {
-                let focused = document.activeElement;
-                if (!focused) return;
-
-                focused = focused.previousElementSibling;
-                while (!focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON) && focused.previousElementSibling) {
-                    focused = focused.previousElementSibling;
-                }
-
-                if (focused) {
-                    focused.focus();
-                }
-
-                //any child of the parent of this element that is a submenu, remove it
-                const parent = focused.parentElement;
-                const submenus = parent.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
-                submenus.forEach(menu => menu.remove());
-            }
+            // //first check if the active element is a button or a submenu
+            // if (!document.activeElement) return;
+            // if (!document.activeElement.classList.contains(ContextMenu.CLASSNAMES.BUTTON) &&
+            //     !document.activeElement.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)) return;
+            //
+            //
+            // if (this.isKeyDown == e.type) return;
+            // this.isKeyDown = e.type;
+            // if (e.type === 'keyup') return;
+            //
+            // if (e.key === 'Escape') {
+            //     const contextMenu = document.getElementById(this.id);
+            //     if (contextMenu) {
+            //         contextMenu.remove();
+            //     }
+            // }
+            //
+            // if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+            //     const focused = document.activeElement;
+            //     if (focused.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)
+            //         && focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON)) {
+            //         this._eventHandlers.handleMouseOver({target: focused, troughTab: true});
+            //         e.preventDefault();
+            //         return;
+            //     }
+            // }
+            //
+            // //or if the current focused element is the top-most child and shift-tab is pressed
+            // if (e.key === 'ArrowLeft') {
+            //     if (document.activeElement.parentElement.id !== this.id) return;
+            //     const id = document.activeElement.parentElement.id;
+            //     const submenu = document.querySelector(`[data-submenu="${id}"]`);
+            //     if (submenu) {
+            //         submenu.focus();
+            //     }
+            // }
+            //
+            // //with arrow up and down, get the previous or next CLASSES.BUTTON element
+            // if (e.key === 'ArrowDown') {
+            //     let focused = document.activeElement;
+            //     if (!focused) return;
+            //
+            //     focused = focused.nextElementSibling;
+            //     while (!focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON) && focused.nextElementSibling) {
+            //         focused = focused.nextElementSibling;
+            //     }
+            //
+            //     if (focused) {
+            //         focused.focus();
+            //     }
+            //
+            //     //any child of the parent of this element that is a submenu, remove it
+            //     const parent = focused.parentElement;
+            //     const submenus = parent.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
+            //     submenus.forEach(menu => menu.remove());
+            // }
+            //
+            // if (e.key === 'ArrowUp') {
+            //     let focused = document.activeElement;
+            //     if (!focused) return;
+            //
+            //     focused = focused.previousElementSibling;
+            //     while (!focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON) && focused.previousElementSibling) {
+            //         focused = focused.previousElementSibling;
+            //     }
+            //
+            //     if (focused) {
+            //         focused.focus();
+            //     }
+            //
+            //     //any child of the parent of this element that is a submenu, remove it
+            //     const parent = focused.parentElement;
+            //     const submenus = parent.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
+            //     submenus.forEach(menu => menu.remove());
+            // }
         }
 
         // Adds event listeners
@@ -334,9 +335,10 @@ class ContextMenu {
         menu.addEventListener('mouseover', handleMouseOver);
         menu.addEventListener('keydown', handleKeyPress);
         menu.addEventListener('keyup', handleKeyPress);
+        //menu.addEventListener('mouseleave', handleMouseLeave);
 
         // Clean up references on destroy
-        this._eventHandlers = {click: handleClick, handleMouseOver, handleKeyPress};
+        this._eventHandlers = {click: handleClick, handleMouseOver, handleKeyPress, handleMouseLeave};
     }
 
     //sorry for the bad looking code :(
@@ -377,18 +379,19 @@ class ContextMenu {
     }
 
     _generateId() {
-        return '_' + Math.random().toString(36).substr(2, 9);
+        return '_' + Math.random().toString(36).substring(2, 9);
     }
 
     _render() {
-        //if (document.getElementById(this.id)) return null;
-
         const menuContainer = document.createElement('div');
         menuContainer.classList.add(ContextMenu.CLASSNAMES.MENU);
         menuContainer.id = this.id;
         menuContainer.setAttribute('role', 'menu');
         menuContainer.setAttribute('aria-orientation', 'vertical');
         menuContainer.style.width = `${this.options.width}px`;
+
+        // Set the indentation level as a data attribute
+        menuContainer.dataset.indent = this.options.indentLevel;
 
         this.items.forEach(item => {
             let element;
@@ -461,8 +464,7 @@ class ContextMenu {
         submenuButton.classList.add(ContextMenu.CLASSNAMES.SUBMENU);
         submenuButton.innerText = item.text;
         submenuButton.setAttribute('aria-haspopup', 'true');
-        submenuButton.onclick = () => item.submenu.showAt(submenuButton.getBoundingClientRect().right, submenuButton.getBoundingClientRect().top);
-        submenuButton.id = item.id;
+        submenuButton.dataset.submenuId = item.id;
 
         if (item.icon) {
             const icon = document.createElement('span');
@@ -555,28 +557,10 @@ class ContextMenu {
     _positionMenu(menu, position) {
         const {x, y} = position;
         const {xOffset, yOffset} = this.options.position;
-        const {menuWidth} = this.options;
-
-        // Calculate the menu position with offsets
-        let calculatedX = x + xOffset;
-        let calculatedY = y + yOffset;
-
-        // Adjust if the menu goes out of bounds
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-
-        if (calculatedX + menuWidth > viewportWidth) {
-            calculatedX = Math.max(0, viewportWidth - menuWidth);
-        }
-
-        const menuHeight = menu.offsetHeight;
-        if (calculatedY + menuHeight > viewportHeight) {
-            calculatedY = Math.max(0, viewportHeight - menuHeight);
-        }
 
         // Apply styles to position the menu
-        menu.style.left = `${calculatedX}px`;
-        menu.style.top = `${calculatedY}px`;
+        menu.style.left = `${x + xOffset || this.options.width}px`;
+        menu.style.top = `${y + yOffset}px`;
         menu.style.position = 'fixed';
     }
 
