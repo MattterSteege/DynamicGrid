@@ -78,7 +78,7 @@ class DynamicGridUI {
                 this.sortedState = {key, state: this.sortedState?.key === key ? (this.sortedState.state === 'asc' ? 'desc' : 'asc') : 'asc'};
                 this.render(this.dynamicGrid.engine.sort(this.sortedState.key, this.sortedState.state));
             } else if (clickable === 'more') {
-                this.dynamicGrid.engine.plugins[type].showMore(key);
+                this.dynamicGrid.engine.plugins[type].showMore(key, this.dynamicGrid);
             }
         });
 
@@ -206,4 +206,7 @@ class DynamicGridUI {
 optimizations:
 [ ] virtual scrolling
 [ ] add one event listener to the table and use event delegation (use e.target to get the clicked element)
+
+
+
 */

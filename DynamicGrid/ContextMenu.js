@@ -26,7 +26,6 @@ class ContextMenu {
     constructor(options = {}) {
         // Initialize with a more intuitive options object
         this.options = {
-            theme: options.theme || 'light',
             width: options.width || 200,
             animation: {
                 enabled: options.animation?.enabled ?? true,
@@ -38,15 +37,16 @@ class ContextMenu {
                 yOffset: options.position?.yOffset || 0
             },
             icons: options.icons || {
-                submenu: '❯',
-                checkbox: {
-                    checked: '✓',
-                    unchecked: '□'
-                },
-                radio: {
-                    selected: '●',
-                    unselected: '○'
-                }
+                submenu: '❯'
+            },
+            style: {
+                backgroundColor: options.style?.backgroundColor || '#ffffff',
+                textColor: options.style?.textColor || '#333333',
+                backgroundHoverColor: options.style?.backgroundHoverColor || '#f0f0f0',
+                border: options.style?.border || 'rgba(0, 0, 0, 0.08)',
+                shadow: options.style?.shadow || '0 10px 25px rgba(0, 0, 0, 0.1)',
+                accent: options.style?.accent || '#3b82f6',
+                separator: options.style?.separator || 'rgba(0, 0, 0, 0.08)',
             },
             indentLevel: options.indentLevel || 0,
             isRoot: options.isRoot === undefined,
@@ -83,7 +83,7 @@ class ContextMenu {
             icon: config.icon,
             ficon: config.ficon,
             disabled: config.disabled,
-            tooltip: config.tooltip
+            marked: config.marked
         });
     }
 
@@ -93,8 +93,6 @@ class ContextMenu {
             placeholder: config.placeholder,
             value: config.value,
             onChange: config.onChange,
-            inputType: config.inputType || 'text',
-            validator: config.validator
         });
     }
 
@@ -157,6 +155,11 @@ class ContextMenu {
     // Show methods
     showAt(x, y, autoAdd = true) {
         const menu = this._render();
+
+        if (document.getElementById(this.id)) {
+            document.getElementById(this.id).remove();
+        }
+
         autoAdd ? document.body.appendChild(menu) : null;
         this._setupEventHandlers(menu);
         this._positionMenu(menu, {x, y, position: 'fixed'});
@@ -165,24 +168,47 @@ class ContextMenu {
     }
 
     destroy() {
+        return;
+        // Existing cleanup
         const menu = document.getElementById(this.id);
+
+        // Check if _eventHandlers is defined before destructuring
+        if (this._eventHandlers) {
+            const { handleClick, handleMouseOver, handleMouseLeave, handleClickDocument } = this._eventHandlers;
+
+            if (menu) {
+                menu.removeEventListener('click', handleClick);
+                menu.removeEventListener('mouseover', handleMouseOver);
+                // If handleMouseLeave should be removed, uncomment this:
+                // menu.removeEventListener('mouseleave', handleMouseLeave);
+            }
+
+            document.removeEventListener('click', handleClickDocument);
+        }
+
+        // Recursively destroy submenus
+        this.items.forEach(item => {
+            if (item.type === ContextMenu.ITEM_TYPES.SUBMENU && item.submenu) {
+                item.submenu.destroy();
+            }
+        });
+
         if (menu) {
             menu.remove();
         }
 
-        // Remove event listeners
-        const {handleClick, handleContextMenu, handleMouseOver} = this._eventHandlers;
-        document.removeEventListener('click', handleClick);
-        document.removeEventListener('contextmenu', handleContextMenu);
-        document.removeEventListener('mouseover', handleMouseOver);
-
-
-        // Clean up references
+        // Clear all references
         this.items = [];
         this._eventHandlers = {};
+        this.id = null;
+        this.options = null;
 
-        return this;
+        // If you want to make the instance unusable after destruction
+        Object.freeze(this);
+
+        // After this, the object is eligible for garbage collection when no external references are holding it.
     }
+
 
 //    /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\
 //    |                                                  PRIVATE METHODS                                                  |
@@ -203,7 +229,7 @@ class ContextMenu {
             if (!e.target.closest('.' + ContextMenu.CLASSNAMES.MENU)) {
                 const contextMenu = document.getElementById(this.id);
                 if (contextMenu) {
-                    contextMenu.remove();
+                    this.destroy();
                 }
             }
         }
@@ -218,7 +244,10 @@ class ContextMenu {
 
                     const htmlElement = submenu.submenu._render();
                     submenu.submenu._setupEventHandlers(htmlElement);
-                    submenu.submenu._positionMenu(htmlElement, { x: e.target.getBoundingClientRect().right, y: e.target.getBoundingClientRect().top });
+                    submenu.submenu._positionMenu(htmlElement, {
+                        x: e.target.getBoundingClientRect().right,
+                        y: e.target.getBoundingClientRect().top
+                    });
 
                     htmlElement.style.position = 'absolute';
                     htmlElement.style.left = this.options.width + 'px';
@@ -249,132 +278,64 @@ class ContextMenu {
             if (!isMouseOverButton && !isMouseOverSubmenu) {
                 submenu?.remove();
             }
+
+            event.target.removeEventListener('mouseleave', handleMouseLeave);
         };
 
-        // Handles keyboard events
-        const handleKeyPress = (e) => {
-            // //first check if the active element is a button or a submenu
-            // if (!document.activeElement) return;
-            // if (!document.activeElement.classList.contains(ContextMenu.CLASSNAMES.BUTTON) &&
-            //     !document.activeElement.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)) return;
-            //
-            //
-            // if (this.isKeyDown == e.type) return;
-            // this.isKeyDown = e.type;
-            // if (e.type === 'keyup') return;
-            //
-            // if (e.key === 'Escape') {
-            //     const contextMenu = document.getElementById(this.id);
-            //     if (contextMenu) {
-            //         contextMenu.remove();
-            //     }
-            // }
-            //
-            // if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
-            //     const focused = document.activeElement;
-            //     if (focused.classList.contains(ContextMenu.CLASSNAMES.SUBMENU)
-            //         && focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON)) {
-            //         this._eventHandlers.handleMouseOver({target: focused, troughTab: true});
-            //         e.preventDefault();
-            //         return;
-            //     }
-            // }
-            //
-            // //or if the current focused element is the top-most child and shift-tab is pressed
-            // if (e.key === 'ArrowLeft') {
-            //     if (document.activeElement.parentElement.id !== this.id) return;
-            //     const id = document.activeElement.parentElement.id;
-            //     const submenu = document.querySelector(`[data-submenu="${id}"]`);
-            //     if (submenu) {
-            //         submenu.focus();
-            //     }
-            // }
-            //
-            // //with arrow up and down, get the previous or next CLASSES.BUTTON element
-            // if (e.key === 'ArrowDown') {
-            //     let focused = document.activeElement;
-            //     if (!focused) return;
-            //
-            //     focused = focused.nextElementSibling;
-            //     while (!focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON) && focused.nextElementSibling) {
-            //         focused = focused.nextElementSibling;
-            //     }
-            //
-            //     if (focused) {
-            //         focused.focus();
-            //     }
-            //
-            //     //any child of the parent of this element that is a submenu, remove it
-            //     const parent = focused.parentElement;
-            //     const submenus = parent.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
-            //     submenus.forEach(menu => menu.remove());
-            // }
-            //
-            // if (e.key === 'ArrowUp') {
-            //     let focused = document.activeElement;
-            //     if (!focused) return;
-            //
-            //     focused = focused.previousElementSibling;
-            //     while (!focused.classList.contains(ContextMenu.CLASSNAMES.BUTTON) && focused.previousElementSibling) {
-            //         focused = focused.previousElementSibling;
-            //     }
-            //
-            //     if (focused) {
-            //         focused.focus();
-            //     }
-            //
-            //     //any child of the parent of this element that is a submenu, remove it
-            //     const parent = focused.parentElement;
-            //     const submenus = parent.querySelectorAll('.' + ContextMenu.CLASSNAMES.MENU);
-            //     submenus.forEach(menu => menu.remove());
-            // }
+        const handleClickDocument = (e) => {
+            e.preventDefault();
+            //if the target doesn't have the class of the context menu, remove the context menu
+            if (!e.target.classList.contains(ContextMenu.CLASSNAMES.MENU)) {
+                const contextMenu = document.getElementById(this.id);
+                if (contextMenu) {
+                    this.destroy();
+                }
+            }
         }
 
         // Adds event listeners
         menu.addEventListener('click', handleClick);
         menu.addEventListener('mouseover', handleMouseOver);
-        menu.addEventListener('keydown', handleKeyPress);
-        menu.addEventListener('keyup', handleKeyPress);
         //menu.addEventListener('mouseleave', handleMouseLeave);
+        document.addEventListener('click', handleClickDocument);
 
         // Clean up references on destroy
-        this._eventHandlers = {click: handleClick, handleMouseOver, handleKeyPress, handleMouseLeave};
+        this._eventHandlers = {handleClick, handleMouseOver, handleMouseLeave, handleClickDocument};
     }
 
     //sorry for the bad looking code :(
     _validateItem(item) {
         const validTypes = Object.values(ContextMenu.ITEM_TYPES);
 
-        if (!item.type || !validTypes.includes(item.type))                      throw new Error(`Invalid item type: ${item.type}. Allowed types are: ${validTypes.join(', ')}`);
+        if (!item.type || !validTypes.includes(item.type)) throw new Error(`Invalid item type: ${item.type}. Allowed types are: ${validTypes.join(', ')}`);
 
         switch (item.type) {
             case ContextMenu.ITEM_TYPES.BUTTON:
-                if (!item.text || typeof item.text !== 'string')                throw new Error('Button item must have a "text" property of type string.');
-                if (item.action && typeof item.action !== 'function')           throw new Error('Button item action must be a function.');
+                if (!item.text || typeof item.text !== 'string') throw new Error('Button item must have a "text" property of type string.');
+                if (item.action && typeof item.action !== 'function') throw new Error('Button item action must be a function.');
                 break;
             case ContextMenu.ITEM_TYPES.SEPARATOR:
                 break;
             case ContextMenu.ITEM_TYPES.SUBMENU:
-                if (!item.submenu || !(item.submenu instanceof ContextMenu))    throw new Error('Submenu item must have a "submenu" property that is an instance of ContextMenu.');
+                if (!item.submenu || !(item.submenu instanceof ContextMenu)) throw new Error('Submenu item must have a "submenu" property that is an instance of ContextMenu.');
                 break;
             case ContextMenu.ITEM_TYPES.INPUT:
-                if (!item.label || typeof item.label !== 'string')              throw new Error('Input item must have a "label" property of type string.');
-                if (item.validator && typeof item.validator !== 'function')     throw new Error('Input item validator must be a function.');
+                if (!item.label || typeof item.label !== 'string') throw new Error('Input item must have a "label" property of type string.');
                 break;
             case ContextMenu.ITEM_TYPES.DROPDOWN:
-                if (!item.label || typeof item.label !== 'string')              throw new Error('Dropdown item must have a "label" property of type string.');
-                if (!Array.isArray(item.options) || item.options.length === 0)  throw new Error('Dropdown item must have a non-empty "options" array.');
+                if (!item.label || typeof item.label !== 'string') throw new Error('Dropdown item must have a "label" property of type string.');
+                if (!Array.isArray(item.options) || item.options.length === 0) throw new Error('Dropdown item must have a non-empty "options" array.');
                 break;
             case ContextMenu.ITEM_TYPES.CHECKBOX:
-                if (!item.text || typeof item.text !== 'string')                throw new Error('Checkbox item must have a "text" property of type string.');
-                if (typeof item.checked !== 'boolean')                          throw new Error('Checkbox item must have a "checked" property of type boolean.');
+                if (!item.text || typeof item.text !== 'string') throw new Error('Checkbox item must have a "text" property of type string.');
+                if (typeof item.checked !== 'boolean') throw new Error('Checkbox item must have a "checked" property of type boolean.');
                 break;
             case ContextMenu.ITEM_TYPES.RADIO:
-                if (!item.text || typeof item.text !== 'string')                throw new Error('Radio item must have a "text" property of type string.');
-                if (!item.name || typeof item.name !== 'string')                throw new Error('Radio item must have a "name" property of type string.');
+                if (!item.text || typeof item.text !== 'string') throw new Error('Radio item must have a "text" property of type string.');
+                if (!item.name || typeof item.name !== 'string') throw new Error('Radio item must have a "name" property of type string.');
                 break;
             default:
-                                                                                throw new Error(`Unhandled item type: ${item.type}`);
+                throw new Error(`Unhandled item type: ${item.type}`);
         }
     }
 
@@ -436,6 +397,7 @@ class ContextMenu {
         button.id = item.id;
         button.innerText = item.text;
         button.disabled = item.disabled || false;
+        button.dataset.marked = item.marked || false;
         //button.onclick = item.action;
 
         if (item.icon) {
@@ -581,19 +543,32 @@ class ContextMenu {
         });
     }
 
-    installStyles()
-    {
+    installStyles() {
         if (document.getElementById('context-menu-styles')) return;
 
-        const styles = `
+        const styleElement = document.createElement('style');
+        styleElement.id = 'context-menu-styles';
+        styleElement.textContent = `
+:root {
+  --context-menu-bg: ` + (this.options.style.backgroundColor || '#ffffff') + `;
+  --context-menu-text: ` + (this.options.style.textColor || '#333333') + `;
+  --context-menu-hover-bg: ` + (this.options.style.backgroundHoverColor || '#f0f0f0') + `;
+  --context-menu-border: ` + (this.options.style.border || 'rgba(0, 0, 0, 0.08)') + `;
+  --context-menu-shadow: ` + (this.options.style.shadow || '0 10px 25px rgba(0, 0, 0, 0.1)') + `;
+  --context-menu-accent: ` + (this.options.style.accent || '#3b82f6') + `;
+  --context-menu-separator: ` + (this.options.style.separator || 'rgba(0, 0, 0, 0.08)') + `;
+}
+
 .context-menu {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 6px 0;
-  min-width: 200px;
+  background: var(--context-menu-bg);
+  border: 1px solid var(--context-menu-border);
+  border-radius: 8px;
+  box-shadow: var(--context-menu-shadow);
+  padding: 8px 0;
+  min-width: 220px;
   z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: var(--context-menu-text);
 }
 
 .context-menu-button,
@@ -601,126 +576,150 @@ class ContextMenu {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border: none;
   background: none;
   font-size: 14px;
   text-align: left;
   cursor: pointer;
-  color: #333;
+  color: var(--context-menu-text);
+  transition: 
+    background-color 0.15s ease,
+    color 0.15s ease;
+  position: relative;
+  gap: 10px;
+}
+
+.context-menu-button:disabled {
+  color: rgba(26, 26, 26, 0.4);
+  cursor: not-allowed;
+}
+
+.context-menu-button[data-marked="true"] {
+    font-weight: bold;
+    background-color: var(--context-menu-accent);
+    color: white;
+    border-radius: 4px;
+    border: 1px solid var(--context-menu-accent);
+}
+
+.context-menu-button[data-marked="true"]:hover {
+    background-color: var(--context-menu-accent);
+    color: white;
 }
 
 .context-menu-button span,
 .context-menu-submenu span {
-  margin-right: 8px;
+  display: flex;
+  align-items: center;
   pointer-events: none;
 }
 
 .context-menu-button:hover,
 .context-menu-submenu:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--context-menu-hover-bg);
+}
+
+.context-menu-button:focus,
+.context-menu-submenu:focus {
+  outline: none;
+  background-color: var(--context-menu-hover-bg);
 }
 
 .context-menu-separator {
   height: 1px;
-  background-color: rgba(0, 0, 0, 0.1);
-  margin: 6px 0;
+  background-color: var(--context-menu-separator);
+  margin: 8px 0;
 }
 
 .context-menu-input {
-  padding: 6px 12px;
+  padding: 8px 16px;
 }
 
 .context-menu-input input {
-  width: calc(100% - 18px);
-  padding: 6px 8px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-  font-size: 13px;
+  width: calc(100% - 16px);
+  padding: 8px;
+  border: 1px solid var(--context-menu-border);
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #f9fafb;
+  transition: 
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .context-menu-input input:focus {
   outline: none;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+  border-color: var(--context-menu-accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .context-menu-dropdown {
-  width: calc(100% - 24px);
-  margin: 6px 12px;
-  padding: 6px 8px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-  font-size: 13px;
-  background-color: white;
+  width: calc(100% - 32px);
+  margin: 8px 16px;
+  padding: 8px;
+  border: 1px solid var(--context-menu-border);
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #f9fafb;
+  transition: 
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .context-menu-checkbox,
 .context-menu-radio {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 10px 16px;
   font-size: 14px;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .context-menu-checkbox:hover,
 .context-menu-radio:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--context-menu-hover-bg);
 }
 
 .context-menu-checkbox input,
 .context-menu-radio input {
-  margin-right: 8px;
+  margin-right: 10px;
+  accent-color: var(--context-menu-accent);
 }
 
-/* Focus styles for accessibility */
+.context-menu-submenu {
+  position: relative;
+}
+
+/* Animation */
+@keyframes contextMenuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.context-menu {
+  animation: contextMenuSlideIn 0.2s ease-out;
+  transform-origin: top center;
+}
+
+/* Focus and Accessibility */
 .context-menu:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #0066cc;
 }
 
-.context-menu-button:focus,
-.context-menu-submenu:focus {
-  outline: none;
-  background-color: rgba(0, 0, 0, 0.05);
+.context-menu-button:focus-visible,
+.context-menu-submenu:focus-visible {
+  outline: 2px solid var(--context-menu-accent);
+  outline-offset: -2px;
 }
-
-/* Animation classes */
-.context-menu[data-show="true"] {
-  animation: scaleIn 0.15s ease-out;
-}
-
-.context-menu[data-show="false"] {
-  animation: scaleOut 0.15s ease-out;
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes scaleOut {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-}
-    `;
-
-        const styleElement = document.createElement('style');
-        styleElement.textContent = styles;
-        styleElement.id = 'context-menu-styles';
+`;
         document.head.appendChild(styleElement);
     }
 }

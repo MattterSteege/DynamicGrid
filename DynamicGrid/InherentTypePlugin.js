@@ -94,6 +94,41 @@ class stringTypePlugin extends TypePlugin {
             }
         });
     }
+
+    showMore(key, dynamicGrid) {
+        // Example usage:
+        const menu = new ContextMenu({
+            theme: 'dark',
+            width: 250,
+            animation: { duration: 150 },
+        });
+
+        menu
+            .button('Sort asc', () => {dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'asc'))})
+            .button('Sort desc', () => {dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc'))})
+            .separator()
+            .dropdown('Filter', [
+                    { value: "==", label: "equals" },
+                    { value: "!=", label: "not equals" },
+                    { value: "%=", label: "starts with" },
+                    { value: "=%", label: "ends with" },
+                    { value: "*=", label: "contains" },
+                    { value: "!*=", label: "does not contain" },
+                    { value: "in", label: "in" }
+                ],
+                {
+                    onChange: (value) => {
+                        console.log(value);
+                    }
+            })
+            .input('Name', { placeholder: 'filter query', onChange: (value) => console.log(value) })
+            .separator()
+            .button('Search', () => console.log('searching...'), { icon: '🔍', marked: true });
+
+        const elem = menu.showAt(100, 100);
+
+        console.log(elem);
+    }
 }
 
 class numberTypePlugin extends TypePlugin {

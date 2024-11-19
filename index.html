@@ -80,53 +80,6 @@
         performance.clearMeasures();
     }
 
-    // Example usage:
-    const menu = new ContextMenu({
-        theme: 'dark',
-        width: 250,
-        animation: { duration: 150 },
-    });
-
-    menu.button('New File', () => console.log('New File'), { icon: '📄' })
-        .button('Open...', () => console.log('Open'), { icon: '📂' })
-        .separator()
-        .submenu('Recent Files', submenu => {
-            submenu.button('doc1.txt', () => console.log('doc1.txt'))
-                    .button('doc2.txt', () => console.log('doc2.txt'))
-                    .submenu('Recent Files', submenu => {
-                            submenu.button('doc1.txt', () => console.log('doc1.txt'))
-                                    .button('doc2.txt', () => console.log('doc2.txt'))
-                                .submenu('Recent Files', submenu => {
-                                    submenu.button('doc1.txt', () => console.log('doc1.txt'))
-                                        .button('doc2.txt', () => console.log('doc2.txt'));
-                                },{icon: '🕒'});
-                    },{icon: '🕒'});
-        },{icon: '🕒'})
-        .separator()
-        .input('Search', {
-            placeholder: 'Type to search...',
-            onChange: value => console.log(value)
-        })
-        .dropdown('Sort by', [
-            { value: 'name', label: 'Name' },
-            { value: 'date', label: 'Date' }
-        ],
-        {
-            onChange: value => console.log(value)
-        })
-        .checkbox('Show Hidden Files', {
-            checked: true,
-            onChange: checked => console.log(checked)
-        })
-        .radioGroup('View', [
-            { text: 'List', value: 'list' },
-            { text: 'Grid', value: 'grid' }
-        ],{
-            onChange: value => console.log(value)
-        })
-    ;
-
-    menu.showAt(500, 100)
 </script>
 
 </body>
