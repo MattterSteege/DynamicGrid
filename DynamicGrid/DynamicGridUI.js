@@ -78,7 +78,7 @@ class DynamicGridUI {
                 this.sortedState = {key, state: this.sortedState?.key === key ? (this.sortedState.state === 'asc' ? 'desc' : 'asc') : 'asc'};
                 this.render(this.dynamicGrid.engine.sort(this.sortedState.key, this.sortedState.state));
             } else if (clickable === 'more') {
-                this.dynamicGrid.engine.plugins[type].showMore(key, this.dynamicGrid);
+                this.dynamicGrid.engine.plugins[type].showMore(thead, this);
             }
         });
 
