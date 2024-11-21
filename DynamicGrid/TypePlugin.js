@@ -129,10 +129,11 @@ class TypePlugin {
     /**
      * Handle additional data loading
      * @param {string} key Data key
+     * @param {HTMLElement} element Clicked element
      * @param {Object} dynamicGrid Grid instance
      * @abstract
      */
-    showMore(key, dynamicGrid) {
+    showMore(key, element, dynamicGrid) {
         throw new GridError('showMore must be implemented by subclass');
         return;
     }

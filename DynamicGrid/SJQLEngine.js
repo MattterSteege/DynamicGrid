@@ -1,11 +1,11 @@
 class SJQLEngine {
-    constructor(engine_config, parser_config) {
+    constructor(engine_config) {
         this.data = [];
         this.headers = [];
         this.plugins = [];
         this.currentQuery = {};
         this.currentQueryStr = '';
-        this.QueryParser = new QueryParser(parser_config);
+        this.QueryParser = new QueryParser(engine_config);
 
         this.config = {
             UseDataEnumeration: engine_config.UseDataEnumeration || false,
@@ -166,13 +166,14 @@ class SJQLEngine {
     }
 
     sort(key, direction) {
-        console.log('sort:', key, direction);
-        let query;
-        //if query is only a sort query, then prepend it with the this.currentQueryStr
-        if (this.currentQuery.length === 0)
+        let query = '';
+
+        if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
             query = 'sort ' + key + ' ' + direction;
-        else
+        else if (direction === 'asc' || direction === 'desc') //if query is present, add sort to the query
             query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
+        else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
+            query = this.currentQueryStr;
 
         return this.query(query);
     }

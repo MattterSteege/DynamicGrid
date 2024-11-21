@@ -42,8 +42,36 @@ function MeantIndexKey(dataIndexesKeys, field, config) {
         if (!config.useStrictCase)
             normalizedField = normalizedField.toLowerCase();
 
-        console.log(normalizedKey, normalizedField);
-
         return normalizedKey === normalizedField
     });
+}
+
+/**
+ * Pins the location of an element to another element so that it moves with it
+ * when the other element is moved, while also responding to scrolling and resizing.
+ * @param baseElem
+ * @param ElemToPin
+ * @returns {boolean}
+ */
+function pinElement(baseElem, ElemToPin) {
+    if (!baseElem || !ElemToPin) return false;
+
+    // Update the position of ElemToPin relative to baseElem
+    function updatePosition() {
+        const baseRect = baseElem.getBoundingClientRect();
+        const top = baseRect.top + window.scrollY;
+        const left = baseRect.left + window.scrollX;
+        ElemToPin.style.position = 'absolute';
+        ElemToPin.style.top = `${top + baseRect.height}px`;
+        ElemToPin.style.left = `${left}px`;
+    }
+
+    // Initial positioning
+    updatePosition();
+
+    // Attach event listeners for scroll and resize
+    window.addEventListener('scroll', updatePosition);
+    window.addEventListener('resize', updatePosition);
+
+    return true;
 }

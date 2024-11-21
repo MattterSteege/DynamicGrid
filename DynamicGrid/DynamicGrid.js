@@ -2,7 +2,7 @@ class DynamicGrid {
     constructor(config) {
 
         // Initialize the query engine
-        this.engine = new SJQLEngine(config.engine || {}, config.parser || {});
+        this.engine = new SJQLEngine(config.engine || {});
         // Initialize plugins
         this.engine.plugins = config.plugins ?? [];
         this.engine.addPlugin(new stringTypePlugin, true);

@@ -10,7 +10,7 @@ class QueryParser {
     static QUERIES = {
         RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
-        SELECT: /([A-Za-z]+)\s+(\S+)\s+(.+)/i    //'[key] [operator] [value]', select items where key is value
+        SELECT: /(.+)\s+(\S+)\s+(.+)/i    //'[key] [operator] [value]', select items where key is value
     };
 
     //MAIN PARSING FUNCTION
