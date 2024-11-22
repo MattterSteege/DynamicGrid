@@ -8,7 +8,6 @@ class SJQLEngine {
         this.QueryParser = new QueryParser(engine_config);
 
         this.config = {
-            UseDataEnumeration: engine_config.UseDataEnumeration || false,
             UseDataIndexing: engine_config.UseDataIndexing || true,
             useStrictCase: engine_config.useStrictCase || false,
             SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
@@ -64,8 +63,6 @@ class SJQLEngine {
     }
 
     _query(query) {
-        //console.log('query:', query);
-
         // Early exit if no queries
         if (!query || query.length === 0) return this.data;
 
@@ -73,9 +70,11 @@ class SJQLEngine {
         const selectQueries = [];
         let sortQuery = null;
         let rangeQuery = null;
+        let groupQuery = null;
 
         // Create a Set to track valid row indices
         let validIndices = new Set();
+        let groupedData = null;
 
         // Pre-process queries for optimal execution order
         for (const q of query) {
@@ -89,77 +88,72 @@ class SJQLEngine {
                 case 'RANGE':
                     rangeQuery = q;
                     break;
+                case 'GROUP':
+                    groupQuery = q;
+                    break;
             }
         }
 
         this.currentQuery = selectQueries;
         this.currentQueryStr = selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(' and ');
 
-        performance.mark('startQuery');
         validIndices = new Set(this.data.map((_, i) => i));
-        if (this.config.UseDataEnumeration) {
-            // for (let i = 0; i < this.data.length; i++) {
-            //     const row = this.data[i];
-            //     let valid = true;
-            //
-            //     // Evaluate SELECT queries
-            //     for (const q of selectQueries) {
-            //         const plugin = this.getPlugin(q.type);
-            //         if (!plugin) {
-            //             throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
-            //         }
-            //         if (!plugin.evaluateCondition(row[q.field], q.operator, q.value)) {
-            //             valid = false;
-            //             //console.log('early break (select), query: ' + q.field + ' ' + q.operator + ' ' + q.value);
-            //         }
-            //     }
-            //
-            //     // Evaluate RANGE query
-            //     if (rangeQuery && valid) {
-            //         if (rangeQuery.lower > i) {
-            //             continue;
-            //         }
-            //     }
-            //
-            //     if (!valid) {
-            //         validIndices.delete(i);
-            //     }
-            // }
-            console.warn('Data enumeration is not implemented yet');
-        }
-        else {
-            for (const q of selectQueries) {
-                q.field = MeantIndexKey(Object.keys(this.data[0]), q.field, this.config);
-                const plugin = this.getPlugin(q.type);
-                if (!plugin) {
-                    throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
-                }
-                validIndices = plugin.evaluate(q,  this.dataIndexes[q.field], this.data, validIndices);
+
+        // Process SELECT queries
+        for (const q of selectQueries) {
+            q.field = MeantIndexKey(Object.keys(this.data[0]), q.field, this.config);
+            const plugin = this.getPlugin(q.type);
+            if (!plugin) {
+                throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
             }
-
-            // Evaluate RANGE query
-            if (rangeQuery) {
-                const first = validIndices.values().next().value;
-                const lower = Math.max(0, first + rangeQuery.lower);
-                const upper = Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
-
-                // Pre-allocate approximate size
-                const result = new Set();
-
-                // Start from lower bound directly
-                for (let i = lower; i <= upper; i++) {
-                    result.add(i);
-                }
-
-                validIndices = result;
-            }
+            validIndices = plugin.evaluate(q, this.dataIndexes[q.field], this.data, validIndices);
         }
 
-        // Filter data based on valid row indices
+        // Evaluate RANGE query
+        if (rangeQuery) {
+            const first = validIndices.values().next().value;
+            const lower = Math.max(0, first + rangeQuery.lower);
+            const upper = Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
+
+            const result = new Set();
+            for (let i = lower; i <= upper; i++) {
+                result.add(i);
+            }
+
+            validIndices = result;
+        }
+
+        // Perform GROUPING within the same loop
+        if (groupQuery) {
+            const groupField = MeantIndexKey(Object.keys(this.data[0]), groupQuery.field, this.config);
+            groupedData = new Map();
+
+            for (const index of validIndices) {
+                const rowValue = this.data[index][groupField];
+                if (!groupedData[rowValue]) {
+                    groupedData[rowValue] = [];
+                }
+
+                groupedData[rowValue].push(this.data[index]);
+            }
+
+            // If sorting is required, sort the groups, not the individual rows
+            if (sortQuery) {
+                for (const group of Object.keys(groupedData)) {
+                    groupedData[group] = this.getPlugin(sortQuery.type)
+                        .sort(sortQuery, groupedData[group]);
+                }
+            }
+
+            console.log(groupedData);
+
+            return groupedData;
+        }
+
+        // Regular sorting if no grouping
         if (sortQuery) {
             return this.getPlugin(sortQuery.type)
-                .sort(sortQuery,
-                    this.data.filter((_, i) => validIndices.has(i)));
+                .sort(sortQuery, this.data.filter((_, i) => validIndices.has(i)));
         }
 
         return this.data.filter((_, i) => validIndices.has(i));

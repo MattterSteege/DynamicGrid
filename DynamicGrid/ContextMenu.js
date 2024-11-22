@@ -18,6 +18,75 @@ class ContextMenu {
         // Bind event handlers to preserve context
         this.handleOutsideClick = this.handleOutsideClick.bind(this);
         document.addEventListener('click', this.handleOutsideClick);
+
+        this.#installContextMenuStyles();
+    }
+
+    #installContextMenuStyles() {
+        if (document.getElementById('context-menu-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'context-menu-styles';
+        style.textContent = `
+.context-menu {
+    display: inline-block;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    min-width: 270px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #000;
+    background: #f5f5f5;
+    font-size: 9pt;
+    border: 1px solid #333333;
+    box-shadow: 4px 4px 3px -1px rgba(0, 0, 0, 0.5);
+    padding: 3px 0px;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.context-menu .menu-item {
+    padding: 4px 19px;
+    cursor: default;
+    color: inherit;
+}
+
+.context-menu .menu-item:hover {
+    background: #e3e3e3 !important;
+}
+
+.context-menu .item:hover .menu-hotkey {
+    color: #000 !important;
+}
+
+.context-menu .menu-item-disabled {
+    color: #878B90 !important;
+}
+
+.context-menu .menu-item-disabled:hover {
+    background: inherit !important;
+}
+
+.context-menu .disabled:hover .menu-hotkey {
+    color: #878B90 !important;
+}
+
+.context-menu .menu-separator {
+    margin: 4px 0px;
+    height: 0;
+    padding: 0;
+    border-top: 1px solid #b3b3b3;
+}
+
+.context-menu .menu-hotkey {
+    color: #878B90;
+    float: right;
+}`;
+
+            document.head.appendChild(style);
     }
 
     handleOutsideClick(event) {

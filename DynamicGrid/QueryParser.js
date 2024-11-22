@@ -8,6 +8,7 @@ class QueryParser {
 
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
+        GROUP: /group\s+(.+)/i,      //'group [key]', group by key
         RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
         SELECT: /(.+)\s+(\S+)\s+(.+)/i    //'[key] [operator] [value]', select items where key is value
@@ -74,6 +75,10 @@ class QueryParser {
             lower = parseInt(lower);
             upper = parseInt(upper);
             return {type: 'range', lower, upper, queryType: 'RANGE'};
+        }
+        else if (type === 'GROUP') {
+            let [_, key] = match;
+            return {type: 'group', field: key, queryType: 'GROUP'};
         }
         else {
             console.warn('Invalid query: ' + match + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());

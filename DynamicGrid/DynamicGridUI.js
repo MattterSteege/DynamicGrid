@@ -26,6 +26,17 @@ class DynamicGridUI {
 
     // Main render method
     render(data) {
+        //check if the data is of type array
+        if (!Array.isArray(data)) {
+            //check if it is of type map
+            if (data instanceof Map) {
+                throw new GridError('Grouped data not supported yet');
+            }
+            else {
+                throw new GridError('Data must be an array (not grouped) or a map (grouped)');
+            }
+        }
+
         const headerNames = Object.keys(this.dynamicGrid.engine.headers).join(',');
 
         this.container.className = 'dynamic-grid-container';
