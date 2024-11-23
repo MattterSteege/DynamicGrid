@@ -23,22 +23,41 @@ to make sure that the query engine is perfoomrant, i made sure that only one sor
 
 ### notes
 * the query parser system removes (for the parsing part, so values can still contain them) all double spaces from the query string, so make sure that the query is formatted correctly.
-* sorting and limiting are not executed _during_ the query parsing. So this is the ooo: 
+* The processing of the data in respect to the query is done using this flowchart:
 <br>
 <br>
 
 ```mermaid
 flowchart TD
-A[data input]
-B["check if query matches the (next) row"]
-C[check if limit is reached]
-D["sort data (if applicable)"]
-E[add item to list of returning data]
-A --> B
-B --> E
-E --> C
-C -- limit reached --> B
-C -- limit not reached --> D
+    A[Start query method] --> B{Is data empty?}
+    B -->|Yes| D[Warn: No data provided\nand Return empty array]
+
+    B -->|No| E{Is query empty?}
+    E -->|Yes| G[Warn: No query provided\nand Return all data]
+
+    E -->|No| H[Parse query]
+    H --> I[Separate queries by type]
+
+    I --> J{Are there SELECT queries?}
+    J -->|Yes| L[Process SELECT queries\nand Filter valid indices]
+
+    J -->|No| M{Is RANGE query present?}
+    M -->|Yes| O[Apply RANGE query\nand Adjust valid indices]
+
+    M -->|No| P{Is GROUP query present?}
+    P -->|Yes| Q[Group data]
+    Q --> R{Is SORT query present?}
+    R -->|Yes| S[Sort grouped data]
+    R -->|No| T[Return grouped data]
+
+    P -->|No| U{Is SORT query present?}
+    U -->|Yes| V[Sort filtered data]
+    U -->|No| W[Return filtered data]
+
+    O --> P
+    L --> M
+    S --> T
+    V --> W
 ```
 
 * the query parser is partially case insensitive, so `name == 'John'` is the same as `Name == 'John'`

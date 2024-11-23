@@ -15,6 +15,13 @@ class QueryParser {
     };
 
     //MAIN PARSING FUNCTION
+    /**
+     * Parses the query string into a query plan
+     * @param query
+     * @param plugins
+     * @param headers
+     * @returns {Map<any, any>} A map of query types to query objects
+     */
     parseQuery = (query, plugins, headers) => query.split(/\s+and\s+|\s+&&\s+/i)
                             .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
                             .filter(query => query.queryType);

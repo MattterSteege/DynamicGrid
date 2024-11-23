@@ -107,8 +107,8 @@ class stringTypePlugin extends TypePlugin {
             { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc')) },
             { text: 'Unsort ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'original')) },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.groupBy(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.ungroup()) }
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group()) }
         ];
 
         // Initialize the context menu

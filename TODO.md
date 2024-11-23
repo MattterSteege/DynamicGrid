@@ -1,6 +1,6 @@
 - [ ] **Sorting and Filtering**: The current implementation supports basic sorting by clicking on the column headers. You could expand on this by:
   - [ ]  Adding multi-column sorting, allowing the user to sort by multiple columns in sequence.
-  - [ ]  Implementing advanced filtering, with the ability to create complex filter conditions using the various operators supported by the type plugins.
+  - [x]  Implementing advanced filtering, with the ability to create complex filter conditions using the various operators supported by the type plugins.
   - [ ]  Providing a UI for the user to easily configure sorting and filtering, such as dropdown menus, input fields, and buttons.
   - [ ]  Add grouping, so that the user can group data by one or more columns, and expand/collapse groups to view the underlying data.
 - [ ] **Column Resizing and Reordering**: Allow the user to resize columns by dragging the column borders. You could also implement the ability to reorder columns by dragging and dropping them.

@@ -26,15 +26,11 @@ class DynamicGridUI {
 
     // Main render method
     render(data) {
+        const firstRow = firstItem(data);
+
         //check if the data is of type array
-        if (!Array.isArray(data)) {
-            //check if it is of type map
-            if (data instanceof Map) {
-                throw new GridError('Grouped data not supported yet');
-            }
-            else {
-                throw new GridError('Data must be an array (not grouped) or a map (grouped)');
-            }
+        if (!Array.isArray(data) && !Array.isArray(firstRow)) {
+            throw new GridError('Data must be an array (not grouped) or a map (grouped)');
         }
 
         const headerNames = Object.keys(this.dynamicGrid.engine.headers).join(',');
@@ -64,7 +60,8 @@ class DynamicGridUI {
 
 
         table.appendChild(this.cachedHeader);
-        table.appendChild(this.renderBody(data));
+        const tbody = Array.isArray(data) ? this.renderBody(data) : this.renderGroupedBody(data);
+        table.appendChild(tbody);
 
         this.container.appendChild(table);
 
@@ -163,6 +160,49 @@ class DynamicGridUI {
 
         return tbody;
     }
+
+// Render grouped table body
+    renderGroupedBody(data) {
+        const tbody = document.createElement('tbody');
+
+        // Loop through the grouped data
+        for (const group in data) {
+            const groupRows = data[group];
+
+            // Create a group header row
+            const groupHeader = document.createElement('tr');
+            groupHeader.className = 'group-header';
+            groupHeader.innerHTML = `<td colspan="${Object.keys(this.dynamicGrid.engine.headers).length}">${group}</td>`;
+            tbody.appendChild(groupHeader);
+
+            // Loop through the group rows
+            for (let index = 0; index < groupRows.length; index++) {
+                if (this.config.usePagination && index >= this.config.paginationPage * this.config.paginationPageSize) break;
+                if (this.config.usePagination && index < (this.config.paginationPage - 1) * this.config.paginationPageSize) continue;
+
+                const row = groupRows[index];
+                const tr = document.createElement('tr');
+                tr.className = index % 2 === 0 ? 'row-even' : 'row-odd';
+
+                Object.keys(this.dynamicGrid.engine.headers).forEach(key => {
+                    if (key === 'internal_id') return;
+                    tr.append(this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[key]).renderCell(row[key]));
+                });
+
+                tbody.appendChild(tr);
+            }
+
+            // Create a group footer row
+            const groupFooter = document.createElement('tr');
+            groupFooter.className = 'group-footer';
+            groupFooter.innerHTML = `<td colspan="${Object.keys(this.dynamicGrid.engine.headers).length}">Total: ${groupRows.length}</td>`;
+            tbody.appendChild(groupFooter);
+
+        }
+
+        return tbody;
+    }
+
 
     //render the bottom pagination (if enabled)
     renderPagination(data) {

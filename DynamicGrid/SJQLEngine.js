@@ -66,82 +66,57 @@ class SJQLEngine {
         // Early exit if no queries
         if (!query || query.length === 0) return this.data;
 
-        // Separate queries by type for optimal processing order
+        // Separate queries by type
         const selectQueries = [];
-        let sortQuery = null;
-        let rangeQuery = null;
-        let groupQuery = null;
+        let sortQuery = null, rangeQuery = null, groupQuery = null;
 
-        // Create a Set to track valid row indices
-        let validIndices = new Set();
-        let groupedData = null;
-
-        // Pre-process queries for optimal execution order
+        // Pre-process queries
         for (const q of query) {
             switch (q.queryType) {
-                case 'SELECT':
-                    selectQueries.push(q);
-                    break;
-                case 'SORT':
-                    sortQuery = q;
-                    break;
-                case 'RANGE':
-                    rangeQuery = q;
-                    break;
-                case 'GROUP':
-                    groupQuery = q;
-                    break;
+                case 'SELECT': selectQueries.push(q); break;
+                case 'SORT': sortQuery = q; break;
+                case 'RANGE': rangeQuery = q; break;
+                case 'GROUP': groupQuery = q; break;
             }
         }
 
-        this.currentQuery = selectQueries;
-        this.currentQueryStr = selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(' and ');
-
-        validIndices = new Set(this.data.map((_, i) => i));
+        // Initialize valid indices as all data indices
+        let validIndices = new Set(this.data.keys());
+        let groupedData = null;
 
         // Process SELECT queries
         for (const q of selectQueries) {
             q.field = MeantIndexKey(Object.keys(this.data[0]), q.field, this.config);
             const plugin = this.getPlugin(q.type);
-            if (!plugin) {
-                throw new GridError('No plugin found for header (' + q.type + ') for key (' + q.field + ')');
-            }
+            if (!plugin) throw new GridError(`No plugin found for header (${q.type}) for key (${q.field})`);
             validIndices = plugin.evaluate(q, this.dataIndexes[q.field], this.data, validIndices);
         }
 
-        // Evaluate RANGE query
+        // Process RANGE query
         if (rangeQuery) {
             const first = validIndices.values().next().value;
             const lower = Math.max(0, first + rangeQuery.lower);
             const upper = Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
-
-            const result = new Set();
-            for (let i = lower; i <= upper; i++) {
-                result.add(i);
-            }
-
-            validIndices = result;
+            validIndices = new Set(Array.from({ length: upper - lower + 1 }, (_, i) => i + lower));
         }
 
-        // Perform GROUPING within the same loop
+        // Process GROUP query
         if (groupQuery) {
             const groupField = MeantIndexKey(Object.keys(this.data[0]), groupQuery.field, this.config);
-            groupedData = new Map();
+            groupedData = {};
 
+            // Group rows by the specified field
             for (const index of validIndices) {
-                const rowValue = this.data[index][groupField];
-                if (!groupedData[rowValue]) {
-                    groupedData[rowValue] = [];
-                }
-
-                groupedData[rowValue].push(this.data[index]);
+                const row = this.data[index];
+                const groupKey = row[groupField];
+                (groupedData[groupKey] ||= []).push(row); // Use nullish coalescing for concise grouping
             }
 
-            // If sorting is required, sort the groups, not the individual rows
+            // Sort groups if required
             if (sortQuery) {
-                for (const group of Object.keys(groupedData)) {
-                    groupedData[group] = this.getPlugin(sortQuery.type)
-                        .sort(sortQuery, groupedData[group]);
+                const sortPlugin = this.getPlugin(sortQuery.type);
+                for (const key in groupedData) {
+                    groupedData[key] = sortPlugin.sort(sortQuery, groupedData[key]);
                 }
             }
 
@@ -150,12 +125,13 @@ class SJQLEngine {
             return groupedData;
         }
 
-        // Regular sorting if no grouping
+        // Sort if no grouping
         if (sortQuery) {
-            return this.getPlugin(sortQuery.type)
-                .sort(sortQuery, this.data.filter((_, i) => validIndices.has(i)));
+            const sortedData = this.data.filter((_, i) => validIndices.has(i));
+            return this.getPlugin(sortQuery.type).sort(sortQuery, sortedData);
         }
 
+        // Return filtered data
         return this.data.filter((_, i) => validIndices.has(i));
     }
 
@@ -167,6 +143,19 @@ class SJQLEngine {
         else if (direction === 'asc' || direction === 'desc') //if query is present, add sort to the query
             query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
         else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
+            query = this.currentQueryStr;
+
+        return this.query(query);
+    }
+
+    group(key) {
+        let query = '';
+
+        if (this.currentQueryStr.length === 0) //if no query is present, just sort
+            query = 'group ' + key;
+        else if (this.currentQueryStr.length > 0) //if query is present, add sort to the query
+            query = this.currentQueryStr + ' and group ' + key;
+        else if (!key || key === '' || key === 'original') //if no direction is provided, just return the unsorted data
             query = this.currentQueryStr;
 
         return this.query(query);

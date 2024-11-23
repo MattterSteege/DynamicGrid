@@ -75,3 +75,22 @@ function pinElement(baseElem, ElemToPin) {
 
     return true;
 }
+
+/**
+ * Gets the first item from a structure that may include numeric or named keys.
+ * @param {Object|Array} data The structure to get the first item from.
+ * @returns {any|boolean} The first item or false if the input is invalid.
+ */
+function firstItem(data) {
+    if (!data || typeof data !== 'object') return false;
+
+    if (Array.isArray(data)) {
+        // Handle standard arrays
+        return data[0];
+    }
+
+    // Handle objects with numeric and named keys
+    const keys = Object.keys(data);
+
+    return data[keys[0]];
+}
