@@ -94,3 +94,14 @@ function firstItem(data) {
 
     return data[keys[0]];
 }
+
+
+/**
+ * Gives the sum of an numbers array in 0(1) time.
+ * @param {Array<number>} numbers The array of numbers to sum.
+ * @returns {number} The sum of the numbers.
+ */
+
+function sum(numbers) {
+    return numbers.reduce((acc, num) => acc + num, 0);
+}

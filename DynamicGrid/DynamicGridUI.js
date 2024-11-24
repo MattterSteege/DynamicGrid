@@ -3,17 +3,15 @@ class DynamicGridUI {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
 
-        this.init(this.containerId);
-
-        this.cachedHeader = null;
-        this.cachedPagination = null;
-        this.cacheCheck = null;
+        this.table = null;
 
         this.config = {
-            usePagination: ui_config.usePagination ?? true,
-            paginationPageSize: ui_config.paginationPageSize ?? 100,
-            paginationPage: ui_config.paginationPage ?? 1,
+            minColumnWidth: ui_config.minColumnWidth ?? 5,
+            rowHeight: ui_config.rowHeight ?? 40,
+            bufferedRows: ui_config.bufferedRows ?? 10,
         }
+
+        this.init(this.containerId);
     }
 
     // Initialize grid with container and data
@@ -24,234 +22,253 @@ class DynamicGridUI {
         }
     }
 
-    // Main render method
     render(data) {
-        const firstRow = firstItem(data);
-
-        //check if the data is of type array
-        if (!Array.isArray(data) && !Array.isArray(firstRow)) {
-            throw new GridError('Data must be an array (not grouped) or a map (grouped)');
-        }
-
-        const headerNames = Object.keys(this.dynamicGrid.engine.headers).join(',');
-
-        this.container.className = 'dynamic-grid-container';
-        this.container.innerHTML = ''; // Clear container
-
-        const table = document.createElement('table');
-        table.className = 'dynamic-grid';
-
-        const hash = FastHash(headerNames);
-        const dataHash = FastHash(headerNames + '-' + data.length);
-        if ((!this.cachedHeader || this.cacheCheck !== hash)) {
-            this.cachedHeader = this.renderHeader();
-            this.cacheCheck = hash;
-        }
-        //else
-            //console.log('using cached header');
-
-        if (this.config.usePagination && (!this.cachedPagination || this.cacheDataCheck !== dataHash)) {
-            this.config.paginationPage = 1;
-            this.cachedPagination = this.renderPagination(data);
-            this.cacheDataCheck = dataHash;
-        }
-        //else
-            //console.log('using cached pagination');
-
-
-        table.appendChild(this.cachedHeader);
-        const tbody = Array.isArray(data) ? this.renderBody(data) : this.renderGroupedBody(data);
-        table.appendChild(tbody);
-
-        this.container.appendChild(table);
-
-        this.config.usePagination && this.container.appendChild(this.cachedPagination);
+        this.table = this.createResizableTable(Object.keys(data[0]).length);
+        this.initResizerDelegation();
+        this.renderTable(data);
     }
 
-    // Render table header with sorting and filtering
-    renderHeader() {
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        headerRow.addEventListener("click", (e) => {
-            e.preventDefault();
+    initResizerDelegation() {
+        this.table.addEventListener('mousedown', (e) => {
+            const resizer = e.target.closest('.resizer');
+            if (!resizer) return;
 
-            const target = e.target;
-            const clickable = target.getAttribute('header-clickable');
-            if (!clickable) return;
+            const index = parseInt(resizer.getAttribute('data-index'), 10);
+            let startX, startWidth, startNextWidth;
 
-            const key = target.getAttribute('data-key');
-            const type = target.getAttribute('data-type');
+            const table = this.table;
+            startX = e.clientX;
+            startWidth = this.columnWidths[index];
+            startNextWidth = this.columnWidths[index + 1];
 
-            if (clickable === 'sort') {
-                this.sortedState = {key, state: this.sortedState?.key === key ? (this.sortedState.state === 'asc' ? 'desc' : 'asc') : 'asc'};
-                this.render(this.dynamicGrid.engine.sort(this.sortedState.key, this.sortedState.state));
-            } else if (clickable === 'more') {
-                this.dynamicGrid.engine.plugins[type].showMore(key, target, this.dynamicGrid);
-            }
+            const onMouseMove = (e) => {
+                const diff = e.clientX - startX;
+                const widthChange = (diff / table.offsetWidth) * 100;
+
+                const newWidth = startWidth + widthChange;
+                const newNextWidth = startNextWidth - widthChange;
+
+                if (newWidth >= this.config.minColumnWidth && newNextWidth >= this.config.minColumnWidth) {
+                    this.columnWidths[index] = Number(newWidth.toFixed(2));
+                    this.columnWidths[index + 1] = Number(newNextWidth.toFixed(2));
+                    this.updateColumnWidths(table);
+                }
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
         });
-
-        Object.entries(this.dynamicGrid.engine.headers).forEach(([key, type]) => {
-            if (key === 'internal_id') return;
-
-            const correspondingPlugin = this.dynamicGrid.engine.getPlugin(type);
-            const th = document.createElement('th');
-
-            // Header content wrapper
-            const headerContent = document.createElement('div');
-            headerContent.className = 'header-content';
-
-            // Column title and sort button
-            const titleWrapper = document.createElement('div');
-            titleWrapper.className = 'title-wrapper';
-
-            const headerText = document.createElement('span');
-            headerText.textContent = key;
-            titleWrapper.appendChild(headerText);
-
-            const sortButton = document.createElement('button');
-            sortButton.className = 'sort-button';
-            sortButton.innerHTML = '<span style="pointer-events: none" class="sort-icon"></span>';
-            sortButton.setAttribute('header-clickable', 'sort');
-            sortButton.setAttribute('data-key', key);
-            sortButton.setAttribute('data-type', type);
-            titleWrapper.appendChild(sortButton);
-
-            const moreButton = document.createElement('button');
-            moreButton.className = 'more-button';
-            moreButton.innerHTML = '<span style="pointer-events: none" class="more-icon">&#10247;</span>';
-            moreButton.setAttribute('header-clickable', 'more');
-            moreButton.setAttribute('data-key', key);
-            moreButton.setAttribute('data-type', type);
-            titleWrapper.appendChild(moreButton);
-
-            headerContent.appendChild(titleWrapper);
-
-            th.appendChild(headerContent);
-            headerRow.appendChild(th);
-        });
-
-        thead.style.position = 'sticky';
-        thead.style.top = '0';
-
-        thead.appendChild(headerRow);
-        return thead;
     }
 
-    // Render table body
-    renderBody(data) {
-        const tbody = document.createElement('tbody');
 
-        for (let index = 0; index < data.length; index++){
+    renderTable(data) {
+        this.table.innerHTML = '';
 
-            if (this.config.usePagination && index >= this.config.paginationPage * this.config.paginationPageSize) break;
-            if (this.config.usePagination && index < (this.config.paginationPage - 1) * this.config.paginationPageSize) continue;
+        const headers = Object.keys(data[0]);
 
-            const row = data[index];
-            const tr = document.createElement('tr');
-            tr.className = index % 2 === 0 ? 'row-even' : 'row-odd';
+        // Generate header
+        const header = this.createTableHeader(headers);
+        //this.table.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+        this.table.style.display = 'grid';
+        this.table.style.gridTemplateRows = '40px 1fr';
+        this.table.style.width = '100%';
+        this.table.style.height = '100%';
+        this.updateColumnWidths(this.table);
+        this.table.appendChild(header);
 
-            Object.keys(this.dynamicGrid.engine.headers).forEach(key => {
-                if (key === 'internal_id') return;
-                tr.append(this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[key]).renderCell(row[key]));
+        // Virtual scrolling
+        const scrollContainer = document.createElement('div');
+        scrollContainer.className = 'scroll-container';
+        scrollContainer.style.overflowY = 'auto';
+
+        // Add a container for all rows
+        const bodyContainer = document.createElement('div');
+        bodyContainer.className = 'body-container';
+        scrollContainer.appendChild(bodyContainer);
+
+        scrollContainer.addEventListener('scroll', () =>
+            this.updateVisibleRows(data, headers, bodyContainer, scrollContainer)
+        );
+
+        // Initialize visible rows
+        //this.updateVisibleRows(data, headers, bodyContainer, scrollContainer);
+
+        this.table.appendChild(scrollContainer);
+        this.container.appendChild(this.table);
+        this.updateVisibleRows(data, headers, bodyContainer, scrollContainer);
+    }
+
+
+    updateVisibleRows(data, headers, container, scrollContainer) {
+
+        // Total height of all rows in the table
+        const totalRows = data.length;
+        const totalHeight = totalRows * this.config.rowHeight;
+
+        // Update scroll container's virtual height
+        container.style.position = 'relative';
+        container.style.height = `${totalHeight}px`;
+
+        // Calculate the range of rows to render
+        const scrollTop = scrollContainer.scrollTop;
+        const containerHeight = scrollContainer.offsetHeight;
+
+        const startRow = Math.max(0, Math.floor(scrollTop / this.config.rowHeight) - this.config.bufferedRows);
+        const endRow = Math.min(totalRows, Math.ceil((scrollTop + containerHeight) / this.config.rowHeight) + this.config.bufferedRows);
+
+        // Clear and render only the visible rows
+        const visibleRowsContainer = document.createElement('div');
+        visibleRowsContainer.style.position = 'absolute';
+        visibleRowsContainer.style.top = `${startRow * this.config.rowHeight}px`;
+        visibleRowsContainer.style.left = '0';
+        visibleRowsContainer.style.right = '0';
+        visibleRowsContainer.style.display = 'grid';
+        visibleRowsContainer.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+
+        for (let i = startRow; i < endRow; i++) {
+            const tableRow = this.createTableRow();
+            headers.forEach((header) => {
+                const cell = this.createTableCell(data[i][header]);
+                tableRow.appendChild(cell);
+            });
+            visibleRowsContainer.appendChild(tableRow);
+        }
+
+        // Replace the old visible rows with the new set
+        if (container.lastChild) {
+            container.removeChild(container.lastChild);
+        }
+        container.appendChild(visibleRowsContainer);
+    }
+
+    //======================================== TABLE FACTORY ========================================
+    createResizableTable(columns) {
+        const table = document.createElement('div');
+        table.className = 'table';
+        this.columnWidths = Array(columns).fill(100/columns);
+
+        // Apply initial column widths
+        this.updateColumnWidths(table);
+        this.table = table;
+        return table;
+    }
+
+    createTableHeader(headers) {
+        const header = document.createElement('div');
+        header.className = 'row header';
+        header.style.display = 'grid';
+        header.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+
+        // Create header row
+        headers.forEach((_header, index) => {
+            const cell = this.createTableCell(_header);
+            cell.title = _header;
+
+            index < headers.length - 1 && cell.appendChild(this.createResizer(index));
+
+            header.appendChild(cell);
+        });
+
+        return header;
+    }
+
+    createTableBody(data, headers) {
+        const body = document.createElement('div');
+        body.className = 'row body';
+
+        // Create body rows
+        data.forEach((row) => {
+            const tableRow = this.createTableRow();
+
+            headers.forEach((header) => {
+                const cell = this.createTableCell(row[header]);
+                tableRow.appendChild(cell);
             });
 
-            tbody.appendChild(tr);
-        }
+            body.appendChild(tableRow);
+        });
 
-        return tbody;
+        return body;
     }
 
-// Render grouped table body
-    renderGroupedBody(data) {
-        const tbody = document.createElement('tbody');
-
-        // Loop through the grouped data
-        for (const group in data) {
-            const groupRows = data[group];
-
-            // Create a group header row
-            const groupHeader = document.createElement('tr');
-            groupHeader.className = 'group-header';
-            groupHeader.innerHTML = `<td colspan="${Object.keys(this.dynamicGrid.engine.headers).length}">${group}</td>`;
-            tbody.appendChild(groupHeader);
-
-            // Loop through the group rows
-            for (let index = 0; index < groupRows.length; index++) {
-                if (this.config.usePagination && index >= this.config.paginationPage * this.config.paginationPageSize) break;
-                if (this.config.usePagination && index < (this.config.paginationPage - 1) * this.config.paginationPageSize) continue;
-
-                const row = groupRows[index];
-                const tr = document.createElement('tr');
-                tr.className = index % 2 === 0 ? 'row-even' : 'row-odd';
-
-                Object.keys(this.dynamicGrid.engine.headers).forEach(key => {
-                    if (key === 'internal_id') return;
-                    tr.append(this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[key]).renderCell(row[key]));
-                });
-
-                tbody.appendChild(tr);
-            }
-
-            // Create a group footer row
-            const groupFooter = document.createElement('tr');
-            groupFooter.className = 'group-footer';
-            groupFooter.innerHTML = `<td colspan="${Object.keys(this.dynamicGrid.engine.headers).length}">Total: ${groupRows.length}</td>`;
-            tbody.appendChild(groupFooter);
-
-        }
-
-        return tbody;
+    createTableRow() {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.style.display = 'contents';
+        return row;
     }
 
-
-    //render the bottom pagination (if enabled)
-    renderPagination(data) {
-        const pagination = document.createElement('div');
-        pagination.className = 'pagination';
-
-        const totalPages = Math.ceil(data.length / this.config.paginationPageSize);
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.onclick = () => {
-                this.config.paginationPage = i;
-                //set button active, and remove active from other buttons
-                const buttons = pagination.querySelectorAll('button');
-                buttons.forEach(button => button.classList.remove('active'));
-                pageButton.classList.add('active');
-                this.render(data);
-            }
-            pagination.appendChild(pageButton);
-        }
-
-        return pagination;
+    createTableCell(content = '') {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.textContent = content;
+        return cell;
     }
 
-    toggleColumn(key) {
-        const styles = document.querySelector(`style[id="dynamic-grid-styles"]`);
-        if (!styles) {
-            const style = document.createElement('style');
-            style.id = 'dynamic-grid-styles';
-            document.head.appendChild(style);
+    createResizer(index) {
+        const resizer = document.createElement('div');
+        resizer.className = 'resizer';
+        resizer.setAttribute('data-index', index);
+
+        let startX, startWidth, startNextWidth;
+
+        resizer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const table = resizer.closest('.table');
+            startX = e.clientX;
+            startWidth = this.columnWidths[index];
+            startNextWidth = this.columnWidths[index + 1];
+
+            const onMouseMove = (e) => {
+                const diff = e.clientX - startX;
+                const widthChange = (diff / table.offsetWidth) * 100;
+
+                // Calculate new widths
+                const newWidth = startWidth + widthChange;
+                const newNextWidth = startNextWidth - widthChange;
+
+                // Apply changes only if both columns remain within min width
+                if (newWidth >= this.config.minColumnWidth && newNextWidth >= this.config.minColumnWidth) {
+                    this.columnWidths[index] = Number(newWidth.toFixed(2));
+                    this.columnWidths[index + 1] = Number(newNextWidth.toFixed(2));
+                    this.updateColumnWidths(table);
+                }
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        return resizer;
+    }
+
+    updateColumnWidths(table) {
+        this.columnWidths.forEach((width, index) => {
+            table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
+        });
+    }
+
+    getColumnWidths(table) {
+        return [...this.columnWidths];
+    }
+
+    setColumnWidths(table, widths) {
+        if (widths.length === this.columnWidths.length) {
+            this.columnWidths = widths.map(width => Number(width));
+            this.updateColumnWidths(table);
         }
-
-        const hiddenColumns = styles.dataset.hiddenColumns ? styles.dataset.hiddenColumns.split(',') : [];
-        const headerKeys = Object.keys(this.dynamicGrid.engine.headers).filter(header => header !== 'internal_id');
-        const index = headerKeys.indexOf(key);
-        if (index === -1) return;
-
-        if (hiddenColumns.includes(key)) {
-            hiddenColumns.splice(hiddenColumns.indexOf(key), 1);
-        } else {
-            hiddenColumns.push(key);
-        }
-
-        styles.dataset.hiddenColumns = hiddenColumns.join(',');
-        styles.textContent = hiddenColumns.map(key => `th:nth-child(${headerKeys.indexOf(key) + 1}), td:nth-child(${headerKeys.indexOf(key) + 1}) { display: none; }`).join('');
     }
 }
-
 
 /*
 optimizations:

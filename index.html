@@ -37,7 +37,10 @@
         // },
         ui: {
             containerId: '#gridContainer',
-            paginationPageSize: 100,
+            rowHeight: 30,          // Height of each row in pixels
+            visibleRows: 20,        // Number of rows to render at once
+            overscan: 5,            // Additional rows to render above/below viewport
+            minColumnWidth: 5       // Minimum column width percentage
         },
         engine: {
             UseDataEnumeration: false,
@@ -50,9 +53,6 @@
         grid.importData(data, {type: "csv", delimiter: ","});
         grid.render();
     }
-
-
-
 
     function handleFile(file) {
         const reader = new FileReader();

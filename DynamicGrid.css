@@ -1,0 +1,62 @@
+.table *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.table {
+    background: lightgray;
+}
+
+/* Header Styles */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f4f4f4;
+    border-bottom: 1px solid #ddd;
+}
+
+.header .row {
+    display: grid; /* Keep grid display for header */
+}
+
+.header .cell {
+    font-weight: bold;
+}
+
+/* Common Cell Styles */
+.cell {
+    padding: 8px;
+    border-right: 1px solid #ddd;
+    position: relative;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    background: inherit;
+}
+
+.cell:last-child {
+    border-right: none;
+}
+
+/* Resizer Styles */
+.resizer {
+    width: 5px;
+    cursor: col-resize;
+    position: absolute;
+    right: -2.5px;
+    top: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 2;
+}
+
+.resizer:hover {
+    background: #aaa;
+}
+
+/* Virtual Scrolling Container */
+.virtual-scroll-container {
+    position: absolute;
+    width: 100%;
+}
