@@ -58,9 +58,8 @@ class QueryParser {
                 throw new GridError(this.formatOperatorError(operator, field + ' ' + operator + ' ' + value, plugin));
             }
 
-            if (plugin.validate(value)) {
-                value = plugin.getJSQLFormat(value);
-            }
+            if (!plugin.validate(value)) return;
+                //value = plugin.getJSQLFormat(value);
 
             return {type: pluginType, field, operator: operatorObj, value, queryType: 'SELECT'};
         }

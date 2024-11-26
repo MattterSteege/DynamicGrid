@@ -24,16 +24,6 @@ class TypePlugin {
     }
 
     /**
-     * Format a value according to JSQL requirements
-     * @param {*} value The value to format
-     * @returns {string} Formatted value
-     * @abstract
-     */
-    getJSQLFormat(value) {
-        throw new Error('getJSQLFormat must be implemented by subclass');
-    }
-
-    /**
      * Validate if a value is acceptable for this type
      * @param {*} value The value to validate
      * @returns {boolean} True if valid
@@ -117,13 +107,11 @@ class TypePlugin {
     /**
      * Create a table data cell
      * @param {*} value Cell value
-     * @returns {HTMLTableCellElement} Data cell element
+     * @returns {string} Data cell element
      * @abstract
      */
     renderCell(value) {
-        const td = document.createElement('td');
-        td.textContent = String(value);
-        return td;
+        return String(value);
     }
 
     /**

@@ -4,32 +4,66 @@ class DynamicGridUI {
         this.containerId = ui_config.containerId;
 
         this.table = null;
+        this.header = null;
+        this.body = null;
+        this.scrollContainer = null;
+        this.visibleRowsContainer = null;
 
         this.config = {
             minColumnWidth: ui_config.minColumnWidth ?? 5,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 10,
+            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header' // 'header', 'content', 'none'
         }
 
-        this.init(this.containerId);
+        this.#_init(this.containerId);
+
+        this.UIChache = 0;
+        this.UICacheRefresh = false;
     }
 
-    // Initialize grid with container and data
-    init(containerId) {
+    render(data) {
+
+        if (!data || data.length === 0) {
+            this.body?.remove();
+            this.scrollContainer?.remove();
+            return;
+        }
+
+        const isGrouped = (data) => Array.isArray(firstItem(data));
+
+        //check if the data has changed in its structure (can I keep the headers etc.)
+        const cacheHash = isGrouped(data) ? FastHash(Object.keys(firstItem(data))) : FastHash(Object.keys(data[0]))
+        this.UICacheRefresh = this.UIChache !== cacheHash;
+        this.UIChache = cacheHash;
+
+        this.table = this.#_createResizableTable(Object.keys(data[0]), data[0]);
+        this.#_initResizerDelegation();
+        this.#_renderTable(data, isGrouped(data));
+    }
+
+    toggleColumn(index) {
+        const columnWidth = this.columnWidths[index];
+        this.columnWidths[index] = columnWidth === 0 ? 100 : 0;
+        const showingColumns = this.columnWidths.filter(width => width > 0).length;
+        this.columnWidths = this.columnWidths.map(width => width === 0 ? 0 : 100 / showingColumns);
+        this.#_updateColumnWidths(this.table);
+    }
+
+    // ======================================== PRIVATE METHODS ========================================
+
+    #_init(containerId) {
         this.container = document.querySelector(containerId);
         if (!this.container) {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
     }
 
-    render(data) {
-        this.table = this.createResizableTable(Object.keys(data[0]).length);
-        this.initResizerDelegation();
-        this.renderTable(data);
-    }
 
-    initResizerDelegation() {
+    #_initResizerDelegation() {
         this.table.addEventListener('mousedown', (e) => {
+            const isMiddleButton = e.button === 1;
+
             const resizer = e.target.closest('.resizer');
             if (!resizer) return;
 
@@ -51,7 +85,7 @@ class DynamicGridUI {
                 if (newWidth >= this.config.minColumnWidth && newNextWidth >= this.config.minColumnWidth) {
                     this.columnWidths[index] = Number(newWidth.toFixed(2));
                     this.columnWidths[index + 1] = Number(newNextWidth.toFixed(2));
-                    this.updateColumnWidths(table);
+                    this.#_updateColumnWidths(table);
                 }
             };
 
@@ -66,45 +100,48 @@ class DynamicGridUI {
     }
 
 
-    renderTable(data) {
-        this.table.innerHTML = '';
-
+    #_renderTable(data) {
         const headers = Object.keys(data[0]);
+        headers.remove('internal_id');
 
-        // Generate header
-        const header = this.createTableHeader(headers);
-        //this.table.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
-        this.table.style.display = 'grid';
-        this.table.style.gridTemplateRows = '40px 1fr';
-        this.table.style.width = '100%';
-        this.table.style.height = '100%';
-        this.updateColumnWidths(this.table);
-        this.table.appendChild(header);
+        if (this.UICacheRefresh) {
+            console.log('re-rendering header');
+            // Generate header
+            this.header = this.#_createTableHeader(headers);
+            //this.table.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+            this.table.style.display = 'grid';
+            this.table.style.gridTemplateRows = '40px 1fr';
+            this.table.style.width = '100%';
+            this.table.style.height = '100%';
+
+            this.#_updateColumnWidths(this.table);
+            this.table.appendChild(this.header);
+
+        }
 
         // Virtual scrolling
-        const scrollContainer = document.createElement('div');
-        scrollContainer.className = 'scroll-container';
-        scrollContainer.style.overflowY = 'auto';
+        this.scrollContainer = document.createElement('div');
+        this.scrollContainer.className = 'scroll-container';
+        this.scrollContainer.style.overflowY = 'auto';
 
-        // Add a container for all rows
-        const bodyContainer = document.createElement('div');
-        bodyContainer.className = 'body-container';
-        scrollContainer.appendChild(bodyContainer);
+        if (this.UICacheRefresh) {
+            // Add a container for all rows
+            this.body = document.createElement('div');
+            this.body.className = 'body-container';
+        }
 
-        scrollContainer.addEventListener('scroll', () =>
-            this.updateVisibleRows(data, headers, bodyContainer, scrollContainer)
+        this.scrollContainer.appendChild(this.body);
+        this.scrollContainer.addEventListener('scroll', () =>
+            this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer)
         );
 
-        // Initialize visible rows
-        //this.updateVisibleRows(data, headers, bodyContainer, scrollContainer);
-
-        this.table.appendChild(scrollContainer);
+        this.table.appendChild(this.scrollContainer);
         this.container.appendChild(this.table);
-        this.updateVisibleRows(data, headers, bodyContainer, scrollContainer);
+        this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer);
     }
 
 
-    updateVisibleRows(data, headers, container, scrollContainer) {
+    #_updateVisibleRows(data, headers, container, scrollContainer) {
 
         // Total height of all rows in the table
         const totalRows = data.length;
@@ -122,43 +159,77 @@ class DynamicGridUI {
         const endRow = Math.min(totalRows, Math.ceil((scrollTop + containerHeight) / this.config.rowHeight) + this.config.bufferedRows);
 
         // Clear and render only the visible rows
-        const visibleRowsContainer = document.createElement('div');
-        visibleRowsContainer.style.position = 'absolute';
-        visibleRowsContainer.style.top = `${startRow * this.config.rowHeight}px`;
-        visibleRowsContainer.style.left = '0';
-        visibleRowsContainer.style.right = '0';
-        visibleRowsContainer.style.display = 'grid';
-        visibleRowsContainer.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+        this.visibleRowsContainer = document.createElement('div');
+        this.visibleRowsContainer.style.position = 'absolute';
+        this.visibleRowsContainer.style.top = `${startRow * this.config.rowHeight}px`;
+        this.visibleRowsContainer.style.left = '0';
+        this.visibleRowsContainer.style.right = '0';
+        this.visibleRowsContainer.style.display = 'grid';
+        this.visibleRowsContainer.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
 
         for (let i = startRow; i < endRow; i++) {
-            const tableRow = this.createTableRow();
+            const tableRow = this.#_createTableRow();
             headers.forEach((header) => {
-                const cell = this.createTableCell(data[i][header]);
+                const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
+                const cell = this.#_createTableCell(plugin.renderCell(data[i][header]));
                 tableRow.appendChild(cell);
             });
-            visibleRowsContainer.appendChild(tableRow);
+            this.visibleRowsContainer.appendChild(tableRow);
         }
 
         // Replace the old visible rows with the new set
         if (container.lastChild) {
             container.removeChild(container.lastChild);
         }
-        container.appendChild(visibleRowsContainer);
+        container.appendChild(this.visibleRowsContainer);
     }
 
     //======================================== TABLE FACTORY ========================================
-    createResizableTable(columns) {
-        const table = document.createElement('div');
-        table.className = 'table';
-        this.columnWidths = Array(columns).fill(100/columns);
+    #_createResizableTable(columns, data) {
+        if (!this.UICacheRefresh)
+            return this.table;
+        else
+            this.table?.remove();
+
+        columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
+
+        //base the width of the columns on the length of the header as a percentage of the total header length
+        if (this.config.autoFitCellWidth === 'header') {
+            const charCount = columns.reduce((acc, header) => acc + header.length, 0);
+            this.columnWidths = columns.map(header => (header.length / charCount) * 100);
+        }
+        //base the width of the columns on the length of the content as a percentage of the total content length
+        else if (this.config.autoFitCellWidth === 'content') {
+            const charCount = columns.reduce((acc, header) => acc + Math.max(data[header].toString().length, 5), 0);
+            this.columnWidths = columns.map(header => (Math.max(data[header].toString().length, 5) / charCount) * 100);
+        }
+        //base the width of the columns on the length of the header and content as a percentage of the total header and content length
+        else if (this.config.autoFitCellWidth === 'both') {
+            const charCount = columns.reduce((acc, header) => acc + Math.max(header.length, 5) + Math.max(data[header].toString().length, 5), 0);
+            this.columnWidths = columns.map(header => ((Math.max(header.length, 5) + Math.max(data[header].toString().length, 5)) / charCount) * 100);
+        }
+        //use 1/n*100% for each column where n is the number of columns
+        else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
+            this.columnWidths = Array(columns.length).fill(100 / columns.length);
+        }
+
+        this.table = document.createElement('div');
+        this.table.className = 'table';
 
         // Apply initial column widths
-        this.updateColumnWidths(table);
-        this.table = table;
-        return table;
+        this.#_updateColumnWidths(this.table);
+        return this.table;
     }
 
-    createTableHeader(headers) {
+    #_createTableHeader(headers) {
+
+        const createTableCell = (headers) => {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.textContent = headers;
+            return cell;
+        }
+
         const header = document.createElement('div');
         header.className = 'row header';
         header.style.display = 'grid';
@@ -166,51 +237,33 @@ class DynamicGridUI {
 
         // Create header row
         headers.forEach((_header, index) => {
-            const cell = this.createTableCell(_header);
+            const cell = createTableCell(_header);
             cell.title = _header;
 
-            index < headers.length - 1 && cell.appendChild(this.createResizer(index));
+            index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
 
             header.appendChild(cell);
         });
 
+
         return header;
     }
 
-    createTableBody(data, headers) {
-        const body = document.createElement('div');
-        body.className = 'row body';
-
-        // Create body rows
-        data.forEach((row) => {
-            const tableRow = this.createTableRow();
-
-            headers.forEach((header) => {
-                const cell = this.createTableCell(row[header]);
-                tableRow.appendChild(cell);
-            });
-
-            body.appendChild(tableRow);
-        });
-
-        return body;
-    }
-
-    createTableRow() {
+    #_createTableRow() {
         const row = document.createElement('div');
         row.className = 'row';
         row.style.display = 'contents';
         return row;
     }
 
-    createTableCell(content = '') {
+    #_createTableCell(content = '') {
         const cell = document.createElement('div');
         cell.className = 'cell';
-        cell.textContent = content;
+        cell.innerHTML = content;
         return cell;
     }
 
-    createResizer(index) {
+    #_createResizer(index) {
         const resizer = document.createElement('div');
         resizer.className = 'resizer';
         resizer.setAttribute('data-index', index);
@@ -236,7 +289,7 @@ class DynamicGridUI {
                 if (newWidth >= this.config.minColumnWidth && newNextWidth >= this.config.minColumnWidth) {
                     this.columnWidths[index] = Number(newWidth.toFixed(2));
                     this.columnWidths[index + 1] = Number(newNextWidth.toFixed(2));
-                    this.updateColumnWidths(table);
+                    this.#_updateColumnWidths(table);
                 }
             };
 
@@ -252,21 +305,10 @@ class DynamicGridUI {
         return resizer;
     }
 
-    updateColumnWidths(table) {
+    #_updateColumnWidths(table) {
         this.columnWidths.forEach((width, index) => {
             table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
         });
-    }
-
-    getColumnWidths(table) {
-        return [...this.columnWidths];
-    }
-
-    setColumnWidths(table, widths) {
-        if (widths.length === this.columnWidths.length) {
-            this.columnWidths = widths.map(width => Number(width));
-            this.updateColumnWidths(table);
-        }
     }
 }
 

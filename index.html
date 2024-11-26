@@ -21,32 +21,36 @@
 <input type="text" id="search" style="width: 50%;">
 <button onclick="grid.render(document.getElementById('search').value)">Search</button>
 
-<div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 10px; overflow: auto;"></div>
+<div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
 
 <script>
     let grid = new DynamicGrid({
-        // headers: {
-        //     id: 'number',
-        //     guid: 'string',
-        //     isActive: 'boolean',
-        //     balance: 'number',
-        //     age: 'number',
-        //     name: 'string',
-        //     gender: 'string',
-        //     email: 'string'
-        // },
+        headers: {
+            id: 'number',
+            guid: 'string',
+            isActive: 'boolean',
+            balance: 'money',
+            age: 'number',
+            name: 'string',
+            gender: 'string',
+            email: 'string'
+        },
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,          // Height of each row in pixels
             visibleRows: 20,        // Number of rows to render at once
             overscan: 5,            // Additional rows to render above/below viewport
-            minColumnWidth: 5       // Minimum column width percentage
+            minColumnWidth: 5,      // Minimum column width percentage
+            autoFitCellWidth: 'both' // 'header', 'content', 'both', 'none'
         },
         engine: {
             UseDataEnumeration: false,
             UseDataIndexing: true,
             StrictCase: false,
             //SymbolsToIgnore: [" ", "_", "-"],
+        },
+        plugins: {
+            money: new moneyTypePlugin()
         }
     });
     function createTable(data) {

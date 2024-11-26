@@ -1,10 +1,19 @@
 .table *::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+    width: 6px;
+    height: 6px;
+}
+
+.table *::-webkit-scrollbar-thumb {
+    background: #aaa;
+    border-radius: 3px;
 }
 
 .table {
-    background: lightgray;
+    background: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
 }
 
 /* Header Styles */
@@ -12,27 +21,40 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    background: #f4f4f4;
-    border-bottom: 1px solid #ddd;
+    background: #007bff;
+    border-bottom: 2px solid #0056b3;
+    color: white;
+    font-size: 16px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-right: 6px;
 }
 
 .header .row {
-    display: grid; /* Keep grid display for header */
+    display: grid; /* Retaining grid display */
 }
 
 .header .cell {
     font-weight: bold;
+    text-align: center;
 }
 
 /* Common Cell Styles */
 .cell {
-    padding: 8px;
-    border-right: 1px solid #ddd;
+    padding: 12px;
+    border-right: 1px solid #eee;
     position: relative;
-    text-overflow: ellipsis;
+    text-overflow: fade;
     overflow: hidden;
     white-space: nowrap;
-    background: inherit;
+    background: white;
+    font-size: 14px;
+    color: #333;
+}
+
+.cell:hover {
+    background: #f1f1f1;
+    color: #007bff;
 }
 
 .cell:last-child {
@@ -52,7 +74,8 @@
 }
 
 .resizer:hover {
-    background: #aaa;
+    background: #007bff;
+    opacity: 0.6;
 }
 
 /* Virtual Scrolling Container */

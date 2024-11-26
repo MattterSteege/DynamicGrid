@@ -8,15 +8,6 @@ class stringTypePlugin extends TypePlugin {
         return typeof value === 'string';
     }
 
-    getJSQLFormat(value) {
-        //remove first and last character (only if they are both quotes)
-        if ((value[0] === '"' && value[value.length - 1] === '"') || (value[0] === "'" && value[value.length - 1] === "'")) {
-            return value.substring(1, value.length - 1);
-        }
-
-        return value;
-    }
-
     //query = {field: 'name', operator: 'eq', value: 'John'}
     evaluate(query, dataIndexes, data, indices) {
         //loop over the indices and remove the ones that do not match the query
@@ -75,12 +66,7 @@ class stringTypePlugin extends TypePlugin {
     }
 
     renderCell(value) {
-        const elem = document.createElement('td');
-        if (!value)
-            elem.className = 'error';
-        else
-            elem.innerHTML = value;
-        return elem;
+        return String(value);
     }
 
     sort(query, data) {
@@ -125,14 +111,6 @@ class numberTypePlugin extends TypePlugin {
 
     validate(value) {
         return !isNaN(Number(value));
-    }
-
-    getJSQLFormat(value) {
-        if (isNaN(Number(value))) {
-            throw new GridError('Value is not a number');
-        }
-
-        return value.toString();
     }
 
     //indices is a set of indices that match the query
@@ -194,12 +172,9 @@ class numberTypePlugin extends TypePlugin {
     }
 
     renderCell(value) {
-        const elem = document.createElement('td');
-        if (!value && value !== 0)
-            elem.className = 'error';
-        else
-            elem.innerHTML = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); //add dots for thousands
-        return elem;
+        const parts = value.toString().split("."); // Ensure two decimal places
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
+        return parts.join(","); // Join with a comma for decimals
     }
 
     sort(query, data) {
@@ -228,10 +203,6 @@ class booleanTypePlugin extends TypePlugin {
             return value === 'true' || value === 'false';
 
         return false;
-    }
-
-    getJSQLFormat(value) {
-        return value.toLowerCase() === 'true';
     }
 
     evaluate(query, dataIndexes, data, indices) {
@@ -274,13 +245,13 @@ class booleanTypePlugin extends TypePlugin {
 
     renderCell(value) {
         //render a checkbox that is checked if value is true
-        const elem = document.createElement('td');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = value ;
+        value ? checkbox.setAttribute('checked', null) : null;
         checkbox.disabled = true;
-        elem.appendChild(checkbox);
-        return elem;
+        checkbox.style.width = '-webkit-fill-available';
+        checkbox.name = 'checkbox';
+        return checkbox.outerHTML;
     }
 }
 

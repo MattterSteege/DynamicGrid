@@ -7,7 +7,9 @@ class GridError extends Error {
     }
 }
 
-function FastHash(string) {
+function FastHash(object) {
+    const string = JSON.stringify(object);
+
     let hash = 0;
     for (let i = 0; i < string.length; i++) {
         hash = ((hash << 5) - hash) + string.charCodeAt(i);
@@ -47,36 +49,6 @@ function MeantIndexKey(dataIndexesKeys, field, config) {
 }
 
 /**
- * Pins the location of an element to another element so that it moves with it
- * when the other element is moved, while also responding to scrolling and resizing.
- * @param baseElem
- * @param ElemToPin
- * @returns {boolean}
- */
-function pinElement(baseElem, ElemToPin) {
-    if (!baseElem || !ElemToPin) return false;
-
-    // Update the position of ElemToPin relative to baseElem
-    function updatePosition() {
-        const baseRect = baseElem.getBoundingClientRect();
-        const top = baseRect.top + window.scrollY;
-        const left = baseRect.left + window.scrollX;
-        ElemToPin.style.position = 'absolute';
-        ElemToPin.style.top = `${top + baseRect.height}px`;
-        ElemToPin.style.left = `${left}px`;
-    }
-
-    // Initial positioning
-    updatePosition();
-
-    // Attach event listeners for scroll and resize
-    window.addEventListener('scroll', updatePosition);
-    window.addEventListener('resize', updatePosition);
-
-    return true;
-}
-
-/**
  * Gets the first item from a structure that may include numeric or named keys.
  * @param {Object|Array} data The structure to get the first item from.
  * @returns {any|boolean} The first item or false if the input is invalid.
@@ -101,7 +73,19 @@ function firstItem(data) {
  * @param {Array<number>} numbers The array of numbers to sum.
  * @returns {number} The sum of the numbers.
  */
-
 function sum(numbers) {
     return numbers.reduce((acc, num) => acc + num, 0);
+}
+
+/**
+ * removes a entry from an array
+ * @param {Array<string>} entry
+ * @returns {Array<string>}
+ */
+Array.prototype.remove = function (entry) {
+    const index = this.indexOf(entry);
+    if (index > -1) {
+        this.splice(index, 1);
+    }
+    return this;
 }

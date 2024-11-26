@@ -180,6 +180,14 @@ class SJQLEngine {
         }
     }
 
+    /**
+     * Retrieves a plugin by its name.
+     *
+     * @param {string} name - The name of the plugin to retrieve.
+     * @param {boolean} [justChecking=false] - If true, only checks if the plugin exists without throwing an error.
+     * @returns {TypePlugin|boolean} - The plugin if found, or false if not found and justChecking is true.
+     * @throws {GridError} - If the plugin name is not provided or the plugin is not found and justChecking is false.
+     */
     getPlugin(name, justChecking = false) {
         if (!name) throw new GridError('Plugin name not provided');
         if (typeof name !== 'string') return false;
@@ -195,6 +203,10 @@ class SJQLEngine {
 
     //================================================== DATA PARSER ==================================================
     importData(data, config) {
+        if (this.data && this.data.length > 0) {
+            throw new GridError('Data already imported, re-importing data is not (yet) supported');
+        }
+
         if (config.type === 'json') {
             this.parseJsonData(data, config);
         } else if (config.type === 'csv') {
