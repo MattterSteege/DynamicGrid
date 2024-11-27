@@ -1,4 +1,11 @@
 class DynamicGridUI {
+    /**
+     * @param {string} ui_config.containerId - The ID of the container for the grid. (required)
+     * @param {number} ui_config.minColumnWidth - Minimum width for columns. (default: 5%)
+     * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
+     * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
+     * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
+     */
     constructor(dynamicGrid, ui_config) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
@@ -13,8 +20,8 @@ class DynamicGridUI {
             minColumnWidth: ui_config.minColumnWidth ?? 5,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 10,
-            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header' // 'header', 'content', 'none'
-        }
+            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header'
+        };
 
         this.#_init(this.containerId);
 
@@ -31,15 +38,21 @@ class DynamicGridUI {
         }
 
         const isGrouped = (data) => Array.isArray(firstItem(data));
+        const isGroupedData = isGrouped(data);
+        const columns = isGroupedData ? Object.keys(firstItem(data)[0]) : Object.keys(data[0]);
+        const firstDataItem = isGroupedData ? firstItem(data)[0] : data[0];
 
         //check if the data has changed in its structure (can I keep the headers etc.)
-        const cacheHash = isGrouped(data) ? FastHash(Object.keys(firstItem(data))) : FastHash(Object.keys(data[0]))
+        const cacheHash = FastHash(columns)
         this.UICacheRefresh = this.UIChache !== cacheHash;
         this.UIChache = cacheHash;
 
-        this.table = this.#_createResizableTable(Object.keys(data[0]), data[0]);
-        this.#_initResizerDelegation();
-        this.#_renderTable(data, isGrouped(data));
+        if (this.UICacheRefresh) {
+            this.table = this.#_createResizableTable(columns, firstDataItem, isGroupedData);
+            this.#_initResizerDelegation();
+        }
+
+        this.#_renderTable(data, isGroupedData);
     }
 
     toggleColumn(index) {
@@ -100,8 +113,8 @@ class DynamicGridUI {
     }
 
 
-    #_renderTable(data) {
-        const headers = Object.keys(data[0]);
+    #_renderTable(data, isGrouped) {
+        const headers = isGrouped ? Object.keys(firstItem(data)[0]) : Object.keys(data[0]);
         headers.remove('internal_id');
 
         if (this.UICacheRefresh) {
@@ -130,14 +143,39 @@ class DynamicGridUI {
             this.body.className = 'body-container';
         }
 
-        this.scrollContainer.appendChild(this.body);
-        this.scrollContainer.addEventListener('scroll', () =>
-            this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer)
-        );
+        if (!isGrouped) {
+            this.scrollContainer.appendChild(this.body);
+            this.scrollContainer.addEventListener('scroll', () =>
+                this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer)
+            );
 
-        this.table.appendChild(this.scrollContainer);
-        this.container.appendChild(this.table);
-        this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer);
+            this.table.appendChild(this.scrollContainer);
+            this.container.appendChild(this.table);
+            this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer);
+        }
+        else {
+            //data is like this:
+            /*
+            {
+                20: (38) [{…},
+                21: (45) [{…},
+                22: (45) [{…},
+                ...
+             }
+
+             so we need to loop over the keys and render the data for each key, this means a new table for each key that can is inside a details element
+            */
+
+            this.body = this.#_createGroupedTable(data, headers);
+
+            this.scrollContainer = document.createElement('div');
+            this.scrollContainer.className = 'scroll-container';
+            this.scrollContainer.style.overflowY = 'auto';
+
+            this.scrollContainer.appendChild(this.body);
+            this.table.appendChild(this.scrollContainer);
+            this.container.appendChild(this.table);
+        }
     }
 
 
@@ -171,6 +209,7 @@ class DynamicGridUI {
             const tableRow = this.#_createTableRow();
             headers.forEach((header) => {
                 const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
+                console.log(plugin);
                 const cell = this.#_createTableCell(plugin.renderCell(data[i][header]));
                 tableRow.appendChild(cell);
             });
@@ -184,12 +223,69 @@ class DynamicGridUI {
         container.appendChild(this.visibleRowsContainer);
     }
 
+    #_createGroupedTable(data, headers) {
+        console.log(data, headers);
+        this.body?.remove();
+        // Add a container for all rows
+        this.body = document.createElement('div');
+        this.body.className = 'body-container';
+
+        const keys = Object.keys(data);
+        for (const key of keys) {
+            console.log(key);
+            const dataGroup = data[key];
+
+            const details = document.createElement('details');
+            details.open = false;
+            details.style.margin = '0';
+            details.style.padding = '0';
+            details.style.border = '0';
+            details.style.outline = '0';
+            details.style.fontSize = '100%';
+            details.style.verticalAlign = 'baseline';
+            details.style.backgroundColor = 'transparent';
+            details.style.display = 'block';
+            details.style.overflow = 'hidden';
+            details.style.height = 'auto';
+
+            const summary = document.createElement('summary');
+            summary.innerHTML = '<strong>' + key + '</strong>';
+            details.appendChild(summary);
+
+            const table = document.createElement('div');
+            table.className = 'table';
+            table.style.display = 'grid';
+            table.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+
+            for (const item of dataGroup) {
+                const row = this.#_createTableRow();
+                headers.forEach((header) => {
+                    const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
+                    const cell = this.#_createTableCell(plugin.renderCell(item[header]));
+                    row.appendChild(cell);
+                });
+                table.appendChild(row);
+            }
+
+            details.appendChild(table);
+
+            this.body.appendChild(details);
+        }
+
+        return this.body;
+    }
+
     //======================================== TABLE FACTORY ========================================
-    #_createResizableTable(columns, data) {
+    #_createResizableTable(columns, data, isgrouped) {
         if (!this.UICacheRefresh)
             return this.table;
         else
             this.table?.remove();
+
+        if (isgrouped)
+        {
+            columns = Object.keys(data[0]);
+        }
 
         columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
 

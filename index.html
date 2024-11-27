@@ -29,7 +29,7 @@
             id: 'number',
             guid: 'string',
             isActive: 'boolean',
-            balance: 'money',
+            balance: 'number',
             age: 'number',
             name: 'string',
             gender: 'string',
@@ -41,22 +41,15 @@
             visibleRows: 20,        // Number of rows to render at once
             overscan: 5,            // Additional rows to render above/below viewport
             minColumnWidth: 5,      // Minimum column width percentage
-            autoFitCellWidth: 'both' // 'header', 'content', 'both', 'none'
+            autoFitCellWidth: 'none'
         },
         engine: {
             UseDataEnumeration: false,
             UseDataIndexing: true,
             StrictCase: false,
             //SymbolsToIgnore: [" ", "_", "-"],
-        },
-        plugins: {
-            money: new moneyTypePlugin()
         }
     });
-    function createTable(data) {
-        grid.importData(data, {type: "csv", delimiter: ","});
-        grid.render();
-    }
 
     function handleFile(file) {
         const reader = new FileReader();
@@ -65,23 +58,6 @@
             grid.render();
         }
         reader.readAsText(file);
-    }
-
-    function testQuerySystem(query, testCount = 1000)
-    {
-        //id > 50 and isActive == true and balance > 2000
-        var t0 = performance.now();
-        var count = 0;
-        for (let i = 0; i < testCount; i++)
-        {
-            const a = grid.engine.query(query);
-            count += a.length;
-        }
-        console.log(count / testCount);
-        var t1 = performance.now();
-        console.log("Query took " + (t1 - t0) / 1000 + " seconds.\n" + (testCount / (t1 - t0)) + " queries per second.\n" + (t1 - t0) / testCount + " milliseconds per query.");
-        performance.clearMarks();
-        performance.clearMeasures();
     }
 
 </script>

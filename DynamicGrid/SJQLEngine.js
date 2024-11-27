@@ -120,8 +120,6 @@ class SJQLEngine {
                 }
             }
 
-            console.log(groupedData);
-
             return groupedData;
         }
 

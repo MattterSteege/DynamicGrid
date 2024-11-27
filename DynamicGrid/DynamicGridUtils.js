@@ -88,4 +88,5 @@ Array.prototype.remove = function (entry) {
         this.splice(index, 1);
     }
     return this;
+
 }

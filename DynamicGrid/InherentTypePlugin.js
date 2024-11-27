@@ -147,6 +147,7 @@ class numberTypePlugin extends TypePlugin {
         }
 
         dataValue = Number(dataValue);
+        value = Number(value);
 
         switch (operator) {
             case '>':
