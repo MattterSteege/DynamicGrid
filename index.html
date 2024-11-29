@@ -25,23 +25,23 @@
 
 <script>
     let grid = new DynamicGrid({
-        headers: {
-            id: 'number',
-            guid: 'string',
-            isActive: 'boolean',
-            balance: 'number',
-            age: 'number',
-            name: 'string',
-            gender: 'string',
-            email: 'string'
-        },
+        // headers: {
+        //     id: 'number',
+        //     guid: 'string',
+        //     isActive: 'boolean',
+        //     balance: 'number',
+        //     age: 'number',
+        //     name: 'string',
+        //     gender: 'string',
+        //     email: 'string'
+        // },
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,          // Height of each row in pixels
             visibleRows: 20,        // Number of rows to render at once
             overscan: 5,            // Additional rows to render above/below viewport
             minColumnWidth: 5,      // Minimum column width percentage
-            autoFitCellWidth: 'none'
+            autoFitCellWidth: 'both'
         },
         engine: {
             UseDataEnumeration: false,

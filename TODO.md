@@ -2,8 +2,9 @@
   - [ ]  Adding multi-column sorting, allowing the user to sort by multiple columns in sequence.
   - [x]  Implementing advanced filtering, with the ability to create complex filter conditions using the various operators supported by the type plugins.
   - [ ]  Providing a UI for the user to easily configure sorting and filtering, such as dropdown menus, input fields, and buttons.
-  - [ ]  Add grouping, so that the user can group data by one or more columns, and expand/collapse groups to view the underlying data.
-- [ ] **Column Resizing and Reordering**: Allow the user to resize columns by dragging the column borders. You could also implement the ability to reorder columns by dragging and dropping them.
+  - [x]  Add grouping, so that the user can group data by one or more columns, and expand/collapse groups to view the underlying data.
+    - [ ] Add the same scrolling optimization to the grouped data as the main data.
+- [x] **Column Resizing and Reordering**: Allow the user to resize columns by dragging the column borders. You could also implement the ability to reorder columns by dragging and dropping them.
 - [ ] **Inline Editing**: Enable the user to edit cell values directly in the grid, with the changes persisting in the underlying data.
 - [x] **Pagination and Infinite Scrolling**: Enhance the pagination functionality to provide a smoother user experience, such as displaying page numbers, jump-to-page controls, and infinite scrolling.
 - [ ] **Row Selection and Actions**: Add the ability for the user to select one or more rows, and provide actions that can be performed on the selected rows, such as deleting, exporting, or performing bulk updates.

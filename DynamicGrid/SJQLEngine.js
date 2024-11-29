@@ -3,7 +3,6 @@ class SJQLEngine {
         this.data = [];
         this.headers = [];
         this.plugins = [];
-        this.currentQuery = {};
         this.currentQueryStr = '';
         this.QueryParser = new QueryParser(engine_config);
 
@@ -59,10 +58,10 @@ class SJQLEngine {
             return this.data;
         }
 
-        return this._query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
+        return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
 
-    _query(query) {
+    #_query(query) {
         // Early exit if no queries
         if (!query || query.length === 0) return this.data;
 
@@ -79,6 +78,13 @@ class SJQLEngine {
                 case 'GROUP': groupQuery = q; break;
             }
         }
+
+        // Save the current query string
+        this.currentQueryStr = '';
+        selectQueries.forEach(q => this.currentQueryStr += q.field + ' ' + q.operator + ' ' + q.value + ' and ');
+        if (rangeQuery) this.currentQueryStr += 'range ' + rangeQuery.lower + ' ' + rangeQuery.upper + ' and ';
+        if (groupQuery) this.currentQueryStr += 'group ' + groupQuery.field + ' and ';
+        this.currentQueryStr = this.currentQueryStr.slice(0, -5);
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -114,10 +120,7 @@ class SJQLEngine {
 
             // Sort groups if required
             if (sortQuery) {
-                const sortPlugin = this.getPlugin(sortQuery.type);
-                for (const key in groupedData) {
-                    groupedData[key] = sortPlugin.sort(sortQuery, groupedData[key]);
-                }
+                throw new GridError('Sorting grouped data is not yet supported');
             }
 
             return groupedData;
@@ -136,12 +139,16 @@ class SJQLEngine {
     sort(key, direction) {
         let query = '';
 
+        console.log(this.currentQueryStr, key, direction);
+
         if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
             query = 'sort ' + key + ' ' + direction;
         else if (direction === 'asc' || direction === 'desc') //if query is present, add sort to the query
             query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
         else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
             query = this.currentQueryStr;
+
+        console.log(query);
 
         return this.query(query);
     }
@@ -206,9 +213,9 @@ class SJQLEngine {
         }
 
         if (config.type === 'json') {
-            this.parseJsonData(data, config);
+            this.#parseJsonData(data, config);
         } else if (config.type === 'csv') {
-            this.parseCSVData(data, config);
+            this.#parseCSVData(data, config);
         } else {
             throw new GridError('Invalid data type');
         }
@@ -220,7 +227,7 @@ class SJQLEngine {
         }
     }
 
-    parseJsonData(data, config) {
+    #parseJsonData(data, config) {
         if (!(typeof data === 'string')) {
             throw new GridError('Data must be a string (raw JSON)');
         }
@@ -246,7 +253,7 @@ class SJQLEngine {
         });
     }
 
-    parseCSVData(data, config) {
+    #parseCSVData(data, config) {
         const lines = data.split('\n');
         //split by the config.delimiter character, but only if it's not inside quotes
         const headers = lines[0].split(",").map(header => header.replace(/"/g, '').replace(" ", "_").replace("\r", ''));

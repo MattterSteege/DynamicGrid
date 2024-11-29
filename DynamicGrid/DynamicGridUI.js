@@ -27,6 +27,7 @@ class DynamicGridUI {
 
         this.UIChache = 0;
         this.UICacheRefresh = false;
+        this.sortDirection = 'asc';
     }
 
     render(data) {
@@ -133,6 +134,7 @@ class DynamicGridUI {
         }
 
         // Virtual scrolling
+        this.scrollContainer?.remove();
         this.scrollContainer = document.createElement('div');
         this.scrollContainer.className = 'scroll-container';
         this.scrollContainer.style.overflowY = 'auto';
@@ -209,7 +211,6 @@ class DynamicGridUI {
             const tableRow = this.#_createTableRow();
             headers.forEach((header) => {
                 const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
-                console.log(plugin);
                 const cell = this.#_createTableCell(plugin.renderCell(data[i][header]));
                 tableRow.appendChild(cell);
             });
