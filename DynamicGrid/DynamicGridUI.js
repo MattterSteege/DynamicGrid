@@ -182,30 +182,25 @@ class DynamicGridUI {
 
 
     #_updateVisibleRows(data, headers, container, scrollContainer) {
-
-        // Total height of all rows in the table
         const totalRows = data.length;
         const totalHeight = totalRows * this.config.rowHeight;
 
-        // Update scroll container's virtual height
         container.style.position = 'relative';
         container.style.height = `${totalHeight}px`;
 
-        // Calculate the range of rows to render
         const scrollTop = scrollContainer.scrollTop;
         const containerHeight = scrollContainer.offsetHeight;
 
         const startRow = Math.max(0, Math.floor(scrollTop / this.config.rowHeight) - this.config.bufferedRows);
         const endRow = Math.min(totalRows, Math.ceil((scrollTop + containerHeight) / this.config.rowHeight) + this.config.bufferedRows);
 
-        // Clear and render only the visible rows
-        this.visibleRowsContainer = document.createElement('div');
-        this.visibleRowsContainer.style.position = 'absolute';
-        this.visibleRowsContainer.style.top = `${startRow * this.config.rowHeight}px`;
-        this.visibleRowsContainer.style.left = '0';
-        this.visibleRowsContainer.style.right = '0';
-        this.visibleRowsContainer.style.display = 'grid';
-        this.visibleRowsContainer.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+        const visibleRowsContainer = document.createElement('div');
+        visibleRowsContainer.style.position = 'absolute';
+        visibleRowsContainer.style.top = `${startRow * this.config.rowHeight}px`;
+        visibleRowsContainer.style.left = '0';
+        visibleRowsContainer.style.right = '0';
+        visibleRowsContainer.style.display = 'grid';
+        visibleRowsContainer.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
 
         for (let i = startRow; i < endRow; i++) {
             const tableRow = this.#_createTableRow();
@@ -214,26 +209,24 @@ class DynamicGridUI {
                 const cell = this.#_createTableCell(plugin.renderCell(data[i][header]));
                 tableRow.appendChild(cell);
             });
-            this.visibleRowsContainer.appendChild(tableRow);
+            visibleRowsContainer.appendChild(tableRow);
         }
 
-        // Replace the old visible rows with the new set
         if (container.lastChild) {
             container.removeChild(container.lastChild);
         }
-        container.appendChild(this.visibleRowsContainer);
+        container.appendChild(visibleRowsContainer);
     }
 
+
     #_createGroupedTable(data, headers) {
-        console.log(data, headers);
         this.body?.remove();
-        // Add a container for all rows
+
         this.body = document.createElement('div');
         this.body.className = 'body-container';
 
         const keys = Object.keys(data);
         for (const key of keys) {
-            console.log(key);
             const dataGroup = data[key];
 
             const details = document.createElement('details');
@@ -246,29 +239,38 @@ class DynamicGridUI {
             details.style.verticalAlign = 'baseline';
             details.style.backgroundColor = 'transparent';
             details.style.display = 'block';
-            details.style.overflow = 'hidden';
-            details.style.height = 'auto';
+
+            details.addEventListener('toggle', (e) => {
+                const isOpen = details.open;
+                if (isOpen) {
+                    this.#_updateVisibleRows(dataGroup, headers, viewer, scrollContainer);
+                }
+                else {
+                    viewer.innerHTML = '';
+                    viewer.removeAttribute('style');
+
+                }
+            })
 
             const summary = document.createElement('summary');
-            summary.innerHTML = '<strong>' + key + '</strong>';
+            summary.innerHTML = `<strong>${key}</strong>`;
             details.appendChild(summary);
 
-            const table = document.createElement('div');
-            table.className = 'table';
-            table.style.display = 'grid';
-            table.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+            const scrollContainer = document.createElement('div');
+            scrollContainer.className = 'scroll-container';
+            scrollContainer.style.overflowY = 'auto';
+            scrollContainer.style.maxHeight = '700px'; // Example height, customize as needed
 
-            for (const item of dataGroup) {
-                const row = this.#_createTableRow();
-                headers.forEach((header) => {
-                    const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
-                    const cell = this.#_createTableCell(plugin.renderCell(item[header]));
-                    row.appendChild(cell);
-                });
-                table.appendChild(row);
-            }
+            const viewer = document.createElement('div');
+            viewer.className = 'viewer';
+            scrollContainer.appendChild(viewer);
 
-            details.appendChild(table);
+            details.appendChild(scrollContainer);
+
+            // Populate rows inside viewer with virtual scrolling
+            scrollContainer.addEventListener('scroll', () => {
+                this.#_updateVisibleRows(dataGroup, headers, viewer, scrollContainer);
+            });
 
             this.body.appendChild(details);
         }

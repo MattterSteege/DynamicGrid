@@ -105,5 +105,9 @@
     background: white;
     font-size: 14px;
     color: #333;
+    border-top: 1px solid #0056b3;
+}
+
+.table details[open] summary {
     border-bottom: 1px solid #0056b3;
 }
