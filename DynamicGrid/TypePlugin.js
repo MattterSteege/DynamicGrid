@@ -123,6 +123,5 @@ class TypePlugin {
      */
     showMore(key, element, dynamicGrid) {
         throw new GridError('showMore must be implemented by subclass');
-        return;
     }
 }

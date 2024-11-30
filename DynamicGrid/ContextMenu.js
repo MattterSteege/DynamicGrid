@@ -269,6 +269,7 @@ class ContextMenu {
     // \====================================================================================================/
 
     display(posX, posY) {
+        document.querySelectorAll('.context-menu').forEach(e => e.remove());
         this.#show(posX, posY);
         return this;
     }

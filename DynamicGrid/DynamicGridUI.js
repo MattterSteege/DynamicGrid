@@ -14,7 +14,6 @@ class DynamicGridUI {
         this.header = null;
         this.body = null;
         this.scrollContainer = null;
-        this.visibleRowsContainer = null;
 
         this.config = {
             minColumnWidth: ui_config.minColumnWidth ?? 5,
@@ -180,7 +179,6 @@ class DynamicGridUI {
         }
     }
 
-
     #_updateVisibleRows(data, headers, container, scrollContainer) {
         const totalRows = data.length;
         const totalHeight = totalRows * this.config.rowHeight;
@@ -290,6 +288,17 @@ class DynamicGridUI {
             columns = Object.keys(data[0]);
         }
 
+        this.columnWidths = this.#_calculateColumnWidths(data, columns);
+
+        this.table = document.createElement('div');
+        this.table.className = 'table';
+
+        // Apply initial column widths
+        this.#_updateColumnWidths(this.table);
+        return this.table;
+    }
+
+    #_calculateColumnWidths(data, columns) {
         columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
 
         //base the width of the columns on the length of the header as a percentage of the total header length
@@ -312,12 +321,7 @@ class DynamicGridUI {
             this.columnWidths = Array(columns.length).fill(100 / columns.length);
         }
 
-        this.table = document.createElement('div');
-        this.table.className = 'table';
-
-        // Apply initial column widths
-        this.#_updateColumnWidths(this.table);
-        return this.table;
+        return this.columnWidths;
     }
 
     #_createTableHeader(headers) {
@@ -338,6 +342,26 @@ class DynamicGridUI {
         headers.forEach((_header, index) => {
             const cell = createTableCell(_header);
             cell.title = _header;
+            cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header]);
+
+            cell.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this.sortColumn !== _header) {
+                    this.sortColumn = _header;
+                    this.sortDirection = 'asc';
+                }
+                else {
+                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                }
+                this.render(this.dynamicGrid.engine.sort(this.sortColumn, this.sortDirection));
+            });
+
+            cell.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid);
+            });
 
             index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
 

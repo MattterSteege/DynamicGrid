@@ -1,4 +1,5 @@
 P.S. THIS IS NOT A FINISHED PROJECT, IT IS A WORK IN PROGRESS!!!!
+So this 'docs' page is not up to date with the actual project. not all notes are relevant to the current state of the project etc.
 
 to compile the files into a single file, use the following command:
 
@@ -28,36 +29,88 @@ to make sure that the query engine is perfoomrant, i made sure that only one sor
 <br>
 
 ```mermaid
-flowchart TD
-    A[Start query method] --> B{Is data empty?}
-    B -->|Yes| D[Warn: No data provided\nand Return empty array]
+sequenceDiagram
+    participant User
+    participant DynamicGrid
+    participant SJQLEngine
+    participant DynamicGridUI
 
-    B -->|No| E{Is query empty?}
-    E -->|Yes| G[Warn: No query provided\nand Return all data]
+    User ->> DynamicGrid: Initialize(config)
+    activate DynamicGrid
+    DynamicGrid ->> SJQLEngine: Initialize(engine, plugins)
+    SJQLEngine ->> SJQLEngine: Add default plugins<br>(stringType, numberType, booleanType)
+    SJQLEngine ->> DynamicGrid: Return initialized engine
+    DynamicGrid ->> DynamicGridUI: Initialize UI(config.ui)
+    DynamicGridUI ->> DynamicGridUI: Set up UI properties<br>(row height, virtual scrolling, etc.)
+    DynamicGridUI ->> DynamicGrid: Return initialized UI
+    DynamicGrid ->> User: Initialization complete
+    deactivate DynamicGrid
 
-    E -->|No| H[Parse query]
-    H --> I[Separate queries by type]
+    User ->> DynamicGrid: Import data(data, config)
+    activate DynamicGrid
+    DynamicGrid ->> SJQLEngine: Import and parse data
+    SJQLEngine ->> SJQLEngine: Create data index<br>(map header values to rows)
+    SJQLEngine ->> DynamicGrid: Return indexed data
+    DynamicGrid ->> User: Data import complete
+    deactivate DynamicGrid
 
-    I --> J{Are there SELECT queries?}
-    J -->|Yes| L[Process SELECT queries\nand Filter valid indices]
+    User ->> DynamicGrid: Render(query)
+    activate DynamicGrid
+    DynamicGrid ->> SJQLEngine: Execute query(query)
+    SJQLEngine ->> SJQLEngine: Parse query into SELECT, SORT, RANGE, GROUP
+    SJQLEngine ->> SJQLEngine: Filter data based on query
+    SJQLEngine ->> SJQLEngine: Apply sorting and grouping
+    SJQLEngine ->> DynamicGrid: Return filtered data
+    DynamicGrid ->> DynamicGridUI: Render data
+    activate DynamicGridUI
+    DynamicGridUI ->> DynamicGridUI: Render headers
+    DynamicGridUI ->> DynamicGridUI: Render visible rows
+    DynamicGridUI ->> User: Display rendered grid
+    deactivate DynamicGridUI
+    deactivate DynamicGrid
 
-    J -->|No| M{Is RANGE query present?}
-    M -->|Yes| O[Apply RANGE query\nand Adjust valid indices]
+    User ->> DynamicGridUI: Interact with grid (e.g., toggle column)
+    activate DynamicGridUI
+    DynamicGridUI ->> DynamicGrid: Request action (e.g., sort)
+    DynamicGrid ->> SJQLEngine: Re-query with updated parameters
+    SJQLEngine ->> DynamicGrid: Return updated data
+    DynamicGrid ->> DynamicGridUI: Update grid display
+    DynamicGridUI ->> User: Updated view displayed
+    deactivate DynamicGridUI
 
-    M -->|No| P{Is GROUP query present?}
-    P -->|Yes| Q[Group data]
-    Q --> R{Is SORT query present?}
-    R -->|Yes| S[Sort grouped data]
-    R -->|No| T[Return grouped data]
+```
 
-    P -->|No| U{Is SORT query present?}
-    U -->|Yes| V[Sort filtered data]
-    U -->|No| W[Return filtered data]
+the sequence diagram of the engine is as follows:
+```mermaid
+sequenceDiagram
+    participant User
+    participant DynamicGrid
+    participant SJQLEngine
+    participant QueryParser
+    participant Plugins
 
-    O --> P
-    L --> M
-    S --> T
-    V --> W
+    User ->> DynamicGrid: Render(query)
+    DynamicGrid ->> SJQLEngine: Execute query(query)
+    activate SJQLEngine
+    SJQLEngine ->> QueryParser: Parse query
+    activate QueryParser
+    QueryParser ->> QueryParser: Split query into parts<br>(SELECT, SORT, GROUP, RANGE)
+    QueryParser ->> SJQLEngine: Return parsed query parts
+    deactivate QueryParser
+
+    SJQLEngine ->> SJQLEngine: Initialize validIndices<br>(all data indices)
+    SJQLEngine ->> Plugins: Process SELECT queries
+    Plugins ->> SJQLEngine: Validate and filter indices<br>(based on SELECT criteria)
+
+    SJQLEngine ->> SJQLEngine: Handle RANGE query<br>(apply range limits)
+    SJQLEngine ->> SJQLEngine: Process GROUP query<br>(group rows by key)
+    SJQLEngine ->> Plugins: Handle SORT query<br>(sort valid rows)
+    Plugins ->> SJQLEngine: Return sorted/grouped data
+
+    SJQLEngine ->> DynamicGrid: Return filtered data
+    deactivate SJQLEngine
+    DynamicGrid ->> User: Rendered grid displayed
+
 ```
 
 * the query parser is partially case insensitive, so `name == 'John'` is the same as `Name == 'John'`

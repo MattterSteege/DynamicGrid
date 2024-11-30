@@ -82,9 +82,17 @@ class SJQLEngine {
         // Save the current query string
         this.currentQueryStr = '';
         selectQueries.forEach(q => this.currentQueryStr += q.field + ' ' + q.operator + ' ' + q.value + ' and ');
+        if (sortQuery) this.currentQueryStr += 'sort ' + sortQuery.field + ' ' + sortQuery.value + ' and ';
         if (rangeQuery) this.currentQueryStr += 'range ' + rangeQuery.lower + ' ' + rangeQuery.upper + ' and ';
         if (groupQuery) this.currentQueryStr += 'group ' + groupQuery.field + ' and ';
         this.currentQueryStr = this.currentQueryStr.slice(0, -5);
+
+        let log = "";
+        if (selectQueries.length > 0) log += 'SELECT queries: ' + selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(', ') + '\n';
+        if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
+        if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
+        if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
+        console.log(log);
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -139,29 +147,31 @@ class SJQLEngine {
     sort(key, direction) {
         let query = '';
 
-        console.log(this.currentQueryStr, key, direction);
-
         if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
             query = 'sort ' + key + ' ' + direction;
         else if (direction === 'asc' || direction === 'desc') //if query is present, add sort to the query
             query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
         else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
+        {
             query = this.currentQueryStr;
-
-        console.log(query);
+            query = query.replace(QueryParser.QUERIES.SORT, '');
+        }
 
         return this.query(query);
     }
 
-    group(key) {
+    group(key = '') {
         let query = '';
 
-        if (this.currentQueryStr.length === 0) //if no query is present, just sort
+        if (this.currentQueryStr.length === 0 && Object.keys(this.headers).includes(key)) //if no query is present, just group
             query = 'group ' + key;
-        else if (this.currentQueryStr.length > 0) //if query is present, add sort to the query
+        else if (this.currentQueryStr.length > 0 && Object.keys(this.headers).includes(key)) //if query is present, add sort to the query
             query = this.currentQueryStr + ' and group ' + key;
         else if (!key || key === '' || key === 'original') //if no direction is provided, just return the unsorted data
+        {
             query = this.currentQueryStr;
+            query = query.replace(QueryParser.QUERIES.GROUP, '');
+        }
 
         return this.query(query);
     }
