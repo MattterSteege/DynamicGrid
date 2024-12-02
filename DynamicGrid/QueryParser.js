@@ -20,7 +20,7 @@ class QueryParser {
      * @param query
      * @param plugins
      * @param headers
-     * @returns {Map<any, any>} A map of query types to query objects
+     * @returns {Array<{type: string, field: string, operator: string, value: string, queryType: string}>}
      */
     parseQuery = (query, plugins, headers) => query.split(/\s+and\s+|\s+&&\s+/i)
                             .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
@@ -40,10 +40,19 @@ class QueryParser {
         return {};
     }
 
+    /**
+     * Parses a match into a query plan
+     * @param match
+     * @param type
+     * @param plugins
+     * @param headers
+     * @returns {{type: string, field: string, operator: string, value: string, queryType: string}}
+     */
     parseMatch(match, type, plugins, headers) {
         //console.log(match, type);
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
+            console.log(key + " - " + operator + " - " +  value);
             key = MeantIndexKey(Object.keys(headers), key, this.config);
             const pluginType = headers[key];
             const plugin = plugins[pluginType];
@@ -59,7 +68,6 @@ class QueryParser {
             }
 
             if (!plugin.validate(value)) return;
-                //value = plugin.getJSQLFormat(value);
 
             return {type: pluginType, field, operator: operatorObj, value, queryType: 'SELECT'};
         }

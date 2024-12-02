@@ -29,20 +29,21 @@ function MeantIndexKey(dataIndexesKeys, field, config) {
     // I'm SO sorry for this code (•́︵•̀)
     return dataIndexesKeys.find(key => {
         let normalizedKey = '';
-        if (config.SymbolsToIgnore.length)
-            normalizedKey = key.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
-        else
-            normalizedKey = key;
-        if (!config.useStrictCase)
-            normalizedKey = normalizedKey.toLowerCase();
-
         let normalizedField = '';
-        if (config.SymbolsToIgnore.length)
+        if (config.SymbolsToIgnore.length){
+
+            normalizedKey = key.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
             normalizedField = field.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
-        else
+        }
+        else{
+            normalizedKey = key;
             normalizedField = field;
-        if (!config.useStrictCase)
+        }
+
+        if (!config.useStrictCase) {
+            normalizedKey = normalizedKey.toLowerCase();
             normalizedField = normalizedField.toLowerCase();
+        }
 
         return normalizedKey === normalizedField
     });

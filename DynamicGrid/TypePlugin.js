@@ -36,7 +36,7 @@ class TypePlugin {
     /**
      * Evaluate a query against data
      * @param {Object} query Query to evaluate
-     * @param {Map<string, number>} dataIndexes Map of column names to indices
+     * @param {Map<string, Set>} dataIndexes Map of column names to indices
      * @param {Array<Array>} data Data rows to evaluate
      * @param {Set<number>} indices Set of row indices to consider
      * @returns {*} Query result
@@ -119,9 +119,23 @@ class TypePlugin {
      * @param {string} key Data key
      * @param {HTMLElement} element Clicked element
      * @param {Object} dynamicGrid Grid instance
-     * @abstract
      */
     showMore(key, element, dynamicGrid) {
-        throw new GridError('showMore must be implemented by subclass');
+
+        const {x, y} = element.getBoundingClientRect();
+
+        // Define the context menu configuration
+        const items =  [
+            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'original')) },
+            null,
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group()) }
+        ];
+
+        // Initialize the context menu
+        const menu = new ContextMenu(document.body, items)
+        menu.display(x, y + 30);
     }
 }

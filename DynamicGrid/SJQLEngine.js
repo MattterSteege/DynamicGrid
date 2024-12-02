@@ -4,6 +4,7 @@ class SJQLEngine {
         this.headers = [];
         this.plugins = [];
         this.currentQueryStr = '';
+        this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
 
         this.config = {
@@ -53,8 +54,9 @@ class SJQLEngine {
             return [];
         }
 
-        if (!query) {
+        if (!query || query === '') {
             console.warn('No query provided, returning all data');
+            this.currentQueryStr = '';
             return this.data;
         }
 
@@ -63,7 +65,11 @@ class SJQLEngine {
 
     #_query(query) {
         // Early exit if no queries
-        if (!query || query.length === 0) return this.data;
+        if (!query || query.length === 0) {
+            this.currentQueryStr = '';
+            console.warn('No valid query provided, returning all data');
+            return this.data;
+        }
 
         // Separate queries by type
         const selectQueries = [];
@@ -92,7 +98,7 @@ class SJQLEngine {
         if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
         if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
         if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
-        console.log(log);
+        console.log(log, this.currentQueryStr);
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -174,6 +180,29 @@ class SJQLEngine {
         }
 
         return this.query(query);
+    }
+
+    addSelect(key, operator, value) {
+        let parsedQuery = [];
+        if (this.currentQueryStr.length > 0) {
+            parsedQuery = this.QueryParser.parseQuery(this.currentQueryStr, this.plugins, this.headers);
+            if (key && operator && value) {
+                parsedQuery.push(this.QueryParser.parseMatch([undefined, key, operator, value], 'SELECT', this.plugins, this.headers));
+            }
+        }
+        else {
+            parsedQuery.push(this.QueryParser.parseMatch([undefined, key, operator, value], 'SELECT', this.plugins, this.headers));
+        }
+
+        this.futureQuery = parsedQuery;
+    }
+
+    removeSelect(key, operator, value) {
+        this.futureQuery = this.futureQuery.filter(query =>  !(query.field.toString() === key.toString() && query.operator.toString() === operator.toString() && query.value.toString() === value.toString()));
+    }
+
+    runSelect() {
+        return this.#_query(this.futureQuery);
     }
 
     //================================================== PLUGIN SYSTEM ==================================================

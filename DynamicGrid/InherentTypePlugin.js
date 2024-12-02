@@ -196,21 +196,17 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     validate(value) {
-        if (typeof value === 'boolean')
-            return true;
-        else if (typeof value === 'string')
-            return value === 'true' || value === 'false';
-
-        return false;
+        value = Boolean(value);
+        return value === true || value === false;
     }
 
     evaluate(query, dataIndexes, data, indices) {
+        query.value = query.value === 'true';
         if (dataIndexes){
             //since we have already filtered the data based on the value,
             //we can just return the set of indices (because there are only two possible values)
             const allowedValues = dataIndexes.get(query.value);
-            //get all the values that are inside the allowedValues set and the indices set
-            return new Set([...indices].filter(x => allowedValues.has(x)));
+            return new Set([...indices].filter(idx => allowedValues.has(idx)));
         }
         else {
             return new Set(data
@@ -220,7 +216,7 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     evaluateCondition(dataValue, operator, value) {
-        return dataValue === value;
+        return Boolean(dataValue) === Boolean(value);
     }
 
     sort(query, data) {
@@ -251,6 +247,44 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.style.width = '-webkit-fill-available';
         checkbox.name = 'checkbox';
         return checkbox.outerHTML;
+    }
+
+    showMore(key, element, dynamicGrid) {
+
+        const {x, y} = element.getBoundingClientRect();
+
+        // Define the context menu configuration
+        const items =  [
+            { text: 'Show ' + key + ' ascending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'original')) },
+            null,
+            { text: 'Only show true', onclick: () => {
+                    dynamicGrid.engine.addSelect(key, '==', 'true');
+                    dynamicGrid.engine.removeSelect(key, '==', 'false');
+                    dynamicGrid.ui.render(dynamicGrid.engine.runSelect());
+                }
+            },
+            { text: 'Only show false', onclick: () => {
+                    dynamicGrid.engine.addSelect(key, '==', 'false');
+                    dynamicGrid.engine.removeSelect(key, '==', 'true');
+                    dynamicGrid.ui.render(dynamicGrid.engine.runSelect());
+                }
+            },
+            { text: 'Show all', onclick: () => {
+                    dynamicGrid.engine.removeSelect(key, '==', 'true');
+                    dynamicGrid.engine.removeSelect(key, '==', 'false');
+                    dynamicGrid.ui.render(dynamicGrid.engine.runSelect());
+                }
+            },
+            null,
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group()) }
+        ];
+
+        // Initialize the context menu
+        const menu = new ContextMenu(document.body, items)
+        menu.display(x, y + 30);
     }
 }
 
