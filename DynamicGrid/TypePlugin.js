@@ -121,21 +121,6 @@ class TypePlugin {
      * @param {Object} dynamicGrid Grid instance
      */
     showMore(key, element, dynamicGrid) {
-
-        const {x, y} = element.getBoundingClientRect();
-
-        // Define the context menu configuration
-        const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'original')) },
-            null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group()) }
-        ];
-
-        // Initialize the context menu
-        const menu = new ContextMenu(document.body, items)
-        menu.display(x, y + 30);
+        throw new Error('showMore must be implemented by subclass');
     }
 }

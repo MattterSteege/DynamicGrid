@@ -13,17 +13,18 @@ const config = {
         keep_fnames: false,
         keep_infinity: false
     },
-    mangle: {
-        eval: false,
-        keep_classnames: true,
-        keep_fnames: true,
-        toplevel: false,
-        safari10: false
-    },
+    // mangle: {
+    //     eval: false,
+    //     keep_classnames: true,
+    //     keep_fnames: true,
+    //     toplevel: false,
+    //     safari10: false
+    // },
+    mangle: false,
     module: false,
     sourceMap: {
-        filename: outputDir + 'DynamicGrid.min.js',
-        url: outputDir + 'DynamicGrid.min.js.map'
+        filename: outputDir + 'DynamicGrid.min.js.map',
+        url: outputDir + 'DynamicGrid.min.js'
     },
     output: {
         comments: 'some'
@@ -45,6 +46,7 @@ const files = [
 
 // Parse command line arguments
 const removeCombinedFile = process.argv.includes('--remove-combine-file') || process.argv.includes('--rcf');
+const keepCombinedFile = process.argv.includes('--keep-combine-file') || process.argv.includes('--kcf');
 
 (async () => {
     console.log('\n' + '='.repeat(50));
@@ -94,7 +96,13 @@ const removeCombinedFile = process.argv.includes('--remove-combine-file') || pro
             console.log('Removing "Combined.js" file as requested...');
             fs.unlinkSync(outputDir + 'Combined.js');
             console.log('  - "Combined.js" file removed successfully.');
-        } else {
+        }
+        else if (keepCombinedFile){
+            console.log('  - "Combined.js" file kept.');
+            fs.writeFileSync(outputDir + 'Combined.js', code);
+            console.log('  - Combined code saved as "Combined"');
+        }
+        else {
             // Ask user if they want to delete the Combined.js file
             const readline = require('readline');
             const rl = readline.createInterface({

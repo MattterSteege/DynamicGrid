@@ -80,6 +80,25 @@ class stringTypePlugin extends TypePlugin {
             }
         });
     }
+
+    showMore(key, element, dynamicGrid) {
+
+        const {x, y} = element.getBoundingClientRect();
+
+        // Define the context menu configuration
+        const items =  [
+            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'original')) },
+            null,
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.render(dynamicGrid.group(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.render(dynamicGrid.group()) }
+        ];
+
+        // Initialize the context menu
+        const menu = new ContextMenu(document.body, items)
+        menu.display(x, y + 30);
+    }
 }
 
 class numberTypePlugin extends TypePlugin {
@@ -175,12 +194,12 @@ class numberTypePlugin extends TypePlugin {
 
         // Define the context menu configuration
         const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'original')) },
+            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'original')) },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group()) }
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.render(dynamicGrid.group(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.render(dynamicGrid.group()) }
         ];
 
         // Initialize the context menu
@@ -255,31 +274,31 @@ class booleanTypePlugin extends TypePlugin {
 
         // Define the context menu configuration
         const items =  [
-            { text: 'Show ' + key + ' ascending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.sort(key, 'original')) },
+            { text: 'Show ' + key + ' ascending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'original')) },
             null,
             { text: 'Only show true', onclick: () => {
-                    dynamicGrid.engine.addSelect(key, '==', 'true');
-                    dynamicGrid.engine.removeSelect(key, '==', 'false');
-                    dynamicGrid.ui.render(dynamicGrid.engine.runSelect());
+                    dynamicGrid.addSelect(key, '==', 'true');
+                    dynamicGrid.removeSelect(key, '==', 'false');
+                    dynamicGrid.render(dynamicGrid.runSelect());
                 }
             },
             { text: 'Only show false', onclick: () => {
-                    dynamicGrid.engine.addSelect(key, '==', 'false');
-                    dynamicGrid.engine.removeSelect(key, '==', 'true');
-                    dynamicGrid.ui.render(dynamicGrid.engine.runSelect());
+                    dynamicGrid.addSelect(key, '==', 'false');
+                    dynamicGrid.removeSelect(key, '==', 'true');
+                    dynamicGrid.render(dynamicGrid.runSelect());
                 }
             },
             { text: 'Show all', onclick: () => {
-                    dynamicGrid.engine.removeSelect(key, '==', 'true');
-                    dynamicGrid.engine.removeSelect(key, '==', 'false');
-                    dynamicGrid.ui.render(dynamicGrid.engine.runSelect());
+                    dynamicGrid.removeSelect(key, '==', 'true');
+                    dynamicGrid.removeSelect(key, '==', 'false');
+                    dynamicGrid.render(dynamicGrid.runSelect());
                 }
             },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.ui.render(dynamicGrid.engine.group()) }
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.render(dynamicGrid.group(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.render(dynamicGrid.group()) }
         ];
 
         // Initialize the context menu

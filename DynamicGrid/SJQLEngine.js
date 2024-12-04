@@ -134,7 +134,7 @@ class SJQLEngine {
 
             // Sort groups if required
             if (sortQuery) {
-                throw new GridError('Sorting grouped data is not yet supported');
+                console.warn('Sorting grouped data is not yet supported');
             }
 
             return groupedData;
