@@ -38,6 +38,134 @@ P.s. this project is not complete yet, and the documentation is not up to date, 
 
 ---
 
+## 🚀 Using the query system
+
+This system allows you to write SQL-like queries to interact with and manipulate data. Below is a detailed explanation of the supported query types, how they work, and how to write them correctly.
+
+---
+
+## Supported Query Types
+
+### **1. GROUP Queries**
+- **Purpose**: Groups data based on a specified key (e.g., column or field).
+- **Syntax**: `group [key]`
+- **Example**: 
+  ```text
+  group category
+  ```
+This groups data by the `category` field.
+
+---
+
+### **2. RANGE Queries**
+- **Purpose**: Filters data to include only a specific range of results.
+- **Syntax**: `range [lower]-[upper]` or `range [value]`
+- **Examples**:
+   - `range 10-20` → Includes rows from the 10th to the 20th index (counting from 0).
+   - `range 15` → Limits the results to the first 15 rows.
+
+---
+
+### **3. SORT Queries**
+- **Purpose**: Sorts data based on a field in ascending (`asc`) or descending (`desc`) order.
+- **Syntax**: `sort [key] [asc|desc]`
+- **Examples**:
+   - `sort name asc` → Sorts by the `name` field in ascending order.
+   - `sort price desc` → Sorts by the `price` field in descending order.
+
+---
+
+### **4. SELECT Queries**
+- **Purpose**: Filters data based on a condition applied to a field.
+- **Syntax**: `[field] [operator] [value]`
+- **Examples**:
+   - `price > 50` → Selects rows where the `price` is greater than 50.
+   - `status == active` → Selects rows where the `status` is `active`.
+
+#### **Operators** (By Field Type):
+- **String Fields**:
+   - `%=` → Starts with (`name %= Jo` → Matches `John`).
+   - `=%` → Ends with (`name =% hn` → Matches `John`).
+   - `*=` → Contains (`name *= oh` → Matches `John`).
+   - `!*=` → Does not contain.
+   - `==` → Equals.
+   - `!=` → Not equals.
+   - `in` → Matches any value in a list (`name in ["John", "Jane"]`).
+
+- **Number Fields**:
+   - `>` → Greater than.
+   - `<` → Less than.
+   - `>=` → Greater than or equal to.
+   - `<=` → Less than or equal to.
+   - `==` → Equals.
+   - `!=` → Not equals.
+   - `in` → Matches any value in a list (`price in [10, 20, 30]`).
+
+- **Boolean Fields**:
+   - `==` → Equals (`status == true`).
+   - `!=` → Not equals (`status != true`).
+
+---
+
+## Combining Queries
+You can combine multiple subqueries using `and` or `&&` to create complex queries.
+
+**Example**:
+```text
+price > 50 and category == Electronics and range 10-20
+```
+- Filters data where the `price` is greater than 50,
+- The `category` is `Electronics`,
+- And includes only rows from index 10 to 20.
+
+---
+
+## Writing Correct Queries
+
+1. **Understand the Field Names**: Ensure field names match those defined in the data headers.
+2. **Choose the Right Operators**: Use operators valid for the field type (string, number, boolean).
+3. **Combine Queries Appropriately**: Use `and` or `&&` to join multiple subqueries.
+4. **Match Syntax Exactly**: Follow the specified format for each query type (e.g., no extra spaces, correct use of keywords).
+5. **Use Plugins**: If plugins are extensible (e.g., for dates or custom types), ensure your query adheres to the operators and validation rules defined by those plugins.
+
+---
+
+## Example Queries
+
+### **1. Grouping**
+```text
+group category
+```
+Groups data by the `category` field.
+
+### **2. Sorting**
+```text
+sort name asc
+```
+Sorts by the `name` field in ascending order.
+
+### **3. Filtering**
+```text
+price > 50
+```
+Filters rows where the `price` is greater than 50.
+
+### **4. Range**
+```text
+range 5-15
+```
+Includes rows from index 5 to 15.
+
+### **5. Combined Query**
+```text
+price > 100 and category == Electronics and sort name desc
+```
+Filters rows with `price > 100`, `category == Electronics`, and sorts them by the `name` field in descending order.
+
+---
+
+---
+
 ## ⚙️ Installation
 
 ### Prerequisites

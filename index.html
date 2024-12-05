@@ -60,6 +60,21 @@
             opacity: 0;
         }
 
+        .bottom-er {
+            position: absolute;
+            bottom: 5vh;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: #777;
+            z-index: 100;
+            transition: all 0.5s ease-in-out;
+        }
+
+        .bottom-er.active {
+            opacity: 0;
+        }
+
         /* Styling for input fields */
         input[type="file"], input[type="text"] {
             padding: 10px;
@@ -113,7 +128,14 @@
     <input type="file" id="file" accept=".csv, .json" onchange="handleFile(this.files[0])">
     or
     <button onclick="fetchPresetData()" style="margin-left: 10px;">use preset</button>
+
 </div>
+
+<span class="bottom-er">
+    To use this grid, either use the preset data or upload a CSV or JSON file. You can use the grid by writing a query in the bar above using, or using right-click on the header and using the context menu. You can also consult the readme on github for more information.
+    <a href="https://grid.kronk.tech/testData/generated_100.json" target="_blank" class="bottom-er" style="bottom: 10vh;">Click here to view the preset data</a>
+    <a href="https://github.com/MattterSteege/DynamicGrid" target="_blank" class="bottom-er" style="bottom: 15vh;">Click here to view the readme/github repo</a>
+</span>
 
 <div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: calc(50% + 10px); left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
 
@@ -152,8 +174,10 @@
         reader.onload = function (e) {
             document.querySelector('.top').classList.add('active');
             document.querySelector('.bottom').classList.add('active');
+            document.querySelector('.bottom-er').classList.add('active');
             setTimeout(() => {
                 document.querySelector('.bottom').remove();
+                document.querySelector('.bottom-er').remove();
             }, 3000);
 
 
@@ -168,8 +192,10 @@
     function fetchPresetData() {
         document.querySelector('.top').classList.add('active');
         document.querySelector('.bottom').classList.add('active');
+        document.querySelector('.bottom-er').classList.add('active');
         setTimeout(() => {
             document.querySelector('.bottom').remove();
+            document.querySelector('.bottom-er').remove();
         }, 3000);
 
         fetch('https://grid.kronk.tech/testData/generated_100.json')
