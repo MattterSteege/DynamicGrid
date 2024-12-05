@@ -31,8 +31,8 @@ class DynamicGrid {
 
     /**
      * Imports data into the engine and creates a data index.
-     * @param {Array} data - The data to import.
-     * @param {Object} config - The configuration for importing data.
+     * @param {string|object} data - The data to import.
+     * @param {Object} [config] - The configuration for importing data.
      * @preserve
      */
     importData(data, config) {
@@ -41,25 +41,34 @@ class DynamicGrid {
     }
 
     /**
-     * Renders the UI based on the provided query.
-     * @param {string} query - The query to render the data.
+     * Renders the UI based on the provided input.
+     * @param {string} input - A query string or data object to render the UI.
      * @preserve
      */
-    render(query) {
-        this.ui.render(this.engine.query(query));
+    render(input) {
+        this.ui.render(this.engine.query(input));
+    }
+
+    /**
+     * Renders the UI with the provided data. This method does not run any queries, so the data must be pre-processed already.
+     * @param {object} input - The data to render.
+     * @preserve
+     */
+    renderRaw(input) {
+        this.ui.render(input);
     }
 
     /**
      * Sorts the data by the specified key and direction.
      * @param {string} key - The key to sort by.
-     * @param {string} direction - The direction to sort ('asc' or 'desc').
+     * @param {'asc'|'desc'} direction - The direction to sort.
      * @preserve
      */
     sort = (key, direction) => this.engine.sort(key, direction);
 
     /**
      * Groups the data by the specified key.
-     * @param {string} key - The key to group by.
+     * @param {string} [key] - The key to group by.
      * @preserve
      */
     groupBy = key => this.engine.groupBy(key);
@@ -76,8 +85,8 @@ class DynamicGrid {
     /**
      * Removes a selection filter from the data.
      * @param {string} key - The key to filter by.
-     * @param {string} operator - The operator used for filtering.
-     * @param {*} value - The value to filter by.
+     * @param {string} [operator] - The operator used for filtering.
+     * @param {*} [value] - The value to filter by.
      * @preserve
      */
     removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
@@ -86,5 +95,5 @@ class DynamicGrid {
      * Runs all the selection filters on the data.
      * @preserve
      */
-    runSelects = () => this.engine.runSelects();
+    runSelect = () => this.engine.runSelect();
 }

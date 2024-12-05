@@ -60,6 +60,7 @@ class SJQLEngine {
             return this.data;
         }
 
+        console.log(query)
         return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
 
@@ -166,7 +167,7 @@ class SJQLEngine {
         return this.query(query);
     }
 
-    group(key = '') {
+    groupBy(key = '') {
         let query = '';
 
         if (this.currentQueryStr.length === 0 && Object.keys(this.headers).includes(key)) //if no query is present, just group

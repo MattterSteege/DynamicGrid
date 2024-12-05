@@ -1,3 +1,5 @@
+//to build the project run the following command in the terminal: node build.js
+
 const { minify } = require('terser');
 const fs = require('fs');
 
@@ -13,13 +15,6 @@ const config = {
         keep_fnames: false,
         keep_infinity: false
     },
-    // mangle: {
-    //     eval: false,
-    //     keep_classnames: true,
-    //     keep_fnames: true,
-    //     toplevel: false,
-    //     safari10: false
-    // },
     mangle: false,
     module: false,
     sourceMap: {
@@ -68,10 +63,10 @@ const keepCombinedFile = process.argv.includes('--keep-combine-file') || process
         }
 
         // Save the combined code
-        console.log('\nStep 2: Saving combined code as "Combined.js"...');
+        console.log('\nStep 2: Saving combined code as "DynamicGrid.js"...');
         console.log('--------------------------------------------------');
-        fs.writeFileSync(outputDir + 'Combined.js', code);
-        console.log('  - Combined code saved as "Combined.js"');
+        fs.writeFileSync(outputDir + 'DynamicGrid.js', code);
+        console.log('  - Combined code saved as "DynamicGrid.js"');
 
         console.log('\n======================================================');
         console.log('Step 3: Minifying the code...');
@@ -91,31 +86,31 @@ const keepCombinedFile = process.argv.includes('--keep-combine-file') || process
         console.log('\n======================================================');
         console.log('Minification process finished successfully!\n');
 
-        // Prompt user to remove Combined.js if not using --remove-combine-file or --rcf
+        // Prompt user to remove DynamicGrid.js if not using --remove-combine-file or --rcf
         if (removeCombinedFile) {
-            console.log('Removing "Combined.js" file as requested...');
-            fs.unlinkSync(outputDir + 'Combined.js');
-            console.log('  - "Combined.js" file removed successfully.');
+            console.log('Removing "DynamicGrid.js" file as requested...');
+            fs.unlinkSync(outputDir + 'DynamicGrid.js');
+            console.log('  - "DynamicGrid.js" file removed successfully.');
         }
         else if (keepCombinedFile){
-            console.log('  - "Combined.js" file kept.');
-            fs.writeFileSync(outputDir + 'Combined.js', code);
-            console.log('  - Combined code saved as "Combined"');
+            console.log('  - "DynamicGrid.js" file kept.');
+            fs.writeFileSync(outputDir + 'DynamicGrid.js', code);
+            console.log('  - Combined code saved as "DynamicGrid"');
         }
         else {
-            // Ask user if they want to delete the Combined.js file
+            // Ask user if they want to delete the DynamicGrid.js file
             const readline = require('readline');
             const rl = readline.createInterface({
                 input: process.stdin,
                 output: process.stdout
             });
 
-            rl.question('Do you want to remove the "Combined.js" file? (y/n): ', (answer) => {
+            rl.question('Do you want to remove the "DynamicGrid.js" file? (y/n): ', (answer) => {
                 if (answer.toLowerCase() === 'y') {
-                    fs.unlinkSync(outputDir + 'Combined.js');
-                    console.log('  - "Combined.js" file removed successfully.');
+                    fs.unlinkSync(outputDir + 'DynamicGrid.js');
+                    console.log('  - "DynamicGrid.js" file removed successfully.');
                 } else {
-                    console.log('  - "Combined.js" file kept.');
+                    console.log('  - "DynamicGrid.js" file kept.');
                 }
                 rl.close();
             });

@@ -32,8 +32,8 @@ class DynamicGrid {
 
     /**
      * Imports data into the engine and creates a data index.
-     * @param {Array} data - The data to import.
-     * @param {Object} config - The configuration for importing data.
+     * @param {string|object} data - The data to import.
+     * @param {Object} [config] - The configuration for importing data.
      * @preserve
      */
     importData(data, config) {
@@ -42,25 +42,34 @@ class DynamicGrid {
     }
 
     /**
-     * Renders the UI based on the provided query.
-     * @param {string} query - The query to render the data.
+     * Renders the UI based on the provided input.
+     * @param {string} input - A query string or data object to render the UI.
      * @preserve
      */
-    render(query) {
-        this.ui.render(this.engine.query(query));
+    render(input) {
+        this.ui.render(this.engine.query(input));
+    }
+
+    /**
+     * Renders the UI with the provided data. This method does not run any queries, so the data must be pre-processed already.
+     * @param {object} input - The data to render.
+     * @preserve
+     */
+    renderRaw(input) {
+        this.ui.render(input);
     }
 
     /**
      * Sorts the data by the specified key and direction.
      * @param {string} key - The key to sort by.
-     * @param {string} direction - The direction to sort ('asc' or 'desc').
+     * @param {'asc'|'desc'} direction - The direction to sort.
      * @preserve
      */
     sort = (key, direction) => this.engine.sort(key, direction);
 
     /**
      * Groups the data by the specified key.
-     * @param {string} key - The key to group by.
+     * @param {string} [key] - The key to group by.
      * @preserve
      */
     groupBy = key => this.engine.groupBy(key);
@@ -77,8 +86,8 @@ class DynamicGrid {
     /**
      * Removes a selection filter from the data.
      * @param {string} key - The key to filter by.
-     * @param {string} operator - The operator used for filtering.
-     * @param {*} value - The value to filter by.
+     * @param {string} [operator] - The operator used for filtering.
+     * @param {*} [value] - The value to filter by.
      * @preserve
      */
     removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
@@ -87,7 +96,7 @@ class DynamicGrid {
      * Runs all the selection filters on the data.
      * @preserve
      */
-    runSelects = () => this.engine.runSelects();
+    runSelect = () => this.engine.runSelect();
 }
 
 // ./DynamicGrid/DynamicGridUI.js
@@ -755,12 +764,12 @@ class stringTypePlugin extends TypePlugin {
 
         // Define the context menu configuration
         const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'original')) },
+            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'original')) },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.render(dynamicGrid.group(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.render(dynamicGrid.group()) }
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy()) }
         ];
 
         // Initialize the context menu
@@ -862,12 +871,12 @@ class numberTypePlugin extends TypePlugin {
 
         // Define the context menu configuration
         const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'original')) },
+            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'original')) },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.render(dynamicGrid.group(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.render(dynamicGrid.group()) }
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy()) }
         ];
 
         // Initialize the context menu
@@ -942,31 +951,31 @@ class booleanTypePlugin extends TypePlugin {
 
         // Define the context menu configuration
         const items =  [
-            { text: 'Show ' + key + ' ascending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.render(dynamicGrid.sort(key, 'original')) },
+            { text: 'Show ' + key + ' ascending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'original')) },
             null,
             { text: 'Only show true', onclick: () => {
                     dynamicGrid.addSelect(key, '==', 'true');
                     dynamicGrid.removeSelect(key, '==', 'false');
-                    dynamicGrid.render(dynamicGrid.runSelect());
+                    dynamicGrid.renderRaw(dynamicGrid.runSelect());
                 }
             },
             { text: 'Only show false', onclick: () => {
                     dynamicGrid.addSelect(key, '==', 'false');
                     dynamicGrid.removeSelect(key, '==', 'true');
-                    dynamicGrid.render(dynamicGrid.runSelect());
+                    dynamicGrid.renderRaw(dynamicGrid.runSelect());
                 }
             },
             { text: 'Show all', onclick: () => {
                     dynamicGrid.removeSelect(key, '==', 'true');
                     dynamicGrid.removeSelect(key, '==', 'false');
-                    dynamicGrid.render(dynamicGrid.runSelect());
+                    dynamicGrid.renderRaw(dynamicGrid.runSelect());
                 }
             },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.render(dynamicGrid.group(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.render(dynamicGrid.group()) }
+            { text: 'Group by ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy(key)) },
+            { text: 'Un-group', onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy()) }
         ];
 
         // Initialize the context menu
@@ -1002,9 +1011,14 @@ class QueryParser {
      * @param headers
      * @returns {Array<{type: string, field: string, operator: string, value: string, queryType: string}>}
      */
-    parseQuery = (query, plugins, headers) => query.split(/\s+and\s+|\s+&&\s+/i)
-                            .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
-                            .filter(query => query.queryType);
+    parseQuery(query, plugins, headers){
+
+        console.log(query);
+
+        return query.split(/\s+and\s+|\s+&&\s+/i)
+                    .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
+                    .filter(query => query.queryType);
+    }
 
 
     parseSubQuery(subQuery, plugins, headers) {
@@ -1155,6 +1169,7 @@ class SJQLEngine {
             return this.data;
         }
 
+        console.log(query)
         return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
 
@@ -1261,7 +1276,7 @@ class SJQLEngine {
         return this.query(query);
     }
 
-    group(key = '') {
+    groupBy(key = '') {
         let query = '';
 
         if (this.currentQueryStr.length === 0 && Object.keys(this.headers).includes(key)) //if no query is present, just group

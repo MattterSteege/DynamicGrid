@@ -1,119 +1,189 @@
-P.S. THIS IS NOT A FINISHED PROJECT, IT IS A WORK IN PROGRESS!!!!
-So this 'docs' page is not up to date with the actual project. not all notes are relevant to the current state of the project etc.
+# 📊 DynamicGrid
 
-to compile the files into a single file, use the following command:
+**DynamicGrid** is a feature-rich JavaScript library for rendering JSON or CSV data in an interactive grid format. It offers advanced querying capabilities like sorting, filtering, grouping, and virtual scrolling. With an intuitive UI and a powerful API, **DynamicGrid** simplifies data visualization for non-developers while providing developers the tools to customize and extend functionality. 🚀
 
-```cmd
-/DynamicGrid> npx terser ./DynamicGrid/DynamicGrid.js ./DynamicGrid/TypePlugin.js ./DynamicGrid/InherentTypePlugin.js ./DynamicGrid/QueryParser.js ./DynamicGrid/SJQLEngine.js --compress keep_classnames=true,keep_fnames=true,dead_code=true,drop_console=false,drop_debugger=true,keep_fargs=true,keep_fnames=true,keep_infinity=false,passes=1 --output ./dist/DynamicGrid.js
-```
 
-make sure that the order is correct, since the files are dependent on each other. you can not compile `InherentTypePlugin.js` before `TypePlugin.js` etc.
-
-or load the `Build.run.xml` inside webstorm and run the `Build` task.
-
+P.s. this project is not complete yet, and the documentation is not up to date, but I'm working on it!
 
 ---
-How do SJQL queries work.
 
-Write any query in the following format:
-`name == 'John' and age > 20`
-you can add sort and limit to the query as well: `name == 'John' and age > 20 and sort age desc and limit 10`
-this will return the first 10 records that match the query and sort them by age in descending order.
+## Table of Contents
 
-to make sure that the query engine is perfoomrant, i made sure that only one sort and limit query will be parsed into the final query object. So adding multiple sort queries are useless and only the first will be actually used.
+1. [🌟 Features](#-features)
+2. [⚙️ Installation](#️-installation)
+3. [🖥️ Usage](#️-usage)
+    - [Developer Guide](#developer-guide)
+    - [Non-Developer Guide](#non-developer-guide)
+4. [🛠 Configuration](#-configuration)
+5. [📚 Documentation](#-documentation)
+6. [🎯 Future Plans](#-future-plans)
+7. [📄 License](#-license)
+8. [💡 Contributing](#-contributing)
 
-### notes
-* the query parser system removes (for the parsing part, so values can still contain them) all double spaces from the query string, so make sure that the query is formatted correctly.
-* The processing of the data in respect to the query is done using this flowchart:
-<br>
-<br>
+---
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant DynamicGrid
-    participant SJQLEngine
-    participant DynamicGridUI
+## 🌟 Features
 
-    User ->> DynamicGrid: Initialize(config)
-    activate DynamicGrid
-    DynamicGrid ->> SJQLEngine: Initialize(engine, plugins)
-    SJQLEngine ->> SJQLEngine: Add default plugins<br>(stringType, numberType, booleanType)
-    SJQLEngine ->> DynamicGrid: Return initialized engine
-    DynamicGrid ->> DynamicGridUI: Initialize UI(config.ui)
-    DynamicGridUI ->> DynamicGridUI: Set up UI properties<br>(row height, virtual scrolling, etc.)
-    DynamicGridUI ->> DynamicGrid: Return initialized UI
-    DynamicGrid ->> User: Initialization complete
-    deactivate DynamicGrid
+- **Sorting**: Easily sort data by any column in ascending or descending order.
+- **Filtering**: Apply filters with conditions like `==`, `!=`, `>`, `<`, `in`, and more.
+- **Grouping**: Organize rows based on shared column values with a single command.
+- **Virtual Scrolling**: Efficient rendering of large datasets by displaying only visible rows.
+- **Dynamic Column Resizing**: Adjust column widths with resizable headers.
+- **Flexible Querying**: Use a SQL-like syntax for advanced operations (e.g., grouping, sorting, filtering).
+- **Type-Aware Plugins**: Built-in support for string, numeric, and boolean data types with extensible plugins.
+- **Plugin System**: Easily _add_ or _override with_ custom plugins for additional data types. Now you can change the way the data is processed and displayed. with the safety of the backend engine. (check the plugin docs for more information)
+- **Context Menu**: Right-click headers to access sorting, grouping, and filtering options.
+- **Data Format Support**: Import data from JSON or CSV files. (for now, more hopefully in the future)
+- **Optimized Performance**: Fast hashing and indexing for quick data manipulation.
 
-    User ->> DynamicGrid: Import data(data, config)
-    activate DynamicGrid
-    DynamicGrid ->> SJQLEngine: Import and parse data
-    SJQLEngine ->> SJQLEngine: Create data index<br>(map header values to rows)
-    SJQLEngine ->> DynamicGrid: Return indexed data
-    DynamicGrid ->> User: Data import complete
-    deactivate DynamicGrid
+---
 
-    User ->> DynamicGrid: Render(query)
-    activate DynamicGrid
-    DynamicGrid ->> SJQLEngine: Execute query(query)
-    SJQLEngine ->> SJQLEngine: Parse query into SELECT, SORT, RANGE, GROUP
-    SJQLEngine ->> SJQLEngine: Filter data based on query
-    SJQLEngine ->> SJQLEngine: Apply sorting and grouping
-    SJQLEngine ->> DynamicGrid: Return filtered data
-    DynamicGrid ->> DynamicGridUI: Render data
-    activate DynamicGridUI
-    DynamicGridUI ->> DynamicGridUI: Render headers
-    DynamicGridUI ->> DynamicGridUI: Render visible rows
-    DynamicGridUI ->> User: Display rendered grid
-    deactivate DynamicGridUI
-    deactivate DynamicGrid
+## ⚙️ Installation
 
-    User ->> DynamicGridUI: Interact with grid (e.g., toggle column)
-    activate DynamicGridUI
-    DynamicGridUI ->> DynamicGrid: Request action (e.g., sort)
-    DynamicGrid ->> SJQLEngine: Re-query with updated parameters
-    SJQLEngine ->> DynamicGrid: Return updated data
-    DynamicGrid ->> DynamicGridUI: Update grid display
-    DynamicGridUI ->> User: Updated view displayed
-    deactivate DynamicGridUI
+### Prerequisites
 
+Ensure you have the following installed:
+- [Node.js](https://nodejs.org/)
+- Modules: `Terser` and `fs` (available via `npm`)
+
+### Build Instructions
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/DynamicGrid.git
+   cd DynamicGrid
+   ```
+
+2. Run one of the build commands:
+    - `node build.js` — Builds the project and removes the combined file afterward.
+    - `node build.js --rcf` — Builds the project and removes the combined file.
+    - `node build.js --kcf` — Builds the project and keeps the combined file.
+
+---
+
+## 🖥️ Usage
+
+### Developer Guide
+
+Import and interact with the `DynamicGrid` class in your JavaScript code:
+
+#### Example:
+```javascript
+const grid = new DynamicGrid({
+    headers: { id: 'number', name: 'string', isActive: 'boolean' },
+    ui: { containerId: '#grid-container', rowHeight: 50 }
+});
+
+// Load data
+grid.importData(data, { type: 'json' });
+
+// Render the grid
+grid.render('sort name asc and isActive == true');
 ```
 
-the sequence diagram of the engine is as follows:
-```mermaid
-sequenceDiagram
-    participant User
-    participant DynamicGrid
-    participant SJQLEngine
-    participant QueryParser
-    participant Plugins
+#### Key Methods:
+- **`importData(data, config)`**: Load JSON or CSV data.
+- **`render(query)`**: Render the grid based on a query.
+- **`sort(key, direction)`**: Sort data by a key (`asc` or `desc`).
+- **`groupBy(key)`**: Group rows by a key.
+- **`addSelect(key, operator, value)`**: Add filters dynamically.
+- **`runSelect()`**: Apply all added filters.
 
-    User ->> DynamicGrid: Render(query)
-    DynamicGrid ->> SJQLEngine: Execute query(query)
-    activate SJQLEngine
-    SJQLEngine ->> QueryParser: Parse query
-    activate QueryParser
-    QueryParser ->> QueryParser: Split query into parts<br>(SELECT, SORT, GROUP, RANGE)
-    QueryParser ->> SJQLEngine: Return parsed query parts
-    deactivate QueryParser
+For detailed usage, refer to the API documentation in the code.
 
-    SJQLEngine ->> SJQLEngine: Initialize validIndices<br>(all data indices)
-    SJQLEngine ->> Plugins: Process SELECT queries
-    Plugins ->> SJQLEngine: Validate and filter indices<br>(based on SELECT criteria)
+### Non-Developer Guide
 
-    SJQLEngine ->> SJQLEngine: Handle RANGE query<br>(apply range limits)
-    SJQLEngine ->> SJQLEngine: Process GROUP query<br>(group rows by key)
-    SJQLEngine ->> Plugins: Handle SORT query<br>(sort valid rows)
-    Plugins ->> SJQLEngine: Return sorted/grouped data
+1. Place the `DynamicGrid.min.js` file in your project.
+2. Link the script in your HTML:
+   ```html
+   <script src="DynamicGrid.min.js"></script>
+   <script>
+       const grid = new DynamicGrid({ 
+           ui: { containerId: '#grid-container' }
+       });
+       grid.importData(jsonData, { type: 'json' });
+       grid.render();
+   </script>
+   ```
+3. Right-click on column headers in the grid to access sorting and filtering options.
 
-    SJQLEngine ->> DynamicGrid: Return filtered data
-    deactivate SJQLEngine
-    DynamicGrid ->> User: Rendered grid displayed
+---
 
+## 🛠 Configuration
+
+The `DynamicGrid` class is highly configurable:
+
+### Example Configuration
+```javascript
+const config = {
+    headers: {
+        id: 'number',
+        name: 'string',
+        isActive: 'boolean'
+    },
+    ui: {
+        containerId: '#grid-container',
+        rowHeight: 50,
+        virtualScrolling: true,
+        autoFitCellWidth: 'header'
+    },
+    engine: {
+        useStrictCase: false,
+        SymbolsToIgnore: [' ', '_', '-']
+    }
+};
 ```
 
-* the query parser is partially case insensitive, so `name == 'John'` is the same as `Name == 'John'`
-* Make sure that the query is formatted correctly, since the query parser is not (always) able to handle incorrect queries.
-* Make sure that the most specific queries are at the beginning of the query, the next query will be executed on the result of the previous query. So `name == 'John' and age > 20` is faster than `age > 20 and name == 'John'` since there are less John's than people over 20.
-* Get the fastest result by setting `engine.UseDataEnumeration` to false and `engine.UseDataIndexing` to true. This will use a different method to search the data, but will be faster (1000 rows: 11.5 queries per second vs 8.2 per second).
+### UI Options
+| Option               | Description                                        | Default |
+|----------------------|----------------------------------------------------|---------|
+| `containerId`        | ID of the container element for the grid.          | None    |
+| `rowHeight`          | Height of each row (in pixels).                    | 40px    |
+| `virtualScrolling`   | Enable/disable virtual scrolling.                  | `true`  |
+| `autoFitCellWidth`   | Auto-fit cell widths: `'header'`, `'content'`, etc.| `'header'` |
+
+---
+
+## 📚 Documentation
+
+For a full list of methods, properties, and examples, refer to the [DynamicGrid API Documentation](docs/DynamicGrid.md).
+
+---
+
+## 🎯 Future Plans
+
+- **Inline Editing**: Modify grid data directly in cells.
+- **API Integration**: Connect to live data sources.
+- **Date Handling**: Add support for date columns. (and other complex data types) 
+- **Additional Plugins**: Extend type support for complex data types.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## 💡 Contributing
+
+Contributions are welcome! To get started:
+
+1. Fork the repository.
+2. Create a new branch:
+   ```bash
+   git checkout -b feature/my-new-feature
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m "Add some feature"
+   ```
+4. Push to the branch:
+   ```bash
+   git push origin feature/my-new-feature
+   ```
+5. Submit a pull request.
+
+---
+
+⚡ **DynamicGrid** — Simplifying data visualization and manipulation!

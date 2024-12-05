@@ -22,9 +22,14 @@ class QueryParser {
      * @param headers
      * @returns {Array<{type: string, field: string, operator: string, value: string, queryType: string}>}
      */
-    parseQuery = (query, plugins, headers) => query.split(/\s+and\s+|\s+&&\s+/i)
-                            .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
-                            .filter(query => query.queryType);
+    parseQuery(query, plugins, headers){
+
+        console.log(query);
+
+        return query.split(/\s+and\s+|\s+&&\s+/i)
+                    .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
+                    .filter(query => query.queryType);
+    }
 
 
     parseSubQuery(subQuery, plugins, headers) {
