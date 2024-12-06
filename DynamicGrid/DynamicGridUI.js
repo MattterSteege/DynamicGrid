@@ -6,7 +6,7 @@ class DynamicGridUI {
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      */
-    constructor(dynamicGrid, ui_config) {
+    constructor(dynamicGrid, ui_config, APIConnection) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
 
@@ -19,7 +19,9 @@ class DynamicGridUI {
             minColumnWidth: ui_config.minColumnWidth ?? 5,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 10,
-            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header'
+            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header',
+
+            allowFieldEditing: ui_config.allowFieldEditing ?? false,
         };
 
         this.#_init(this.containerId);
@@ -27,6 +29,14 @@ class DynamicGridUI {
         this.UIChache = 0;
         this.UICacheRefresh = false;
         this.sortDirection = 'asc';
+
+        // *Possible* API connection
+        this.APIConnection = APIConnection;
+
+        //custom event delegation
+        this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
+        this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
+        this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
     }
 
     render(data) {
@@ -204,9 +214,15 @@ class DynamicGridUI {
             const tableRow = this.#_createTableRow();
             headers.forEach((header) => {
                 const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
-                const cell = this.#_createTableCell(plugin.renderCell(data[i][header]));
+                const cell = this.#_createTableCell(plugin, data[i][header]);
                 tableRow.appendChild(cell);
             });
+
+            tableRow.addEventListener('dg-change', (e) => {
+                console.log(e);
+                tableRow.dispatchEvent(this.onEditEvent(e));
+            });
+
             visibleRowsContainer.appendChild(tableRow);
         }
 
@@ -379,10 +395,32 @@ class DynamicGridUI {
         return row;
     }
 
-    #_createTableCell(content = '') {
-        const cell = document.createElement('div');
+    #_createTableCell(plugin, content = '') {
+        if (!this.config.allowFieldEditing) {
+            const cell =  plugin.renderCell(content)
+            cell.className = 'cell';
+            return cell;
+        }
+
+        const cell = plugin.renderEditableCell(content);
         cell.className = 'cell';
-        cell.innerHTML = content;
+
+        // cell.addEventListener('click', (e) => {
+        //     cell.focus();
+        // });
+        //
+        // cell.addEventListener('focusout', (e) => {
+        //     cell.dispatchEvent(this.onEditEvent);
+        //
+        //     console.log(e);
+        // });
+        //
+        // cell.addEventListener('keydown', (e) => {
+        //     if (e.key === 'Enter') {
+        //         cell.blur();
+        //     }
+        // });
+
         return cell;
     }
 

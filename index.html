@@ -10,6 +10,7 @@
     <script src="DynamicGrid/InherentTypePlugin.js"></script>
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
+    <script src="DynamicGrid/APIConnection.js"></script>
     <script src="DynamicGrid/DynamicGridUtils.js"></script>
     <script src="DynamicGrid/ContextMenu.js"></script>
 <!--        <script src="/dist/DynamicGrid.js"></script>-->
@@ -36,7 +37,7 @@
             justify-content: center;
             align-items: center;
             width: 50vw;
-            transition: all 0.5s ease-in-out;
+            transition: top 0.5s ease-in-out, opacity 0.5s ease-in-out, width 0.5s ease-in-out;
             z-index: 100;
             position: absolute;
         }
@@ -68,7 +69,7 @@
             font-size: 16px;
             color: #777;
             z-index: 100;
-            transition: all 0.5s ease-in-out;
+            transition: opacity 0.5s ease-in-out;
         }
 
         .bottom-er.active {
@@ -137,27 +138,29 @@
     <a href="https://github.com/MattterSteege/DynamicGrid" target="_blank" class="bottom-er" style="bottom: 15vh;">Click here to view the readme/github repo</a>
 </span>
 
-<div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: calc(50% + 10px); left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
+<div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: calc(50% + 2vh); left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
 
 <script>
     let grid = new DynamicGrid({
-        // headers: {
-        //     id: 'number',
-        //     guid: 'string',
-        //     isActive: 'boolean',
-        //     balance: 'number',
-        //     age: 'number',
-        //     name: 'string',
-        //     gender: 'string',
-        //     email: 'string'
-        // },
+        headers: {
+            id: 'number',
+            guid: 'string',
+            isActive: 'boolean',
+            balance: 'number',
+            age: 'number',
+            name: 'string',
+            gender: 'string',
+            email: 'string'
+        },
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,
             visibleRows: 20,
             overscan: 5,
             minColumnWidth: 5,
-            autoFitCellWidth: 'both'
+            autoFitCellWidth: 'both',
+
+            allowFieldEditing: true,
         },
         engine: {
             UseDataEnumeration: false,
@@ -165,8 +168,11 @@
             StrictCase: false,
         },
         plugins: {
-            'custom': new stringTypePlugin(),
-        }
+            //'string': new customStringTypePlugin(),
+        },
+        APIConnection: new APIConnection({
+
+        }),
     });
 
     function handleFile(file) {

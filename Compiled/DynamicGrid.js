@@ -735,13 +735,6 @@ class stringTypePlugin extends TypePlugin {
         return false;
     }
 
-    //render the header of the column
-    renderHeader(key) {
-        const elem = document.createElement('th');
-        elem.innerHTML = key;
-        return elem;
-    }
-
     renderCell(value) {
         return String(value);
     }
@@ -840,13 +833,6 @@ class numberTypePlugin extends TypePlugin {
         }
     }
 
-    //render the header of the column
-    renderHeader(key) {
-        const elem = document.createElement('th');
-        elem.innerHTML = key;
-        return elem;
-    }
-
     renderCell(value) {
         const parts = value.toString().split("."); // Ensure two decimal places
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
@@ -925,13 +911,6 @@ class booleanTypePlugin extends TypePlugin {
                 return b[field] - a[field];
             }
         });
-    }
-
-    //render the header of the column
-    renderHeader(key) {
-        const elem = document.createElement('th');
-        elem.innerHTML = key;
-        return elem;
     }
 
     renderCell(value) {

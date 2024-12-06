@@ -92,26 +92,43 @@ class TypePlugin {
         return [...this.operators];
     }
 
-    /**
-     * Create a table header cell
-     * @param {string} key Header text
-     * @returns {HTMLTableCellElement} Header cell element
-     * @abstract
-     */
-    renderHeader(key) {
-        const th = document.createElement('th');
-        th.textContent = key;
-        return th;
-    }
 
     /**
      * Create a table data cell
      * @param {*} value Cell value
-     * @returns {string} Data cell element
+     * @returns {HTMLElement} Data cell element (div)
      * @abstract
      */
     renderCell(value) {
-        return String(value);
+        const cell = document.createElement('div');
+        cell.innerHTML = String(value);
+        return cell;
+    }
+
+    /**
+     * Create a table data cell for editing
+     * @param {*} value Cell value
+     * @returns {HTMLElement} Data cell element (div)
+     * @abstract
+     */
+    renderEditableCell(value) {
+        const cell = document.createElement('div');
+        cell.innerHTML = String(value);
+        cell.contentEditable = true;
+        cell.spellcheck = false;
+
+        cell.addEventListener('focusout', (e) => {
+            cell.dispatchEvent(new Event('dg-change', { bubbles: true, detail: cell.innerText }));
+        });
+
+        cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                cell.blur();
+                e.preventDefault();
+            }
+        });
+
+        return cell;
     }
 
     /**

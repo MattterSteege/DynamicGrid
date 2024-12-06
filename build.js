@@ -1,3 +1,6 @@
+//TODO: create a system that checks the first line of each file to see the dependencies and then sorts the files in the correct order to avoid errors: //requires:file1,file2,file3
+
+
 //to build the project run the following command in the terminal: node build.js
 
 const { minify } = require('terser');
@@ -35,6 +38,7 @@ const files = [
     "./DynamicGrid/InherentTypePlugin.js",
     "./DynamicGrid/QueryParser.js",
     "./DynamicGrid/SJQLEngine.js",
+    "./DynamicGrid/APIConnection.js",
     "./DynamicGrid/DynamicGridUtils.js",
     "./DynamicGrid/ContextMenu.js"
 ];

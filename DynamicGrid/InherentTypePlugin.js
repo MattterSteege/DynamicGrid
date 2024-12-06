@@ -58,13 +58,6 @@ class stringTypePlugin extends TypePlugin {
         return false;
     }
 
-    //render the header of the column
-    renderHeader(key) {
-        const elem = document.createElement('th');
-        elem.innerHTML = key;
-        return elem;
-    }
-
     renderCell(value) {
         return String(value);
     }
@@ -163,13 +156,6 @@ class numberTypePlugin extends TypePlugin {
         }
     }
 
-    //render the header of the column
-    renderHeader(key) {
-        const elem = document.createElement('th');
-        elem.innerHTML = key;
-        return elem;
-    }
-
     renderCell(value) {
         const parts = value.toString().split("."); // Ensure two decimal places
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
@@ -250,22 +236,32 @@ class booleanTypePlugin extends TypePlugin {
         });
     }
 
-    //render the header of the column
-    renderHeader(key) {
-        const elem = document.createElement('th');
-        elem.innerHTML = key;
-        return elem;
-    }
-
     renderCell(value) {
         //render a checkbox that is checked if value is true
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        value ? checkbox.setAttribute('checked', null) : null;
-        checkbox.disabled = true;
+        checkbox.checked = value;
         checkbox.style.width = '-webkit-fill-available';
         checkbox.name = 'checkbox';
-        return checkbox.outerHTML;
+        return checkbox;
+    }
+
+    renderEditableCell(value) {
+        const cell = document.createElement('div');
+
+        //render a checkbox that is checked if value is true
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        value ? checkbox.setAttributeNode(document.createAttribute('checked')) : null;
+        checkbox.style.width = '-webkit-fill-available';
+        checkbox.name = 'checkbox';
+
+        checkbox.addEventListener('change', () => {
+            cell.dispatchEvent(new CustomEvent('dg-change', {detail: {value: checkbox.checked}}));
+        });
+
+        cell.appendChild(checkbox);
+        return cell;
     }
 
     showMore(key, element, dynamicGrid) {
