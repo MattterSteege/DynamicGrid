@@ -143,8 +143,8 @@
 <script>
     let grid = new DynamicGrid({
         headers: {
-            id: 'number',
-            guid: 'string',
+            id: {type: 'number', isUnique: true, isEditable: false},
+            guid: {type: 'string', isUnique: true, isEditable: false},
             isActive: 'boolean',
             balance: 'number',
             age: 'number',

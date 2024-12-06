@@ -17,7 +17,18 @@ class DynamicGrid {
         // Set up headers
         if (config.headers) {
             Object.entries(config.headers).forEach(([key, value]) => {
-                this.engine.headers[key] = value.toLowerCase();
+
+                if (typeof value === 'string') {
+                    this.engine.headers[key] = { type: value, isUnique: false, isHidden: false, isEditable: true };
+                }
+                else {
+                    this.engine.headers[key] = {
+                        type: value.type || key,
+                        isUnique: value.isUnique || false,
+                        isHidden: value.isHidden || false,
+                        isEditable: value.isEditable === undefined ? true : value.isEditable,
+                    };
+                }
             });
         }
 

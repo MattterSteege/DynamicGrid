@@ -59,7 +59,7 @@ class QueryParser {
             let [_, key, operator, value] = match;
             console.log(key + " - " + operator + " - " +  value);
             key = MeantIndexKey(Object.keys(headers), key, this.config);
-            const pluginType = headers[key];
+            const pluginType = headers[key].type;
             const plugin = plugins[pluginType];
             if (!plugin) {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')\nDo you know certain that the name of the key is correct?');
@@ -78,7 +78,7 @@ class QueryParser {
         }
         else if (type === 'SORT') {
             let [_, key, value] = match;
-            const pluginType = headers[key];
+            const pluginType = headers[key].type;
             const plugin = plugins[pluginType];
             if (!plugin) {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');

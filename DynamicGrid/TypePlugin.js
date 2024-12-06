@@ -101,7 +101,7 @@ class TypePlugin {
      */
     renderCell(value) {
         const cell = document.createElement('div');
-        cell.innerHTML = String(value);
+        cell.innerText = String(value);
         return cell;
     }
 

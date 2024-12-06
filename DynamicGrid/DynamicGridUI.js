@@ -213,8 +213,7 @@ class DynamicGridUI {
         for (let i = startRow; i < endRow; i++) {
             const tableRow = this.#_createTableRow();
             headers.forEach((header) => {
-                const plugin = this.dynamicGrid.engine.getPlugin(this.dynamicGrid.engine.headers[header]);
-                const cell = this.#_createTableCell(plugin, data[i][header]);
+                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header]);
                 tableRow.appendChild(cell);
             });
 
@@ -358,7 +357,7 @@ class DynamicGridUI {
         headers.forEach((_header, index) => {
             const cell = createTableCell(_header);
             cell.title = _header;
-            cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header]);
+            cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header].type);
 
             cell.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -395,33 +394,19 @@ class DynamicGridUI {
         return row;
     }
 
-    #_createTableCell(plugin, content = '') {
-        if (!this.config.allowFieldEditing) {
+    #_createTableCell(content = '', header) {
+        const plugin = this.dynamicGrid.engine.getPlugin(header.type);
+
+        if (!this.config.allowFieldEditing || !header.isEditable) {
             const cell =  plugin.renderCell(content)
-            cell.className = 'cell';
+            cell.classList.add('cell');
             return cell;
         }
-
-        const cell = plugin.renderEditableCell(content);
-        cell.className = 'cell';
-
-        // cell.addEventListener('click', (e) => {
-        //     cell.focus();
-        // });
-        //
-        // cell.addEventListener('focusout', (e) => {
-        //     cell.dispatchEvent(this.onEditEvent);
-        //
-        //     console.log(e);
-        // });
-        //
-        // cell.addEventListener('keydown', (e) => {
-        //     if (e.key === 'Enter') {
-        //         cell.blur();
-        //     }
-        // });
-
-        return cell;
+        else {
+            const cell = plugin.renderEditableCell(content);
+            cell.classList.add('cell');
+            return cell;
+        }
     }
 
     #_createResizer(index) {

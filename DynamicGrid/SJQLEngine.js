@@ -37,13 +37,13 @@ class SJQLEngine {
         //else it's a string
         for (const key of Object.keys(data)) {
             if (data[key] === true || data[key] === false) {
-                this.headers[key] = 'boolean';
+                this.headers[key] = { type: 'boolean', isUnique: false, isHidden: false };
             }
             else if (!isNaN(data[key])) {
-                this.headers[key] = 'number';
+                this.headers[key] = { type: 'number', isUnique: false, isHidden: false };
             }
             else {
-                this.headers[key] = 'string';
+                this.headers[key] = { type: 'string', isUnique: false, isHidden: false };
             }
         }
     }

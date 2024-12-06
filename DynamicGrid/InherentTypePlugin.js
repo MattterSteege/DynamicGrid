@@ -58,10 +58,6 @@ class stringTypePlugin extends TypePlugin {
         return false;
     }
 
-    renderCell(value) {
-        return String(value);
-    }
-
     sort(query, data) {
         const {field, value} = query;
         return data.sort((a, b) => {
@@ -157,9 +153,11 @@ class numberTypePlugin extends TypePlugin {
     }
 
     renderCell(value) {
+        const cell = document.createElement('div');
         const parts = value.toString().split("."); // Ensure two decimal places
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
-        return parts.join(","); // Join with a comma for decimals
+        cell.textContent = parts.join(",");
+        return cell;
     }
 
     sort(query, data) {
@@ -237,13 +235,14 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     renderCell(value) {
-        //render a checkbox that is checked if value is true
+        const cell = document.createElement('div');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = value;
+        checkbox.setAttributeNode(document.createAttribute('disabled'));
+        value ? checkbox.setAttributeNode(document.createAttribute('checked')) : null;
         checkbox.style.width = '-webkit-fill-available';
-        checkbox.name = 'checkbox';
-        return checkbox;
+        cell.appendChild(checkbox);
+        return cell;
     }
 
     renderEditableCell(value) {
@@ -257,7 +256,7 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.name = 'checkbox';
 
         checkbox.addEventListener('change', () => {
-            cell.dispatchEvent(new CustomEvent('dg-change', {detail: {value: checkbox.checked}}));
+            cell.dispatchEvent(new Event('dg-change', {bubbles: true, detail: {value: checkbox.checked}}));
         });
 
         cell.appendChild(checkbox);
