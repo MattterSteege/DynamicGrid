@@ -11,6 +11,7 @@
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
     <script src="DynamicGrid/APIConnection.js"></script>
+    <script src="DynamicGrid/EventEmitter.js"></script>
     <script src="DynamicGrid/DynamicGridUtils.js"></script>
     <script src="DynamicGrid/ContextMenu.js"></script>
 <!--        <script src="/dist/DynamicGrid.js"></script>-->
@@ -173,6 +174,10 @@
         APIConnection: new APIConnection({
 
         }),
+    });
+
+    grid.eventEmitter.sub('UI.CellEdit', (cell) => {
+        console.log(cell);
     });
 
     function handleFile(file) {

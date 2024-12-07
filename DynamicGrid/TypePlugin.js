@@ -108,17 +108,18 @@ class TypePlugin {
     /**
      * Create a table data cell for editing
      * @param {*} value Cell value
+     * @param {EventEmitter} eventEmitter Event emitter for cell changes
      * @returns {HTMLElement} Data cell element (div)
      * @abstract
      */
-    renderEditableCell(value) {
+    renderEditableCell(value, eventEmitter) {
         const cell = document.createElement('div');
         cell.innerHTML = String(value);
         cell.contentEditable = true;
         cell.spellcheck = false;
 
         cell.addEventListener('focusout', (e) => {
-            cell.dispatchEvent(new Event('dg-change', { bubbles: true, detail: cell.innerText }));
+            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: cell.innerText });
         });
 
         cell.addEventListener('keydown', (e) => {

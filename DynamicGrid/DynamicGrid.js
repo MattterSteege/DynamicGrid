@@ -5,9 +5,11 @@
 
 class DynamicGrid {
     constructor(config) {
+        // Initialize the event emitter
+        this.eventEmitter = new EventEmitter();
 
         // Initialize the query engine
-        this.engine = new SJQLEngine(config.engine || {});
+        this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
         // Initialize plugins
         this.engine.plugins = config.plugins ?? [];
         this.engine.addPlugin(new stringTypePlugin, true);
@@ -36,7 +38,7 @@ class DynamicGrid {
         this.virtualScrolling = config.ui.virtualScrolling ?? true; // Enable virtual scrolling
         this.rowHeight = config.ui.rowHeight || 40; // Default row height in pixels
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
-        this.ui = new DynamicGridUI(this, config.ui, config.APIConnection);
+        this.ui = new DynamicGridUI(this, config.ui, config.APIConnection, this.eventEmitter);
     }
 
 
@@ -75,14 +77,18 @@ class DynamicGrid {
      * @param {'asc'|'desc'} direction - The direction to sort.
      * @preserve
      */
-    sort = (key, direction) => this.engine.sort(key, direction);
+    sort = (key, direction) => {
+        this.engine.sort(key, direction);
+    }
 
     /**
      * Groups the data by the specified key.
      * @param {string} [key] - The key to group by.
      * @preserve
      */
-    groupBy = key => this.engine.groupBy(key);
+    groupBy = key => {
+        this.engine.groupBy(key);
+    }
 
     /**
      * Adds a selection filter to the data.
@@ -93,6 +99,7 @@ class DynamicGrid {
      */
     addSelect = (key, operator, value) => this.engine.addSelect(key, operator, value);
 
+
     /**
      * Removes a selection filter from the data.
      * @param {string} key - The key to filter by.
@@ -102,9 +109,12 @@ class DynamicGrid {
      */
     removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
 
+
     /**
      * Runs all the selection filters on the data.
      * @preserve
      */
-    runSelect = () => this.engine.runSelect();
+    runSelect = () => {
+        this.engine.runSelect();
+    }
 }

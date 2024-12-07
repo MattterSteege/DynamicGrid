@@ -245,7 +245,7 @@ class booleanTypePlugin extends TypePlugin {
         return cell;
     }
 
-    renderEditableCell(value) {
+    renderEditableCell(value, eventEmitter) {
         const cell = document.createElement('div');
 
         //render a checkbox that is checked if value is true
@@ -255,8 +255,8 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.style.width = '-webkit-fill-available';
         checkbox.name = 'checkbox';
 
-        checkbox.addEventListener('change', () => {
-            cell.dispatchEvent(new Event('dg-change', {bubbles: true, detail: {value: checkbox.checked}}));
+        checkbox.addEventListener('change', (e) => {
+            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: checkbox.checked });
         });
 
         cell.appendChild(checkbox);

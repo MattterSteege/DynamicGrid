@@ -39,6 +39,7 @@ const files = [
     "./DynamicGrid/QueryParser.js",
     "./DynamicGrid/SJQLEngine.js",
     "./DynamicGrid/APIConnection.js",
+    "./DynamicGrid/EventEmitter.js",
     "./DynamicGrid/DynamicGridUtils.js",
     "./DynamicGrid/ContextMenu.js"
 ];

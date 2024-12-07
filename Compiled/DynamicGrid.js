@@ -6,9 +6,11 @@
 
 class DynamicGrid {
     constructor(config) {
+        // Initialize the event emitter
+        this.eventEmitter = new EventEmitter();
 
         // Initialize the query engine
-        this.engine = new SJQLEngine(config.engine || {});
+        this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
         // Initialize plugins
         this.engine.plugins = config.plugins ?? [];
         this.engine.addPlugin(new stringTypePlugin, true);
@@ -37,7 +39,7 @@ class DynamicGrid {
         this.virtualScrolling = config.ui.virtualScrolling ?? true; // Enable virtual scrolling
         this.rowHeight = config.ui.rowHeight || 40; // Default row height in pixels
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
-        this.ui = new DynamicGridUI(this, config.ui, config.APIConnection);
+        this.ui = new DynamicGridUI(this, config.ui, config.APIConnection, this.eventEmitter);
     }
 
 
@@ -76,14 +78,18 @@ class DynamicGrid {
      * @param {'asc'|'desc'} direction - The direction to sort.
      * @preserve
      */
-    sort = (key, direction) => this.engine.sort(key, direction);
+    sort = (key, direction) => {
+        this.engine.sort(key, direction);
+    }
 
     /**
      * Groups the data by the specified key.
      * @param {string} [key] - The key to group by.
      * @preserve
      */
-    groupBy = key => this.engine.groupBy(key);
+    groupBy = key => {
+        this.engine.groupBy(key);
+    }
 
     /**
      * Adds a selection filter to the data.
@@ -94,6 +100,7 @@ class DynamicGrid {
      */
     addSelect = (key, operator, value) => this.engine.addSelect(key, operator, value);
 
+
     /**
      * Removes a selection filter from the data.
      * @param {string} key - The key to filter by.
@@ -103,11 +110,14 @@ class DynamicGrid {
      */
     removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
 
+
     /**
      * Runs all the selection filters on the data.
      * @preserve
      */
-    runSelect = () => this.engine.runSelect();
+    runSelect = () => {
+        this.engine.runSelect();
+    }
 }
 
 // ./DynamicGrid/DynamicGridUI.js
@@ -118,10 +128,13 @@ class DynamicGridUI {
      * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
+     * @event dg-edit - Event fired when a cell is edited.
      */
-    constructor(dynamicGrid, ui_config, APIConnection) {
+    constructor(dynamicGrid, ui_config, APIConnection, eventEmitter) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
+
+        this.eventEmitter = eventEmitter;
 
         this.table = null;
         this.header = null;
@@ -147,9 +160,9 @@ class DynamicGridUI {
         this.APIConnection = APIConnection;
 
         //custom event delegation
-        this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
-        this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
-        this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
+        //this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
+        //this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
+        //this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
     }
 
     render(data) {
@@ -278,17 +291,6 @@ class DynamicGridUI {
             this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer);
         }
         else {
-            //data is like this:
-            /*
-            {
-                20: (38) [{…},
-                21: (45) [{…},
-                22: (45) [{…},
-                ...
-             }
-
-             so we need to loop over the keys and render the data for each key, this means a new table for each key that can is inside a details element
-            */
 
             this.body = this.#_createGroupedTable(data, headers);
 
@@ -325,14 +327,10 @@ class DynamicGridUI {
 
         for (let i = startRow; i < endRow; i++) {
             const tableRow = this.#_createTableRow();
+            tableRow.setAttribute('data-index', data[i]['internal_id']);
             headers.forEach((header) => {
-                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header]);
+                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header], this.eventEmitter);
                 tableRow.appendChild(cell);
-            });
-
-            tableRow.addEventListener('dg-change', (e) => {
-                console.log(e);
-                tableRow.dispatchEvent(this.onEditEvent(e));
             });
 
             visibleRowsContainer.appendChild(tableRow);
@@ -458,6 +456,15 @@ class DynamicGridUI {
             const cell = document.createElement('div');
             cell.className = 'cell';
             cell.textContent = headers;
+
+            if (!this.dynamicGrid.engine.headers[headers].isEditable) {
+                //subtle styling for non-editable cells
+                cell.style.backgroundColor = '#fafafa';
+                cell.style.color = '#333';
+                cell.style.fontStyle = 'italic';
+                cell.style.cursor = 'default';
+            }
+
             return cell;
         }
 
@@ -471,6 +478,7 @@ class DynamicGridUI {
             const cell = createTableCell(_header);
             cell.title = _header;
             cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header].type);
+            cell.setAttribute('editable', this.dynamicGrid.engine.headers[_header].isEditable);
 
             cell.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -507,16 +515,25 @@ class DynamicGridUI {
         return row;
     }
 
-    #_createTableCell(content = '', header) {
+    #_createTableCell(content = '', header, eventEmitter) {
         const plugin = this.dynamicGrid.engine.getPlugin(header.type);
 
         if (!this.config.allowFieldEditing || !header.isEditable) {
             const cell =  plugin.renderCell(content)
             cell.classList.add('cell');
+
+            if (!header.isEditable) {
+                //subtle styling for non-editable cells
+                cell.style.backgroundColor = '#fafafa';
+                cell.style.color = '#333';
+                cell.style.fontStyle = 'italic';
+                cell.style.cursor = 'default';
+            }
+
             return cell;
         }
         else {
-            const cell = plugin.renderEditableCell(content);
+            const cell = plugin.renderEditableCell(content, eventEmitter);
             cell.classList.add('cell');
             return cell;
         }
@@ -691,17 +708,18 @@ class TypePlugin {
     /**
      * Create a table data cell for editing
      * @param {*} value Cell value
+     * @param {EventEmitter} eventEmitter Event emitter for cell changes
      * @returns {HTMLElement} Data cell element (div)
      * @abstract
      */
-    renderEditableCell(value) {
+    renderEditableCell(value, eventEmitter) {
         const cell = document.createElement('div');
         cell.innerHTML = String(value);
         cell.contentEditable = true;
         cell.spellcheck = false;
 
         cell.addEventListener('focusout', (e) => {
-            cell.dispatchEvent(new Event('dg-change', { bubbles: true, detail: cell.innerText }));
+            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: cell.innerText });
         });
 
         cell.addEventListener('keydown', (e) => {
@@ -973,7 +991,7 @@ class booleanTypePlugin extends TypePlugin {
         return cell;
     }
 
-    renderEditableCell(value) {
+    renderEditableCell(value, eventEmitter) {
         const cell = document.createElement('div');
 
         //render a checkbox that is checked if value is true
@@ -983,8 +1001,8 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.style.width = '-webkit-fill-available';
         checkbox.name = 'checkbox';
 
-        checkbox.addEventListener('change', () => {
-            cell.dispatchEvent(new Event('dg-change', {bubbles: true, detail: {value: checkbox.checked}}));
+        checkbox.addEventListener('change', (e) => {
+            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: checkbox.checked });
         });
 
         cell.appendChild(checkbox);
@@ -1154,7 +1172,7 @@ class QueryParser {
 
 // ./DynamicGrid/SJQLEngine.js
 class SJQLEngine {
-    constructor(engine_config) {
+    constructor(engine_config, eventEmitter) {
         this.data = [];
         this.headers = [];
         this.plugins = [];
@@ -1167,6 +1185,8 @@ class SJQLEngine {
             useStrictCase: engine_config.useStrictCase || false,
             SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
         };
+
+        this.eventEmitter = eventEmitter;
     }
 
     createDataIndex() {
@@ -1476,6 +1496,56 @@ class APIConnection {
 
     updateData(object){
         throw new Error("Method 'updateData(object)' not implemented.");
+    }
+}
+
+// ./DynamicGrid/EventEmitter.js
+/**
+ * A simple event emitter class.
+ * @class
+ * @example
+ * const emitter = new EventEmitter();
+ * emitter.sub('event', data => console.log(data));
+ * emitter.emit('event', 'Hello, world!');
+ * // Output: Hello, world!
+ */
+class EventEmitter {
+    constructor() {
+        this.events = {};
+    }
+
+    /**
+     * Subscribe to an event.
+     * @param {string} event - The name of the event to subscribe to. (case-insensitive)
+     * @param {Function} listener - The callback function to execute when the event is emitted.
+     */
+    sub(event, listener) {
+        if (!this.events[event.toLocaleLowerCase()]) {
+            this.events[event.toLocaleLowerCase()] = [];
+        }
+        this.events[event.toLocaleLowerCase()].push(listener);
+    }
+
+    /**
+     * Unsubscribe from an event.
+     * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
+     * @param {Function} listenerToRemove - The callback function to remove from the event.
+     */
+    unsub(event, listenerToRemove) {
+        if (!this.events[event.toLocaleLowerCase()]) return;
+
+        this.events[event.toLocaleLowerCase()] = this.events[event.toLocaleLowerCase()].filter(listener => listener !== listenerToRemove);
+    }
+
+    /**
+     * Emit an event.
+     * @param {string} event - The name of the event to emit. (case-insensitive)
+     * @param {*} data - The data to pass to the event listeners.
+     */
+    emit(event, data) {
+        if (!this.events[event.toLocaleLowerCase()]) return;
+
+        this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
     }
 }
 

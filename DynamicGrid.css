@@ -41,6 +41,8 @@
 .header .cell {
     font-weight: bold;
     text-align: center;
+    cursor: pointer;
+    user-select: none;
 }
 
 /* Common Cell Styles */

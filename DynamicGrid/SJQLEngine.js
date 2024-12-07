@@ -1,5 +1,5 @@
 class SJQLEngine {
-    constructor(engine_config) {
+    constructor(engine_config, eventEmitter) {
         this.data = [];
         this.headers = [];
         this.plugins = [];
@@ -12,6 +12,8 @@ class SJQLEngine {
             useStrictCase: engine_config.useStrictCase || false,
             SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
         };
+
+        this.eventEmitter = eventEmitter;
     }
 
     createDataIndex() {

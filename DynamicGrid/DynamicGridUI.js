@@ -5,10 +5,13 @@ class DynamicGridUI {
      * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
+     * @event dg-edit - Event fired when a cell is edited.
      */
-    constructor(dynamicGrid, ui_config, APIConnection) {
+    constructor(dynamicGrid, ui_config, APIConnection, eventEmitter) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
+
+        this.eventEmitter = eventEmitter;
 
         this.table = null;
         this.header = null;
@@ -34,9 +37,9 @@ class DynamicGridUI {
         this.APIConnection = APIConnection;
 
         //custom event delegation
-        this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
-        this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
-        this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
+        //this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
+        //this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
+        //this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
     }
 
     render(data) {
@@ -165,17 +168,6 @@ class DynamicGridUI {
             this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer);
         }
         else {
-            //data is like this:
-            /*
-            {
-                20: (38) [{…},
-                21: (45) [{…},
-                22: (45) [{…},
-                ...
-             }
-
-             so we need to loop over the keys and render the data for each key, this means a new table for each key that can is inside a details element
-            */
 
             this.body = this.#_createGroupedTable(data, headers);
 
@@ -212,14 +204,10 @@ class DynamicGridUI {
 
         for (let i = startRow; i < endRow; i++) {
             const tableRow = this.#_createTableRow();
+            tableRow.setAttribute('data-index', data[i]['internal_id']);
             headers.forEach((header) => {
-                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header]);
+                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header], this.eventEmitter);
                 tableRow.appendChild(cell);
-            });
-
-            tableRow.addEventListener('dg-change', (e) => {
-                console.log(e);
-                tableRow.dispatchEvent(this.onEditEvent(e));
             });
 
             visibleRowsContainer.appendChild(tableRow);
@@ -345,6 +333,15 @@ class DynamicGridUI {
             const cell = document.createElement('div');
             cell.className = 'cell';
             cell.textContent = headers;
+
+            if (!this.dynamicGrid.engine.headers[headers].isEditable) {
+                //subtle styling for non-editable cells
+                cell.style.backgroundColor = '#fafafa';
+                cell.style.color = '#333';
+                cell.style.fontStyle = 'italic';
+                cell.style.cursor = 'default';
+            }
+
             return cell;
         }
 
@@ -358,6 +355,7 @@ class DynamicGridUI {
             const cell = createTableCell(_header);
             cell.title = _header;
             cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header].type);
+            cell.setAttribute('editable', this.dynamicGrid.engine.headers[_header].isEditable);
 
             cell.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -394,16 +392,25 @@ class DynamicGridUI {
         return row;
     }
 
-    #_createTableCell(content = '', header) {
+    #_createTableCell(content = '', header, eventEmitter) {
         const plugin = this.dynamicGrid.engine.getPlugin(header.type);
 
         if (!this.config.allowFieldEditing || !header.isEditable) {
             const cell =  plugin.renderCell(content)
             cell.classList.add('cell');
+
+            if (!header.isEditable) {
+                //subtle styling for non-editable cells
+                cell.style.backgroundColor = '#fafafa';
+                cell.style.color = '#333';
+                cell.style.fontStyle = 'italic';
+                cell.style.cursor = 'default';
+            }
+
             return cell;
         }
         else {
-            const cell = plugin.renderEditableCell(content);
+            const cell = plugin.renderEditableCell(content, eventEmitter);
             cell.classList.add('cell');
             return cell;
         }
