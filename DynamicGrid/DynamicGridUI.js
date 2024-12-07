@@ -7,7 +7,7 @@ class DynamicGridUI {
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @event dg-edit - Event fired when a cell is edited.
      */
-    constructor(dynamicGrid, ui_config, APIConnection, eventEmitter) {
+    constructor(dynamicGrid, ui_config, eventEmitter) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
 
@@ -206,7 +206,7 @@ class DynamicGridUI {
             const tableRow = this.#_createTableRow();
             tableRow.setAttribute('data-index', data[i]['internal_id']);
             headers.forEach((header) => {
-                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header], this.eventEmitter);
+                const cell = this.#_createTableCell(data[i], header);
                 tableRow.appendChild(cell);
             });
 
@@ -392,14 +392,16 @@ class DynamicGridUI {
         return row;
     }
 
-    #_createTableCell(content = '', header, eventEmitter) {
-        const plugin = this.dynamicGrid.engine.getPlugin(header.type);
+    #_createTableCell(data, column) {
+        const content = data[column];
+        const headerData = this.dynamicGrid.engine.headers[column];
+        const plugin = this.dynamicGrid.engine.getPlugin(headerData.type);
 
-        if (!this.config.allowFieldEditing || !header.isEditable) {
+        if (!this.config.allowFieldEditing || !headerData.isEditable) {
             const cell =  plugin.renderCell(content)
             cell.classList.add('cell');
 
-            if (!header.isEditable) {
+            if (!headerData.isEditable) {
                 //subtle styling for non-editable cells
                 cell.style.backgroundColor = '#fafafa';
                 cell.style.color = '#333';
@@ -410,7 +412,11 @@ class DynamicGridUI {
             return cell;
         }
         else {
-            const cell = plugin.renderEditableCell(content, eventEmitter);
+            const onEdit = (callback) => {
+                this.eventEmitter.emit('dg-edit', { column: column, row: data, previousValue: content, newValue: callback });
+            }
+
+            const cell = plugin.renderEditableCell(content, onEdit);
             cell.classList.add('cell');
             return cell;
         }

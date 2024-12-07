@@ -108,18 +108,18 @@ class TypePlugin {
     /**
      * Create a table data cell for editing
      * @param {*} value Cell value
-     * @param {EventEmitter} eventEmitter Event emitter for cell changes
+     * @param {Function} onEdit Callback function for when cell is edited
      * @returns {HTMLElement} Data cell element (div)
      * @abstract
      */
-    renderEditableCell(value, eventEmitter) {
+    renderEditableCell(value, onEdit) {
         const cell = document.createElement('div');
         cell.innerHTML = String(value);
         cell.contentEditable = true;
         cell.spellcheck = false;
 
         cell.addEventListener('focusout', (e) => {
-            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: cell.innerText });
+            onEdit(cell.innerText);
         });
 
         cell.addEventListener('keydown', (e) => {

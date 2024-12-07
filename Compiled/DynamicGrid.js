@@ -39,7 +39,7 @@ class DynamicGrid {
         this.virtualScrolling = config.ui.virtualScrolling ?? true; // Enable virtual scrolling
         this.rowHeight = config.ui.rowHeight || 40; // Default row height in pixels
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
-        this.ui = new DynamicGridUI(this, config.ui, config.APIConnection, this.eventEmitter);
+        this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
     }
 
 
@@ -130,7 +130,7 @@ class DynamicGridUI {
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @event dg-edit - Event fired when a cell is edited.
      */
-    constructor(dynamicGrid, ui_config, APIConnection, eventEmitter) {
+    constructor(dynamicGrid, ui_config, eventEmitter) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
 
@@ -329,7 +329,7 @@ class DynamicGridUI {
             const tableRow = this.#_createTableRow();
             tableRow.setAttribute('data-index', data[i]['internal_id']);
             headers.forEach((header) => {
-                const cell = this.#_createTableCell(data[i][header], this.dynamicGrid.engine.headers[header], this.eventEmitter);
+                const cell = this.#_createTableCell(data[i], header);
                 tableRow.appendChild(cell);
             });
 
@@ -515,14 +515,16 @@ class DynamicGridUI {
         return row;
     }
 
-    #_createTableCell(content = '', header, eventEmitter) {
-        const plugin = this.dynamicGrid.engine.getPlugin(header.type);
+    #_createTableCell(data, column) {
+        const content = data[column];
+        const headerData = this.dynamicGrid.engine.headers[column];
+        const plugin = this.dynamicGrid.engine.getPlugin(headerData.type);
 
-        if (!this.config.allowFieldEditing || !header.isEditable) {
+        if (!this.config.allowFieldEditing || !headerData.isEditable) {
             const cell =  plugin.renderCell(content)
             cell.classList.add('cell');
 
-            if (!header.isEditable) {
+            if (!headerData.isEditable) {
                 //subtle styling for non-editable cells
                 cell.style.backgroundColor = '#fafafa';
                 cell.style.color = '#333';
@@ -533,7 +535,11 @@ class DynamicGridUI {
             return cell;
         }
         else {
-            const cell = plugin.renderEditableCell(content, eventEmitter);
+            const onEdit = (callback) => {
+                this.eventEmitter.emit('dg-edit', { column: column, row: data, previousValue: content, newValue: callback });
+            }
+
+            const cell = plugin.renderEditableCell(content, onEdit);
             cell.classList.add('cell');
             return cell;
         }
@@ -708,18 +714,18 @@ class TypePlugin {
     /**
      * Create a table data cell for editing
      * @param {*} value Cell value
-     * @param {EventEmitter} eventEmitter Event emitter for cell changes
+     * @param {Function} onEdit Callback function for when cell is edited
      * @returns {HTMLElement} Data cell element (div)
      * @abstract
      */
-    renderEditableCell(value, eventEmitter) {
+    renderEditableCell(value, onEdit) {
         const cell = document.createElement('div');
         cell.innerHTML = String(value);
         cell.contentEditable = true;
         cell.spellcheck = false;
 
         cell.addEventListener('focusout', (e) => {
-            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: cell.innerText });
+            onEdit(cell.innerText);
         });
 
         cell.addEventListener('keydown', (e) => {
@@ -991,7 +997,7 @@ class booleanTypePlugin extends TypePlugin {
         return cell;
     }
 
-    renderEditableCell(value, eventEmitter) {
+    renderEditableCell(value, onEdit) {
         const cell = document.createElement('div');
 
         //render a checkbox that is checked if value is true
@@ -1002,7 +1008,8 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.name = 'checkbox';
 
         checkbox.addEventListener('change', (e) => {
-            eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: checkbox.checked });
+            //eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: checkbox.checked });
+            onEdit(checkbox.checked);
         });
 
         cell.appendChild(checkbox);
@@ -1488,17 +1495,6 @@ class SJQLEngine {
     }
 }
 
-// ./DynamicGrid/APIConnection.js
-class APIConnection {
-    constructor(config) {
-        this.url = "https://jsonplaceholder.typicode.com/posts";
-    }
-
-    updateData(object){
-        throw new Error("Method 'updateData(object)' not implemented.");
-    }
-}
-
 // ./DynamicGrid/EventEmitter.js
 /**
  * A simple event emitter class.
@@ -1663,65 +1659,7 @@ class ContextMenu {
         if (document.getElementById('context-menu-styles')) return;
         const style = document.createElement('style');
         style.id = 'context-menu-styles';
-        style.textContent = `
-.context-menu {
-    display: inline-block;
-    position: fixed;
-    top: 0px;
-    left: 0px;
-    min-width: 270px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #000;
-    background: #f5f5f5;
-    font-size: 9pt;
-    border: 1px solid #333333;
-    box-shadow: 4px 4px 3px -1px rgba(0, 0, 0, 0.5);
-    padding: 3px 0px;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-}
-
-.context-menu .menu-item {
-    padding: 4px 19px;
-    cursor: default;
-    color: inherit;
-}
-
-.context-menu .menu-item:hover {
-    background: #e3e3e3 !important;
-}
-
-.context-menu .item:hover .menu-hotkey {
-    color: #000 !important;
-}
-
-.context-menu .menu-item-disabled {
-    color: #878B90 !important;
-}
-
-.context-menu .menu-item-disabled:hover {
-    background: inherit !important;
-}
-
-.context-menu .disabled:hover .menu-hotkey {
-    color: #878B90 !important;
-}
-
-.context-menu .menu-separator {
-    margin: 4px 0px;
-    height: 0;
-    padding: 0;
-    border-top: 1px solid #b3b3b3;
-}
-
-.context-menu .menu-hotkey {
-    color: #878B90;
-    float: right;
-}`;
+        style.textContent = `.context-menu{display:inline-block;position:fixed;top:0;left:0;min-width:270px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#000;background:#f5f5f5;font-size:9pt;border:1px solid #333;box-shadow:4px 4px 3px -1px rgba(0,0,0,.5);padding:3px 0;-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.context-menu .menu-item{padding:4px 19px;cursor:default;color:inherit}.context-menu .menu-item:hover{background:#e3e3e3!important}.context-menu .item:hover .menu-hotkey{color:#000!important}.context-menu .disabled:hover .menu-hotkey,.context-menu .menu-item-disabled{color:#878b90!important}.context-menu .menu-item-disabled:hover{background:inherit!important}.context-menu .menu-separator{margin:4px 0;height:0;padding:0;border-top:1px solid #b3b3b3}.context-menu .menu-hotkey{color:#878b90;float:right}`;
 
             document.head.appendChild(style);
     }
@@ -1928,30 +1866,4 @@ class ContextMenu {
         };
     }
 }
-
-// Example Usage
-/*
-const appContainer = document.getElementById('app');
-const menuItems = [
-    {
-        text: 'File',
-        subitems: [
-            {text: 'New', hotkey: 'Ctrl+N', onclick: () => console.log('New file')},
-            {text: 'Open', hotkey: 'Ctrl+O', onclick: () => console.log('Open file')},
-            null, // Separator
-            {text: 'Exit', hotkey: 'Alt+F4', onclick: () => console.log('Exit app')}
-        ]
-    },
-    {
-        text: 'Edit',
-        subitems: [
-            {text: 'Cut', hotkey: 'Ctrl+X', onclick: () => console.log('Cut')},
-            {text: 'Copy', hotkey: 'Ctrl+C', onclick: () => console.log('Copy')},
-            {text: 'Paste', hotkey: 'Ctrl+V', onclick: () => console.log('Paste')}
-        ]
-    }
-];
-
-const contextMenu = new ContextMenuHandler(appContainer, menuItems);
-*/
 

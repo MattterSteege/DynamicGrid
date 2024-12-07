@@ -38,7 +38,7 @@ class DynamicGrid {
         this.virtualScrolling = config.ui.virtualScrolling ?? true; // Enable virtual scrolling
         this.rowHeight = config.ui.rowHeight || 40; // Default row height in pixels
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
-        this.ui = new DynamicGridUI(this, config.ui, config.APIConnection, this.eventEmitter);
+        this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
     }
 
 

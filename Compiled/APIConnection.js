@@ -10,6 +10,7 @@ class APIConnection {
     init(eventEmitter){
         this.eventEmitter = eventEmitter;
 
+
         return true;
     }
 
