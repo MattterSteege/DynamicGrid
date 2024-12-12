@@ -10,8 +10,9 @@
     <script src="DynamicGrid/InherentTypePlugin.js"></script>
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
-    <script src="DynamicGrid/APIConnection.js"></script>
+    <script src="DynamicGrid/APIConnector.js"></script>
     <script src="DynamicGrid/EventEmitter.js"></script>
+    <script src="DynamicGrid/KeyboardShortcuts.js"></script>
     <script src="DynamicGrid/DynamicGridUtils.js"></script>
     <script src="DynamicGrid/ContextMenu.js"></script>
 <!--        <script src="/dist/DynamicGrid.js"></script>-->
@@ -171,12 +172,20 @@
         plugins: {
             //'string': new customStringTypePlugin(),
         },
-        APIConnection: new APIConnection({
-
-        }),
+        APIConnector: {
+            connector: APIConnector,
+            options: {
+                timeoutDelay: -1,
+            },
+            endpoints: {
+                get: 'https://example.com/get',
+                put: 'https://example.com/put',
+                post: 'https://example.com/post',
+                delete:'https://example.com/delete',
+            }
+        },
     });
-
-    grid.eventEmitter.sub('dg-edit', (cell) => {
+    grid.eventEmitter.subscribe('dg-edit', (cell) => {
         console.log(cell);
     });
 
