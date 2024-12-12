@@ -8,6 +8,7 @@ class DynamicGrid {
     constructor(config) {
         // Initialize the event emitter
         this.eventEmitter = new EventEmitter();
+        this.keyboardShortcuts = new KeyboardShortcuts();
 
         // Initialize the query engine
         this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
@@ -40,6 +41,13 @@ class DynamicGrid {
         this.rowHeight = config.ui.rowHeight || 40; // Default row height in pixels
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
         this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
+
+        // Set up **possible** API connector
+        if (config.APIConnector && config.APIConnector.connector) {
+            const APIconfig = config.APIConnector;
+            this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
+            delete APIconfig.connector;
+        }
     }
 
 
@@ -118,6 +126,12 @@ class DynamicGrid {
     runSelect = () => {
         this.engine.runSelect();
     }
+
+    addConnector(connector){
+        connector.callbacks = {
+
+        }
+    }
 }
 
 // ./DynamicGrid/DynamicGridUI.js
@@ -128,6 +142,7 @@ class DynamicGridUI {
      * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
+     * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
      * @event dg-edit - Event fired when a cell is edited.
      */
     constructor(dynamicGrid, ui_config, eventEmitter) {
@@ -135,6 +150,7 @@ class DynamicGridUI {
         this.containerId = ui_config.containerId;
 
         this.eventEmitter = eventEmitter;
+        this.keyboardShortcuts = dynamicGrid.keyboardShortcuts;
 
         this.table = null;
         this.header = null;
@@ -155,14 +171,6 @@ class DynamicGridUI {
         this.UIChache = 0;
         this.UICacheRefresh = false;
         this.sortDirection = 'asc';
-
-        // *Possible* API connection
-        this.APIConnection = APIConnection;
-
-        //custom event delegation
-        //this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
-        //this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
-        //this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
     }
 
     render(data) {
@@ -206,6 +214,9 @@ class DynamicGridUI {
         if (!this.container) {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
+
+        //register UI interactions and keyboard shortcuts
+        this.keyboardShortcuts.addShortcut('ctrl+s', () => this.eventEmitter.emit('dg-save'));
     }
 
 
@@ -1515,11 +1526,12 @@ class EventEmitter {
      * @param {string} event - The name of the event to subscribe to. (case-insensitive)
      * @param {Function} listener - The callback function to execute when the event is emitted.
      */
-    sub(event, listener) {
+    subscribe(event, listener) {
         if (!this.events[event.toLocaleLowerCase()]) {
             this.events[event.toLocaleLowerCase()] = [];
         }
         this.events[event.toLocaleLowerCase()].push(listener);
+        return () => this.unsubscribe(event, listener);
     }
 
     /**
@@ -1527,7 +1539,7 @@ class EventEmitter {
      * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
      * @param {Function} listenerToRemove - The callback function to remove from the event.
      */
-    unsub(event, listenerToRemove) {
+    unsubscribe(event, listenerToRemove) {
         if (!this.events[event.toLocaleLowerCase()]) return;
 
         this.events[event.toLocaleLowerCase()] = this.events[event.toLocaleLowerCase()].filter(listener => listener !== listenerToRemove);
@@ -1542,6 +1554,114 @@ class EventEmitter {
         if (!this.events[event.toLocaleLowerCase()]) return;
 
         this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
+    }
+}
+
+// ./DynamicGrid/KeyboardShortcuts.js
+class KeyboardShortcuts {
+    /**
+     * Initializes the KeyboardShortcuts instance and binds the event listener.
+     *
+     * @example
+     * const shortcuts = new KeyboardShortcuts();
+     * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
+     * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
+     * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
+     *
+     * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
+     *
+     * shortcuts.removeShortcut('ctrl+z');
+     * shortcuts.clearShortcuts();
+     *
+     * shortcuts.destroy();
+     * @preserve
+     */
+    constructor() {
+        this.shortcuts = new Map();
+        this.listener = this.#_handleKeyPress.bind(this);
+        document.addEventListener('keydown', this.listener);
+    }
+
+    /**
+     * Normalizes a key string by converting it to lowercase and removing whitespace.
+     * @param {string} key - The key string to normalize.
+     * @returns {string} The normalized key string.
+     * @preserve
+     */
+    #_normalizeKey(key) {
+        return key.toLowerCase().replace(/\s+/g, '');
+    }
+
+    /**
+     * Handles the keydown event and executes the corresponding shortcut callback if available.
+     * This also prevents the default browser behavior for the shortcut key combination.
+     * @param {KeyboardEvent} event - The keydown event.
+     * @preserve
+     */
+    #_handleKeyPress(event) {
+        const pressedKey = this.#_normalizeKey(
+            `${event.ctrlKey ? 'ctrl+' : ''}${event.shiftKey ? 'shift+' : ''}${event.altKey ? 'alt+' : ''}${event.metaKey ? 'meta+' : ''}${event.key}`
+        );
+        const callback = this.shortcuts.get(pressedKey);
+        if (callback) {
+            event.preventDefault();
+            callback(event);
+        }
+    }
+
+    /**
+     * Adds a new keyboard shortcut.
+     * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
+     * @param {Function} callback - The function to execute when the shortcut is triggered.
+     * @preserve
+     */
+    addShortcut(keys, callback) {
+        const normalizedKeys = this.#_normalizeKey(keys);
+        if (this.shortcuts.has(normalizedKeys)) {
+            console.warn(`Shortcut '${keys}' is already assigned.`);
+        } else {
+            this.shortcuts.set(normalizedKeys, callback);
+        }
+    }
+
+    /**
+     * Removes an existing keyboard shortcut.
+     * @param {string} keys - The key combination of the shortcut to remove.
+     * @preserve
+     */
+    removeShortcut(keys) {
+        const normalizedKeys = this.#_normalizeKey(keys);
+        if (this.shortcuts.has(normalizedKeys)) {
+            this.shortcuts.delete(normalizedKeys);
+        } else {
+            console.warn(`Shortcut '${keys}' does not exist.`);
+        }
+    }
+
+    /**
+     * Lists all registered keyboard shortcuts.
+     * @returns {string[]} An array of registered key combinations.
+     * @preserve
+     */
+    listShortcuts() {
+        return Array.from(this.shortcuts.keys());
+    }
+
+    /**
+     * Clears all registered keyboard shortcuts.
+     * @preserve
+     */
+    clearShortcuts() {
+        this.shortcuts.clear();
+    }
+
+    /**
+     * Destroys the KeyboardShortcuts instance by removing the event listener and clearing shortcuts.
+     * @preserve
+     */
+    destroy() {
+        document.removeEventListener('keydown', this.listener);
+        this.clearShortcuts();
     }
 }
 
@@ -1628,6 +1748,25 @@ Array.prototype.remove = function (entry) {
     }
     return this;
 
+}
+
+/**
+ * Waits for the state to become true, checking every second.
+ * @returns {Promise<boolean>} A promise that resolves when the state is true.
+ * @author jabaa
+ * @see https://stackoverflow.com/a/69424610/18411025
+ */
+async function waitState() {
+    return new Promise(resolve => {
+        let timerId = setInterval(checkState, 1000);
+
+        function checkState() {
+            if (o.state == true) {
+                clearInterval(timerId);
+                resolve(o.state);
+            }
+        }
+    });
 }
 
 // ./DynamicGrid/ContextMenu.js

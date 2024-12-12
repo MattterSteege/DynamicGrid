@@ -17,11 +17,12 @@ class EventEmitter {
      * @param {string} event - The name of the event to subscribe to. (case-insensitive)
      * @param {Function} listener - The callback function to execute when the event is emitted.
      */
-    sub(event, listener) {
+    subscribe(event, listener) {
         if (!this.events[event.toLocaleLowerCase()]) {
             this.events[event.toLocaleLowerCase()] = [];
         }
         this.events[event.toLocaleLowerCase()].push(listener);
+        return () => this.unsubscribe(event, listener);
     }
 
     /**
@@ -29,7 +30,7 @@ class EventEmitter {
      * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
      * @param {Function} listenerToRemove - The callback function to remove from the event.
      */
-    unsub(event, listenerToRemove) {
+    unsubscribe(event, listenerToRemove) {
         if (!this.events[event.toLocaleLowerCase()]) return;
 
         this.events[event.toLocaleLowerCase()] = this.events[event.toLocaleLowerCase()].filter(listener => listener !== listenerToRemove);

@@ -81,3 +81,22 @@ Array.prototype.remove = function (entry) {
     return this;
 
 }
+
+/**
+ * Waits for the state to become true, checking every second.
+ * @returns {Promise<boolean>} A promise that resolves when the state is true.
+ * @author jabaa
+ * @see https://stackoverflow.com/a/69424610/18411025
+ */
+async function waitState() {
+    return new Promise(resolve => {
+        let timerId = setInterval(checkState, 1000);
+
+        function checkState() {
+            if (o.state == true) {
+                clearInterval(timerId);
+                resolve(o.state);
+            }
+        }
+    });
+}

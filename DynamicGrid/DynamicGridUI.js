@@ -5,6 +5,7 @@ class DynamicGridUI {
      * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
+     * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
      * @event dg-edit - Event fired when a cell is edited.
      */
     constructor(dynamicGrid, ui_config, eventEmitter) {
@@ -12,6 +13,7 @@ class DynamicGridUI {
         this.containerId = ui_config.containerId;
 
         this.eventEmitter = eventEmitter;
+        this.keyboardShortcuts = dynamicGrid.keyboardShortcuts;
 
         this.table = null;
         this.header = null;
@@ -32,14 +34,6 @@ class DynamicGridUI {
         this.UIChache = 0;
         this.UICacheRefresh = false;
         this.sortDirection = 'asc';
-
-        // *Possible* API connection
-        this.APIConnection = APIConnection;
-
-        //custom event delegation
-        //this.onEditEvent = (event) => new CustomEvent('dg-edit', { bubbles: true, cancelable: true, detail: { event: event } });
-        //this.onDeleteEvent = (event) => new CustomEvent('dg-delete', { bubbles: true, cancelable: true, detail: { event: event } });
-        //this.onAddEvent = (event) => new CustomEvent('dg-add', { bubbles: true, cancelable: true, detail: { event: event } });
     }
 
     render(data) {
@@ -83,6 +77,9 @@ class DynamicGridUI {
         if (!this.container) {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
+
+        //register UI interactions and keyboard shortcuts
+        this.keyboardShortcuts.addShortcut('ctrl+s', () => this.eventEmitter.emit('dg-save'));
     }
 
 

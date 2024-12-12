@@ -7,6 +7,7 @@ class DynamicGrid {
     constructor(config) {
         // Initialize the event emitter
         this.eventEmitter = new EventEmitter();
+        this.keyboardShortcuts = new KeyboardShortcuts();
 
         // Initialize the query engine
         this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
@@ -39,6 +40,13 @@ class DynamicGrid {
         this.rowHeight = config.ui.rowHeight || 40; // Default row height in pixels
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
         this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
+
+        // Set up **possible** API connector
+        if (config.APIConnector && config.APIConnector.connector) {
+            const APIconfig = config.APIConnector;
+            this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
+            delete APIconfig.connector;
+        }
     }
 
 
@@ -116,5 +124,11 @@ class DynamicGrid {
      */
     runSelect = () => {
         this.engine.runSelect();
+    }
+
+    addConnector(connector){
+        connector.callbacks = {
+
+        }
     }
 }
