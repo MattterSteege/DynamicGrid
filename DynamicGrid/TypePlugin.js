@@ -76,11 +76,11 @@ class TypePlugin {
     /**
      * Check if an operator is supported
      * @param {string} operator Operator to check
-     * @returns {string|undefined} Operator if supported, undefined otherwise
+     * @returns {boolean} True if operator is supported
      * @protected
      */
     checkOperator(operator) {
-        return this.operators.find(op => op === operator);
+        return this.operators.find(op => op === operator) || false;
     }
 
     /**
@@ -95,9 +95,9 @@ class TypePlugin {
 
     /**
      * Create a table data cell
-     * @param {*} value Cell value
-     * @returns {HTMLElement} Data cell element (div)
-     * @abstract
+     * @param {*} value Cell value (that can be .toString()ed)
+     * @return {HTMLElement} Data cell element (div)
+     * @virtual (should be overridden, not required)
      */
     renderCell(value) {
         const cell = document.createElement('div');
@@ -107,10 +107,10 @@ class TypePlugin {
 
     /**
      * Create a table data cell for editing
-     * @param {*} value Cell value
+     * @param {*} value Cell value (that can be .toString()ed)
      * @param {Function} onEdit Callback function for when cell is edited
      * @returns {HTMLElement} Data cell element (div)
-     * @abstract
+     * @virtual (should be overridden, not required)
      */
     renderEditableCell(value, onEdit) {
         const cell = document.createElement('div');
@@ -136,9 +136,25 @@ class TypePlugin {
      * Handle additional data loading
      * @param {string} key Data key
      * @param {HTMLElement} element Clicked element
-     * @param {Object} dynamicGrid Grid instance
+     * @param {SJQLEngine} engine Query engine instance
+     * @param {DynamicGridUI} UI User interface instance
+     * @virtual (should be overridden, not required)
      */
-    showMore(key, element, dynamicGrid) {
-        throw new Error('showMore must be implemented by subclass');
+    showMore(key, element, engine, UI) {
+        const {x, y} = element.getBoundingClientRect();
+
+        // Define the context menu configuration
+        const items =  [
+            { text: 'Sort ' + key + ' ascending', onclick: () => UI.render(engine.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => UI.render(engine.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => UI.render(engine.sort(key, 'original')) },
+            null,
+            { text: 'Group by ' + key, onclick: () => UI.render(engine.groupBy(key)) },
+            { text: 'Un-group', onclick: () => UI.render(engine.groupBy()) }
+        ];
+
+        // Initialize the context menu
+        const menu = new ContextMenu(document.body, items)
+        menu.display(x, y + 30);
     }
 }

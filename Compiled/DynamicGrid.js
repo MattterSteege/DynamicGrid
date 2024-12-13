@@ -507,7 +507,7 @@ class DynamicGridUI {
             cell.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid);
+                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid.engine, this);
             });
 
             index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
@@ -693,11 +693,11 @@ class TypePlugin {
     /**
      * Check if an operator is supported
      * @param {string} operator Operator to check
-     * @returns {string|undefined} Operator if supported, undefined otherwise
+     * @returns {boolean} True if operator is supported
      * @protected
      */
     checkOperator(operator) {
-        return this.operators.find(op => op === operator);
+        return this.operators.find(op => op === operator) || false;
     }
 
     /**
@@ -712,9 +712,9 @@ class TypePlugin {
 
     /**
      * Create a table data cell
-     * @param {*} value Cell value
-     * @returns {HTMLElement} Data cell element (div)
-     * @abstract
+     * @param {*} value Cell value (that can be .toString()ed)
+     * @return {HTMLElement} Data cell element (div)
+     * @virtual (should be overridden, not required)
      */
     renderCell(value) {
         const cell = document.createElement('div');
@@ -724,10 +724,10 @@ class TypePlugin {
 
     /**
      * Create a table data cell for editing
-     * @param {*} value Cell value
+     * @param {*} value Cell value (that can be .toString()ed)
      * @param {Function} onEdit Callback function for when cell is edited
      * @returns {HTMLElement} Data cell element (div)
-     * @abstract
+     * @virtual (should be overridden, not required)
      */
     renderEditableCell(value, onEdit) {
         const cell = document.createElement('div');
@@ -753,10 +753,26 @@ class TypePlugin {
      * Handle additional data loading
      * @param {string} key Data key
      * @param {HTMLElement} element Clicked element
-     * @param {Object} dynamicGrid Grid instance
+     * @param {SJQLEngine} engine Query engine instance
+     * @param {DynamicGridUI} UI User interface instance
+     * @virtual (should be overridden, not required)
      */
-    showMore(key, element, dynamicGrid) {
-        throw new Error('showMore must be implemented by subclass');
+    showMore(key, element, engine, UI) {
+        const {x, y} = element.getBoundingClientRect();
+
+        // Define the context menu configuration
+        const items =  [
+            { text: 'Sort ' + key + ' ascending', onclick: () => UI.render(engine.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => UI.render(engine.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => UI.render(engine.sort(key, 'original')) },
+            null,
+            { text: 'Group by ' + key, onclick: () => UI.render(engine.groupBy(key)) },
+            { text: 'Un-group', onclick: () => UI.render(engine.groupBy()) }
+        ];
+
+        // Initialize the context menu
+        const menu = new ContextMenu(document.body, items)
+        menu.display(x, y + 30);
     }
 }
 
@@ -831,25 +847,6 @@ class stringTypePlugin extends TypePlugin {
                 return b[field].localeCompare(a[field]);
             }
         });
-    }
-
-    showMore(key, element, dynamicGrid) {
-
-        const {x, y} = element.getBoundingClientRect();
-
-        // Define the context menu configuration
-        const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'original')) },
-            null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy()) }
-        ];
-
-        // Initialize the context menu
-        const menu = new ContextMenu(document.body, items)
-        menu.display(x, y + 30);
     }
 }
 
@@ -934,25 +931,6 @@ class numberTypePlugin extends TypePlugin {
             }
         });
     }
-
-    showMore(key, element, dynamicGrid) {
-
-        const {x, y} = element.getBoundingClientRect();
-
-        // Define the context menu configuration
-        const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'original')) },
-            null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy()) }
-        ];
-
-        // Initialize the context menu
-        const menu = new ContextMenu(document.body, items)
-        menu.display(x, y + 30);
-    }
 }
 
 class booleanTypePlugin extends TypePlugin {
@@ -1027,37 +1005,37 @@ class booleanTypePlugin extends TypePlugin {
         return cell;
     }
 
-    showMore(key, element, dynamicGrid) {
+    showMore(key, element, engine, UI) {
 
         const {x, y} = element.getBoundingClientRect();
 
         // Define the context menu configuration
         const items =  [
-            { text: 'Show ' + key + ' ascending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.sort(key, 'original')) },
+            { text: 'Sort ' + key + ' ascending', onclick: () => UI.render(engine.sort(key, 'asc')) },
+            { text: 'Sort ' + key + ' descending', onclick: () => UI.render(engine.sort(key, 'desc')) },
+            { text: 'Unsort ' + key, onclick: () => UI.render(engine.sort(key, 'original')) },
             null,
             { text: 'Only show true', onclick: () => {
-                    dynamicGrid.addSelect(key, '==', 'true');
-                    dynamicGrid.removeSelect(key, '==', 'false');
-                    dynamicGrid.renderRaw(dynamicGrid.runSelect());
+                    engine.addSelect(key, '==', 'true');
+                    engine.removeSelect(key, '==', 'false');
+                    UI.render(engine.runSelect());
                 }
             },
             { text: 'Only show false', onclick: () => {
-                    dynamicGrid.addSelect(key, '==', 'false');
-                    dynamicGrid.removeSelect(key, '==', 'true');
-                    dynamicGrid.renderRaw(dynamicGrid.runSelect());
+                    engine.addSelect(key, '==', 'false');
+                    engine.removeSelect(key, '==', 'true');
+                    UI.render(engine.runSelect());
                 }
             },
             { text: 'Show all', onclick: () => {
-                    dynamicGrid.removeSelect(key, '==', 'true');
-                    dynamicGrid.removeSelect(key, '==', 'false');
-                    dynamicGrid.renderRaw(dynamicGrid.runSelect());
+                    engine.removeSelect(key, '==', 'true');
+                    engine.removeSelect(key, '==', 'false');
+                    UI.render(engine.runSelect());
                 }
             },
             null,
-            { text: 'Group by ' + key, onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy(key)) },
-            { text: 'Un-group', onclick: () => dynamicGrid.renderRaw(dynamicGrid.groupBy()) }
+            { text: 'Group by ' + key, onclick: () => UI.render(engine.groupBy(key)) },
+            { text: 'Un-group', onclick: () => UI.render(engine.groupBy()) }
         ];
 
         // Initialize the context menu
@@ -1094,9 +1072,6 @@ class QueryParser {
      * @returns {Array<{type: string, field: string, operator: string, value: string, queryType: string}>}
      */
     parseQuery(query, plugins, headers){
-
-        console.log(query);
-
         return query.split(/\s+and\s+|\s+&&\s+/i)
                     .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
                     .filter(query => query.queryType);
@@ -1128,7 +1103,6 @@ class QueryParser {
         //console.log(match, type);
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
-            console.log(key + " - " + operator + " - " +  value);
             key = MeantIndexKey(Object.keys(headers), key, this.config);
             const pluginType = headers[key].type;
             const plugin = plugins[pluginType];
@@ -1292,7 +1266,8 @@ class SJQLEngine {
         if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
         if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
         if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
-        console.log(log, this.currentQueryStr);
+        log += this.currentQueryStr;
+        console.log(log);
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -1349,8 +1324,10 @@ class SJQLEngine {
 
         if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
             query = 'sort ' + key + ' ' + direction;
-        else if (direction === 'asc' || direction === 'desc') //if query is present, add sort to the query
-            query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
+        else if (direction === 'asc' || direction === 'desc') {//if query is present, add sort to the query
+            query =  this.currentQueryStr.replace(QueryParser.QUERIES.SORT, '');
+            query += ' and sort ' + key + ' ' + direction;
+        }
         else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
         {
             query = this.currentQueryStr;

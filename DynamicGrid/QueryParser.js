@@ -23,9 +23,6 @@ class QueryParser {
      * @returns {Array<{type: string, field: string, operator: string, value: string, queryType: string}>}
      */
     parseQuery(query, plugins, headers){
-
-        console.log(query);
-
         return query.split(/\s+and\s+|\s+&&\s+/i)
                     .map(subQuery => this.parseSubQuery(subQuery.trim(), plugins, headers))
                     .filter(query => query.queryType);
@@ -57,7 +54,6 @@ class QueryParser {
         //console.log(match, type);
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
-            console.log(key + " - " + operator + " - " +  value);
             key = MeantIndexKey(Object.keys(headers), key, this.config);
             const pluginType = headers[key].type;
             const plugin = plugins[pluginType];

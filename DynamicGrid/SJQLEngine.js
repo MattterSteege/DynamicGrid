@@ -101,7 +101,8 @@ class SJQLEngine {
         if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
         if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
         if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
-        console.log(log, this.currentQueryStr);
+        log += this.currentQueryStr;
+        console.log(log);
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -158,8 +159,10 @@ class SJQLEngine {
 
         if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
             query = 'sort ' + key + ' ' + direction;
-        else if (direction === 'asc' || direction === 'desc') //if query is present, add sort to the query
-            query = this.currentQueryStr + ' and sort ' + key + ' ' + direction;
+        else if (direction === 'asc' || direction === 'desc') {//if query is present, add sort to the query
+            query =  this.currentQueryStr.replace(QueryParser.QUERIES.SORT, '');
+            query += ' and sort ' + key + ' ' + direction;
+        }
         else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
         {
             query = this.currentQueryStr;

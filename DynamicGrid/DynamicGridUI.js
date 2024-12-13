@@ -370,7 +370,7 @@ class DynamicGridUI {
             cell.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid);
+                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid.engine, this);
             });
 
             index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
