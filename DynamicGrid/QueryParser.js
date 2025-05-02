@@ -31,6 +31,11 @@ class QueryParser {
 
     parseSubQuery(subQuery, plugins, headers) {
         subQuery = subQuery.endsWith(' and') ? subQuery.slice(0, -4) : subQuery;
+
+        if (!subQuery || subQuery.length === 0) {
+            return {};
+        }
+
         //from bottom to top, check if the QUERIES matches the subquery
         for (const [type, regex] of Object.entries(QueryParser.QUERIES)) {
             const match = regex.exec(subQuery);
@@ -38,7 +43,7 @@ class QueryParser {
                 return this.parseMatch(match, type, plugins, headers) || {};
             }
         }
-        console.warn('Invalid query: ' + subQuery + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());
+        console.warn('Invalid query: ' + subQuery + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase() + '\n' + 'Query: ' + subQuery);
         return {};
     }
 

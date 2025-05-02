@@ -488,8 +488,13 @@ class DynamicGridUI {
         headers.forEach((_header, index) => {
             const cell = createTableCell(_header);
             cell.title = _header;
+
+            console.log(this.dynamicGrid.engine.headers[_header])
+
             cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header].type);
             cell.setAttribute('editable', this.dynamicGrid.engine.headers[_header].isEditable);
+            cell.setAttribute('unique', this.dynamicGrid.engine.headers[_header].isUnique);
+            cell.setAttribute('unique', this.dynamicGrid.engine.headers[_header].isGroupable);
 
             cell.addEventListener('click', (e) => {
                 e.preventDefault();

@@ -141,20 +141,33 @@ class TypePlugin {
      * @virtual (should be overridden, not required)
      */
     showMore(key, element, engine, UI) {
-        const {x, y} = element.getBoundingClientRect();
+        const {x, y, width, height} = element.getBoundingClientRect();
+        const typeOptions = engine.headers[key];
 
-        // Define the context menu configuration
-        const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => UI.render(engine.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => UI.render(engine.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => UI.render(engine.sort(key, 'original')) },
-            null,
-            { text: 'Group by ' + key, onclick: () => UI.render(engine.groupBy(key)) },
-            { text: 'Un-group', onclick: () => UI.render(engine.groupBy()) }
-        ];
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                UI.render(engine.sort(key, 'asc'));
+            })
+            .button('Sort ' + key + ' descending', () => {
+                UI.render(engine.sort(key, 'desc'));
+            })
+            .button('Unsort ' + key, () => {
+                UI.render(engine.sort(key, 'original'));
+            });
 
-        // Initialize the context menu
-        const menu = new ContextMenu(document.body, items)
-        menu.display(x, y + 30);
+        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+            UI.contextMenu
+            .separator()
+            .button('Group by ' + key, () => {
+                UI.render(engine.groupBy(key));
+            })
+            .button('Un-group', () => {
+                UI.render(engine.groupBy());
+            })
+        }
+
+        // Display the context menu at the specified coordinates
+        UI.contextMenu.showAt(x, y + height);
     }
 }

@@ -228,40 +228,43 @@ class booleanTypePlugin extends TypePlugin {
 
     showMore(key, element, engine, UI) {
 
-        const {x, y} = element.getBoundingClientRect();
-
-        // Define the context menu configuration
-        const items =  [
-            { text: 'Sort ' + key + ' ascending', onclick: () => UI.render(engine.sort(key, 'asc')) },
-            { text: 'Sort ' + key + ' descending', onclick: () => UI.render(engine.sort(key, 'desc')) },
-            { text: 'Unsort ' + key, onclick: () => UI.render(engine.sort(key, 'original')) },
-            null,
-            { text: 'Only show true', onclick: () => {
-                    engine.addSelect(key, '==', 'true');
-                    engine.removeSelect(key, '==', 'false');
-                    UI.render(engine.runSelect());
-                }
-            },
-            { text: 'Only show false', onclick: () => {
-                    engine.addSelect(key, '==', 'false');
-                    engine.removeSelect(key, '==', 'true');
-                    UI.render(engine.runSelect());
-                }
-            },
-            { text: 'Show all', onclick: () => {
-                    engine.removeSelect(key, '==', 'true');
-                    engine.removeSelect(key, '==', 'false');
-                    UI.render(engine.runSelect());
-                }
-            },
-            null,
-            { text: 'Group by ' + key, onclick: () => UI.render(engine.groupBy(key)) },
-            { text: 'Un-group', onclick: () => UI.render(engine.groupBy()) }
-        ];
-
-        // Initialize the context menu
-        const menu = new ContextMenu(document.body, items)
-        menu.display(x, y + 30);
+        const {x, y, width, height} = element.getBoundingClientRect();
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                UI.render(engine.sort(key, 'asc'));
+            })
+            .button('Sort ' + key + ' descending', () => {
+                UI.render(engine.sort(key, 'desc'));
+            })
+            .button('Unsort ' + key, () => {
+                UI.render(engine.sort(key, 'original'));
+            })
+            .separator()
+            .button('Only show true', () => {
+                engine.addSelect(key, '==', 'true');
+                engine.removeSelect(key, '==', 'false');
+                UI.render(engine.runSelect());
+            })
+            .button('Only show false', () => {
+                engine.addSelect(key, '==', 'false');
+                engine.removeSelect(key, '==', 'true');
+                UI.render(engine.runSelect());
+            })
+            .button('Show all', () => {
+                engine.removeSelect(key, '==', 'true');
+                engine.removeSelect(key, '==', 'false');
+                UI.render(engine.runSelect());
+            })
+            .separator()
+            .button('Group by ' + key, () => {
+                UI.render(engine.groupBy(key));
+            })
+            .button('Un-group', () => {
+                UI.render(engine.groupBy());
+            });
+        // Display the context menu at the specified coordinates
+        UI.contextMenu.showAt(x, y + height);
     }
 }
 

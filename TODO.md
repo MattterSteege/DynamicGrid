@@ -9,7 +9,10 @@
 - [x] **Pagination and Infinite Scrolling**: Enhance the pagination functionality to provide a smoother user experience, such as displaying page numbers, jump-to-page controls, and infinite scrolling.
 - [ ] **Row Selection and Actions**: Add the ability for the user to select one or more rows, and provide actions that can be performed on the selected rows, such as deleting, exporting, or performing bulk updates.
 - [ ] **Frozen Columns and Rows**: Implement the ability to "freeze" certain columns or rows, so they remain visible while the user scrolls the rest of the grid.
-- [ ] **Row Grouping and Aggregation**: Provide the ability to group rows by one or more columns, and display aggregated data (e.g., sum, average, count) for each group.
+- [ ] **Row Grouping and Aggregation**:
+  - [x]  Implement the ability to collapse/expand groups to show/hide the underlying data.
+  - [ ]  Add support for nested groups, allowing the user to create hierarchical groupings of data.
+  - [ ]  Enable the user to customize the aggregation functions and formatting for each group.
 - [ ] **Export and Import**: Implement the ability to export the grid data to various formats (e.g., CSV, Excel, JSON) and import data into the grid.
 - [ ] **Accessibility and Keyboard Navigation**: Ensure the grid component is accessible to users with disabilities by providing proper keyboard navigation, screen reader support, and compliance with WCAG guidelines.
 - [ ] **Theming and Customization**: Allow the grid to be easily themed and customized, enabling users to change the look and feel to match the branding and design of the application.

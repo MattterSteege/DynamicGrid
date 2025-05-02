@@ -34,13 +34,32 @@ class DynamicGridUI {
         this.UIChache = 0;
         this.UICacheRefresh = false;
         this.sortDirection = 'asc';
+
+
+        //set up context menu
+        this.contextMenu = new ContextMenu({
+            width: 250,
+            style: {
+                accent: '#3b82f6',
+                backgroundColor: '#ffffff',
+                textColor: '#333333',
+                padding: '4px',
+            },
+            closeOnClick: true,
+            closeOnOutsideClick: true,
+        });
     }
 
     render(data) {
 
-        if (!data || data.length === 0) {
+        if (this.body && this.scrollContainer) {
+            this.body.innerHTML = '';
+            this.scrollContainer.innerHTML = '';
             this.body?.remove();
             this.scrollContainer?.remove();
+        }
+
+        if (!data || data.length === 0) {
             return;
         }
 

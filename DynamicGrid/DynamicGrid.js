@@ -22,12 +22,13 @@ class DynamicGrid {
             Object.entries(config.headers).forEach(([key, value]) => {
 
                 if (typeof value === 'string') {
-                    this.engine.headers[key] = { type: value, isUnique: false, isHidden: false, isEditable: true };
+                    this.engine.headers[key] = { type: value, isUnique: false, isGroupable: true, isHidden: false, isEditable: true };
                 }
                 else {
                     this.engine.headers[key] = {
                         type: value.type || key,
                         isUnique: value.isUnique || false,
+                        isGroupable: value.isGroupable  === undefined ? true : value.isGroupable,
                         isHidden: value.isHidden || false,
                         isEditable: value.isEditable === undefined ? true : value.isEditable,
                     };

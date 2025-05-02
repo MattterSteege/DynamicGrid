@@ -62,7 +62,6 @@ class SJQLEngine {
             return this.data;
         }
 
-        console.log(query)
         return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
 
@@ -102,7 +101,6 @@ class SJQLEngine {
         if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
         if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
         log += this.currentQueryStr;
-        console.log(log);
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
