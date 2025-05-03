@@ -144,6 +144,8 @@ class TypePlugin {
         const {x, y, width, height} = element.getBoundingClientRect();
         const typeOptions = engine.headers[key];
 
+        console.log(typeOptions);
+
         UI.contextMenu.clear();
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {

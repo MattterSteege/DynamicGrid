@@ -73,7 +73,7 @@ class ContextMenu {
     // Simplified API for adding menu items
     addItem(type, config) {
         const item = {
-            id: this._generateId(),
+            id: (config?.id ?? this._generateId()) + '',
             type,
             position: this.items.length,
             ...config
@@ -97,7 +97,9 @@ class ContextMenu {
             icon: config.icon,
             ficon: config.ficon,
             disabled: config.disabled,
-            marked: config.marked
+            marked: config.marked,
+            showWhen: config.showWhen,
+            id: config.id,
         });
     }
 
@@ -107,6 +109,8 @@ class ContextMenu {
             placeholder: config.placeholder,
             value: config.value,
             onChange: config.onChange,
+            showWhen: config.showWhen,
+            id: config.id,
         });
     }
 
@@ -116,7 +120,9 @@ class ContextMenu {
             options,
             value: config.value,
             onChange: config.onChange,
-            multiSelect: config.multiSelect
+            multiSelect: config.multiSelect,
+            showWhen: config.showWhen,
+            id: config.id,
         });
     }
 
@@ -124,7 +130,9 @@ class ContextMenu {
         return this.addItem(ContextMenu.ITEM_TYPES.CHECKBOX, {
             text,
             checked: config.checked || false,
-            onChange: config.onChange
+            onChange: config.onChange,
+            showWhen: config.showWhen,
+            id: config.id,
         });
     }
 
@@ -135,7 +143,9 @@ class ContextMenu {
                 value: option.value,
                 name,
                 checked: option.checked,
-                onChange: config.onChange
+                onChange: config.onChange,
+                showWhen: config.showWhen,
+                id: config.id,
             });
         });
         return this;
@@ -150,6 +160,8 @@ class ContextMenu {
             ...this.options, // Inherit options from parent
             isRoot: false,
             indentLevel: (this.options.indentLevel || 0) + 1, // Increment indent level
+            showWhen: config.showWhen,
+            id: config.id,
         };
 
         const submenu = new ContextMenu(options); // Create submenu with updated options
@@ -160,6 +172,8 @@ class ContextMenu {
             submenu,
             icon: config.icon,
             ficon: config.ficon,
+            showWhen: config.showWhen,
+            id: config.id,
         }).items;
 
         items[items.length - 1].id = submenu.id;
@@ -172,6 +186,8 @@ class ContextMenu {
             options,
             value: config.value,
             onChange: config.onChange,
+            showWhen: config.showWhen,
+            id: config.id,
         });
     }
 
@@ -388,7 +404,30 @@ class ContextMenu {
             if (element) {
                 menuContainer.appendChild(element);
             }
+
+            setTimeout(() => {
+                // Check if the item has a `showWhen` condition
+                if (item.showWhen) {
+                    const {elementId, value} = item.showWhen;
+                    const controllingElement = document.querySelector('#' + elementId);
+
+                    if (controllingElement) {
+                        const toggleVisibility = () => {
+                            const shouldShow = value.includes(controllingElement.value);
+                            element.style.display = shouldShow ? 'block' : 'none';
+                        };
+
+                        // Add event listener to monitor changes
+                        controllingElement.addEventListener('input', toggleVisibility);
+                        controllingElement.addEventListener('change', toggleVisibility);
+
+                        // Initial check
+                        toggleVisibility();
+                    }
+                }
+            }, 0);
         });
+
 
         return menuContainer;
     }
@@ -459,6 +498,7 @@ class ContextMenu {
         input.placeholder = item.placeholder || '';
         input.value = item.value || '';
         input.oninput = (e) => item.onChange?.(e.target.value);
+        input.id = item.id;
 
         inputContainer.appendChild(input);
         return inputContainer;
@@ -467,6 +507,7 @@ class ContextMenu {
     _createDropdown(item) {
         const select = document.createElement('select');
         select.classList.add(ContextMenu.CLASSNAMES.DROPDOWN);
+        select.id = item.id;
 
         item.options.forEach(option => {
             const opt = document.createElement('option');
@@ -490,6 +531,7 @@ class ContextMenu {
         checkbox.type = 'checkbox';
         checkbox.checked = item.checked || false;
         checkbox.onchange = (e) => item.onChange?.(e.target.checked);
+        checkbox.id = item.id;
 
         const span = document.createElement('span');
         span.textContent = item.text;
@@ -509,6 +551,7 @@ class ContextMenu {
         radio.value = item.value;
         radio.checked = item.checked || false;
         radio.onchange = (e) => item.onChange?.(e.target.value);
+        radio.id = item.id;
 
         const span = document.createElement('span');
         span.textContent = item.label;
@@ -523,6 +566,7 @@ class ContextMenu {
         //at the top there is a search input that filters the items (if the search input is not empty, then show everything)
         const container = document.createElement('div');
         container.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT);
+        container.id = item.id;
 
         const input = document.createElement('input');
         input.type = 'text';
@@ -545,6 +589,7 @@ class ContextMenu {
             //return an array of selected values
             const selectedValues = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
             item.onChange?.(selectedValues);
+            container.value = selectedValues;
         }
         const selectAllLabel = document.createElement('span');
         selectAllLabel.textContent = 'Select All';
@@ -561,6 +606,7 @@ class ContextMenu {
                 //return an array of selected values
                 const selectedValues = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
                 item.onChange?.(selectedValues);
+                container.value = selectedValues;
             }
 
             const label = document.createElement('label');
@@ -570,6 +616,7 @@ class ContextMenu {
         });
         container.appendChild(input);
         container.appendChild(list);
+
         input.oninput = (e) => {
             const searchValue = e.target.value.toLowerCase();
             const items = list.querySelectorAll('label');

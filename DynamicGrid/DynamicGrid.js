@@ -118,6 +118,13 @@ class DynamicGrid {
      */
     removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
 
+    /**
+     * Sets a selection filter on the data. (This will override any existing filter for the same key.)
+     * @param {string} key - The key to filter by.
+     * @param {string} operator - The operator to use for filtering.
+     * @param {*} value - The value to filter by.
+     */
+    setSelect = (key, operator, value) => this.engine.setSelect(key, operator, value);
 
     /**
      * Runs all the selection filters on the data.

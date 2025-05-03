@@ -106,13 +106,22 @@ class numberTypePlugin extends TypePlugin {
 
     evaluateCondition(dataValue, operator, value) {
 
-        if (operator === 'in') {
+        if (operator === 'in' || operator === '><') {
             value = JSON.parse(value);
         }
 
         if (Array.isArray(value) && value.length > 0 && operator === 'in') {
             return value.includes(dataValue);
         }
+
+        if (Array.isArray(value) && value.length > 0 && operator === '><') {
+            if (value.length !== 2) {
+                throw new Error('between operator requires two values');
+            }
+            return dataValue >= value[0] && dataValue <= value[1];
+        }
+
+
 
         dataValue = Number(dataValue);
         value = Number(value);
@@ -151,6 +160,96 @@ class numberTypePlugin extends TypePlugin {
                 return b[field] - a[field];
             }
         });
+    }
+
+    showMore(key, element, engine, UI) {
+        const {x, y, width, height} = element.getBoundingClientRect();
+        const typeOptions = engine.headers[key];
+
+        console.log(typeOptions);
+
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .submenu('Filter ' + key, (submenu) => {
+                var operator = '==';
+                submenu
+                .dropdown('Filter ' + key, [
+                    { label: 'Gelijk aan', value: '==' },
+                    { label: 'Niet gelijk aan', value: '!=' },
+                    { label: 'Groter dan', value: '>' },
+                    { label: 'Groter dan of gelijk aan', value: '>=' },
+                    { label: 'Kleiner dan', value: '<' },
+                    { label: 'Kleiner dan of gelijk aan', value: '<=' },
+                    { label: 'tussen', value: '><' },
+                    { label: 'blank', value: '== null' },
+                    { label: 'niet blank', value: '!= null' },
+                ], {
+                    value: '==',
+                    onChange: (value) => {
+                        operator = value;
+                    },
+                    id: 'dropdown-id'
+                })
+                    .input('Filter', {
+                        placeholder: 'Filter',
+                        onChange: (value) => {
+                            engine.setSelect(key, operator, value);
+                            UI.render(engine.runSelect());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['==', '!=', '>', '<', '>=', '<='],
+                        }
+                    })
+                    .input('Filter', {
+                        placeholder: 'Van',
+                        onChange: (value) => {
+                            engine.setSelect(key, operator, value);
+                            UI.render(engine.runSelect());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['><'],
+                        }
+                    })
+                    .input('Filter', {
+                        placeholder: 'Tot',
+                        onChange: (value) => {
+                            engine.setSelect(key, operator, value);
+                            UI.render(engine.runSelect());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['><'],
+                        }
+                    })
+            });
+
+
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                UI.render(engine.sort(key, 'asc'));
+            })
+            .button('Sort ' + key + ' descending', () => {
+                UI.render(engine.sort(key, 'desc'));
+            })
+            .button('Unsort ' + key, () => {
+                UI.render(engine.sort(key, 'original'));
+            });
+
+        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+            UI.contextMenu
+                .separator()
+                .button('Group by ' + key, () => {
+                    UI.render(engine.groupBy(key));
+                })
+                .button('Un-group', () => {
+                    UI.render(engine.groupBy());
+                })
+        }
+
+        // Display the context menu at the specified coordinates
+        UI.contextMenu.showAt(x, y + height);
     }
 }
 

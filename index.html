@@ -147,12 +147,12 @@
         headers: {
             id: {type: 'number', isUnique: true, isEditable: false},
             guid: {type: 'string', isUnique: true, isEditable: false},
-            isActive: 'boolean',
+            isActive:  {type: 'boolean'},
             balance: {type: 'number', isGroupable: false},
-            age: 'number',
-            name: 'string',
-            gender: 'string',
-            email: 'string'
+            age: {type: 'number'},
+            name: {type: 'string'},
+            gender: {type: 'string', isGroupable: false},
+            email: {type: 'string', isUnique: true},
         },
         ui: {
             containerId: '#gridContainer',

@@ -187,26 +187,41 @@ class SJQLEngine {
     }
 
     addSelect(key, operator, value) {
-        let parsedQuery = [];
-        if (this.currentQueryStr.length > 0) {
-            parsedQuery = this.QueryParser.parseQuery(this.currentQueryStr, this.plugins, this.headers);
-            if (key && operator && value) {
-                parsedQuery.push(this.QueryParser.parseMatch([undefined, key, operator, value], 'SELECT', this.plugins, this.headers));
-            }
-        }
-        else {
-            parsedQuery.push(this.QueryParser.parseMatch([undefined, key, operator, value], 'SELECT', this.plugins, this.headers));
-        }
+        if (!key || !operator || value === undefined) return;
 
-        this.futureQuery = parsedQuery;
+        const newClause = `${key} ${operator} ${value}`;
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += `and ${newClause}`;
+    }
+
+    setSelect(key, operator, value) {
+        this.removeSelect(key);
+        this.addSelect(key, operator, value);
     }
 
     removeSelect(key, operator, value) {
-        this.futureQuery = this.futureQuery.filter(query =>  !(query.field.toString() === key.toString() && query.operator.toString() === operator.toString() && query.value.toString() === value.toString()));
+        if (key !== undefined && operator === undefined && value === undefined) {
+            // Remove all clauses with the specified key
+            this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith(key)).join(' and ');
+        }
+
+        else if (key !== undefined && operator !== undefined && value === undefined) {
+            // Remove all clauses with the specified key and operator
+            this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith(`${key} ${operator}`)).join(' and ');
+        }
+        else if (key !== undefined && operator !== undefined && value !== undefined) {
+            // Remove the specific clause
+            const clauseToRemove = `${key} ${operator} ${value}`;
+            this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => clause.trim() !== clauseToRemove).join(' and ');
+        }
     }
 
     runSelect() {
-        return this.#_query(this.futureQuery);
+        console.log(this.currentQueryStr);
+        return this.query(this.currentQueryStr);
     }
 
     //================================================== PLUGIN SYSTEM ==================================================

@@ -43,6 +43,7 @@
     text-align: center;
     cursor: pointer;
     user-select: none;
+    min-width: 50px;
 }
 
 /* Common Cell Styles */
