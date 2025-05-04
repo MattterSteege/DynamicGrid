@@ -151,7 +151,7 @@
             balance: {type: 'number', isGroupable: false},
             age: {type: 'number'},
             name: {type: 'string'},
-            gender: {type: 'string', isGroupable: false},
+            gender: {type: 'string', isGroupable: true},
             email: {type: 'string', isUnique: true},
         },
         ui: {
@@ -184,6 +184,11 @@
                 delete:'https://example.com/delete',
             }
         },
+    });
+
+    const input = document.getElementById('search');
+    grid.eventEmitter.subscribe('dg-query-update', function (query) {
+        input.value = query;
     });
 
 

@@ -79,6 +79,10 @@ class ContextMenu {
             ...config
         };
 
+        if (item.id === undefined) {
+            item.id = this._generateId();
+        }
+
         if (item.type === ContextMenu.ITEM_TYPES.SUBMENU) {
             item.submenu.options.indentLevel = (this.options.indentLevel || 0) + 1;
         }
@@ -692,6 +696,16 @@ class ContextMenu {
   color: var(--context-menu-text);
   animation: contextMenuSlideIn var(--transition-fast) forwards;
   transform-origin: top center;
+}
+
+.context-menu:has(> .context-menu-dropdown)::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 500%;
+    z-index: -1;
 }
 
 .context-menu-button,

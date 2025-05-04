@@ -74,11 +74,15 @@ class stringTypePlugin extends TypePlugin {
 class numberTypePlugin extends TypePlugin {
     constructor() {
         super();
-        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in']; //greater than, less than, greater than or equal, less than or equal, equals, not equals
+        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in', '><']; //greater than, less than, greater than or equal, less than or equal, equals, not equals, in, between
     }
 
     validate(value) {
-        return !isNaN(Number(value));
+        // Check if the value is a number or can be converted to a number
+        if (value === null || value === undefined) return false;
+
+        return !isNaN(Number(value)) ||
+               (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
     }
 
     //indices is a set of indices that match the query
@@ -106,8 +110,11 @@ class numberTypePlugin extends TypePlugin {
 
     evaluateCondition(dataValue, operator, value) {
 
-        if (operator === 'in' || operator === '><') {
+        if (operator === 'in') {
             value = JSON.parse(value);
+        }
+        else if (operator === '><') {
+            value = value.split("-");
         }
 
         if (Array.isArray(value) && value.length > 0 && operator === 'in') {
@@ -115,9 +122,11 @@ class numberTypePlugin extends TypePlugin {
         }
 
         if (Array.isArray(value) && value.length > 0 && operator === '><') {
-            if (value.length !== 2) {
-                throw new Error('between operator requires two values');
-            }
+            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
+            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
+
+            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
+
             return dataValue >= value[0] && dataValue <= value[1];
         }
 
@@ -165,8 +174,7 @@ class numberTypePlugin extends TypePlugin {
     showMore(key, element, engine, UI) {
         const {x, y, width, height} = element.getBoundingClientRect();
         const typeOptions = engine.headers[key];
-
-        console.log(typeOptions);
+        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
 
         UI.contextMenu.clear();
         UI.contextMenu
@@ -194,7 +202,7 @@ class numberTypePlugin extends TypePlugin {
                         placeholder: 'Filter',
                         onChange: (value) => {
                             engine.setSelect(key, operator, value);
-                            UI.render(engine.runSelect());
+                            UI.render(engine.runCurrentQuery());
                         },
                         showWhen: {
                             elementId: 'dropdown-id',
@@ -204,8 +212,11 @@ class numberTypePlugin extends TypePlugin {
                     .input('Filter', {
                         placeholder: 'Van',
                         onChange: (value) => {
-                            engine.setSelect(key, operator, value);
-                            UI.render(engine.runSelect());
+                            vanTot.van = value || Number.MIN_SAFE_INTEGER;
+                            if (vanTot.tot === Number.MAX_SAFE_INTEGER || vanTot.van > vanTot.tot) return;
+
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
                         },
                         showWhen: {
                             elementId: 'dropdown-id',
@@ -215,8 +226,10 @@ class numberTypePlugin extends TypePlugin {
                     .input('Filter', {
                         placeholder: 'Tot',
                         onChange: (value) => {
-                            engine.setSelect(key, operator, value);
-                            UI.render(engine.runSelect());
+                            vanTot.tot = value || Number.MAX_SAFE_INTEGER;
+                            if (vanTot.van === Number.MIN_SAFE_INTEGER || vanTot.tot <= vanTot.van) return;
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
                         },
                         showWhen: {
                             elementId: 'dropdown-id',
@@ -228,23 +241,28 @@ class numberTypePlugin extends TypePlugin {
 
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {
-                UI.render(engine.sort(key, 'asc'));
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Sort ' + key + ' descending', () => {
-                UI.render(engine.sort(key, 'desc'));
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Unsort ' + key, () => {
-                UI.render(engine.sort(key, 'original'));
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
             });
 
         if (!typeOptions.isUnique && typeOptions.isGroupable) {
             UI.contextMenu
                 .separator()
                 .button('Group by ' + key, () => {
-                    UI.render(engine.groupBy(key));
+                    engine.setGroup(key);
+                    UI.render(engine.runCurrentQuery());
                 })
                 .button('Un-group', () => {
-                    UI.render(engine.groupBy());
+                    engine.setGroup();
+                    UI.render(engine.runCurrentQuery());
                 })
         }
 
@@ -331,36 +349,41 @@ class booleanTypePlugin extends TypePlugin {
         UI.contextMenu.clear();
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {
-                UI.render(engine.sort(key, 'asc'));
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Sort ' + key + ' descending', () => {
-                UI.render(engine.sort(key, 'desc'));
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Unsort ' + key, () => {
-                UI.render(engine.sort(key, 'original'));
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
             })
             .separator()
             .button('Only show true', () => {
                 engine.addSelect(key, '==', 'true');
                 engine.removeSelect(key, '==', 'false');
-                UI.render(engine.runSelect());
+                UI.render(engine.runCurrentQuery());
             })
             .button('Only show false', () => {
                 engine.addSelect(key, '==', 'false');
                 engine.removeSelect(key, '==', 'true');
-                UI.render(engine.runSelect());
+                UI.render(engine.runCurrentQuery());
             })
             .button('Show all', () => {
                 engine.removeSelect(key, '==', 'true');
                 engine.removeSelect(key, '==', 'false');
-                UI.render(engine.runSelect());
+                UI.render(engine.runCurrentQuery());
             })
             .separator()
             .button('Group by ' + key, () => {
-                UI.render(engine.groupBy(key));
+                engine.setGroup(key);
+                UI.render(engine.runCurrentQuery());
             })
             .button('Un-group', () => {
-                UI.render(engine.groupBy());
+                engine.setGroup();
+                UI.render(engine.runCurrentQuery());
             });
         // Display the context menu at the specified coordinates
         UI.contextMenu.showAt(x, y + height);

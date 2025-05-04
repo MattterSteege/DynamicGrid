@@ -6,6 +6,7 @@ class DynamicGridUI {
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
+     * @param {SJQLEngine} dynamicGrid.engine - The query engine for the grid.
      * @event dg-edit - Event fired when a cell is edited.
      */
     constructor(dynamicGrid, ui_config, eventEmitter) {
@@ -14,6 +15,7 @@ class DynamicGridUI {
 
         this.eventEmitter = eventEmitter;
         this.keyboardShortcuts = dynamicGrid.keyboardShortcuts;
+        this.engine = dynamicGrid.engine;
 
         this.table = null;
         this.header = null;
@@ -350,7 +352,7 @@ class DynamicGridUI {
             cell.className = 'cell';
             cell.textContent = headers;
 
-            if (!this.dynamicGrid.engine.headers[headers].isEditable) {
+            if (!this.engine.headers[headers].isEditable) {
                 //subtle styling for non-editable cells
                 cell.style.backgroundColor = '#fafafa';
                 cell.style.color = '#333';
@@ -370,8 +372,8 @@ class DynamicGridUI {
         headers.forEach((_header, index) => {
             const cell = createTableCell(_header);
             cell.title = _header;
-            cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header].type);
-            cell.setAttribute('editable', this.dynamicGrid.engine.headers[_header].isEditable);
+            cell.setAttribute('value_type', this.engine.headers[_header].type);
+            cell.setAttribute('editable', this.engine.headers[_header].isEditable);
 
             cell.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -383,13 +385,14 @@ class DynamicGridUI {
                 else {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
                 }
-                this.render(this.dynamicGrid.engine.sort(this.sortColumn, this.sortDirection));
+                this.engine.setSort(this.sortColumn, this.sortDirection);
+                this.render(this.engine.runCurrentQuery());
             });
 
             cell.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid.engine, this);
+                this.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.engine, this);
             });
 
             index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
@@ -410,8 +413,8 @@ class DynamicGridUI {
 
     #_createTableCell(data, column) {
         const content = data[column];
-        const headerData = this.dynamicGrid.engine.headers[column];
-        const plugin = this.dynamicGrid.engine.getPlugin(headerData.type);
+        const headerData = this.engine.headers[column];
+        const plugin = this.engine.getPlugin(headerData.type);
 
         if (!this.config.allowFieldEditing || !headerData.isEditable) {
             const cell =  plugin.renderCell(content)

@@ -81,42 +81,12 @@ class DynamicGrid {
     }
 
     /**
-     * Sorts the data by the specified key and direction.
-     * @param {string} key - The key to sort by.
-     * @param {'asc'|'desc'} direction - The direction to sort.
-     * @preserve
-     */
-    sort = (key, direction) => {
-        this.engine.sort(key, direction);
-    }
-
-    /**
-     * Groups the data by the specified key.
-     * @param {string} [key] - The key to group by.
-     * @preserve
-     */
-    groupBy = key => {
-        this.engine.groupBy(key);
-    }
-
-    /**
      * Adds a selection filter to the data.
      * @param {string} key - The key to filter by.
      * @param {string} operator - The operator to use for filtering.
      * @param {*} value - The value to filter by.
-     * @preserve
      */
     addSelect = (key, operator, value) => this.engine.addSelect(key, operator, value);
-
-
-    /**
-     * Removes a selection filter from the data.
-     * @param {string} key - The key to filter by.
-     * @param {string} [operator] - The operator used for filtering.
-     * @param {*} [value] - The value to filter by.
-     * @preserve
-     */
-    removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
 
     /**
      * Sets a selection filter on the data. (This will override any existing filter for the same key.)
@@ -127,12 +97,53 @@ class DynamicGrid {
     setSelect = (key, operator, value) => this.engine.setSelect(key, operator, value);
 
     /**
-     * Runs all the selection filters on the data.
-     * @preserve
+     * Removes a selection filter from the data.
+     * @param {string} key - The key to filter by.
+     * @param {string} [operator] - The operator used for filtering.
+     * @param {*} [value] - The value to filter by.
      */
-    runSelect = () => {
-        this.engine.runSelect();
-    }
+    removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
+
+    /**
+     * Sets the sort order for the data.
+     * @param {string} key - The key to sort by.
+     * @param {'asc'|'desc'} direction - The direction to sort.
+     */
+    setSort = (key, direction) => this.engine.setSort(key, direction);
+
+    /**
+     * Removes the sort order from the data.
+     */
+    removeSort = () => this.engine.removeSort();
+
+    /**
+     * Sets a range filter on the data.
+     * @param {number} lower - The lower bound of the range.
+     * @param {number} upper - The upper bound of the range.
+     */
+    setRange = (lower, upper) => this.engine.setRange(lower, upper);
+
+    /**
+     * Removes the range filter from the data.
+     */
+    removeRange = () => this.engine.removeRange();
+
+    /**
+     * Groups the data by the specified key.
+     * @param {string} key - The key to group by.
+     */
+    setGroup = (key) => this.engine.setGroup(key);
+
+    /**
+     * Removes the grouping from the data.
+     */
+    removeGroup = () => this.engine.removeGroup();
+
+    /**
+     * Runs the current query and updates the grid.
+     * @returns {*} - The result of the query.
+     */
+    runCurrentQuery = () => this.engine.runCurrentQuery();
 
     addConnector(connector){
         connector.callbacks = {

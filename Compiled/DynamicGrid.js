@@ -82,42 +82,12 @@ class DynamicGrid {
     }
 
     /**
-     * Sorts the data by the specified key and direction.
-     * @param {string} key - The key to sort by.
-     * @param {'asc'|'desc'} direction - The direction to sort.
-     * @preserve
-     */
-    sort = (key, direction) => {
-        this.engine.sort(key, direction);
-    }
-
-    /**
-     * Groups the data by the specified key.
-     * @param {string} [key] - The key to group by.
-     * @preserve
-     */
-    groupBy = key => {
-        this.engine.groupBy(key);
-    }
-
-    /**
      * Adds a selection filter to the data.
      * @param {string} key - The key to filter by.
      * @param {string} operator - The operator to use for filtering.
      * @param {*} value - The value to filter by.
-     * @preserve
      */
     addSelect = (key, operator, value) => this.engine.addSelect(key, operator, value);
-
-
-    /**
-     * Removes a selection filter from the data.
-     * @param {string} key - The key to filter by.
-     * @param {string} [operator] - The operator used for filtering.
-     * @param {*} [value] - The value to filter by.
-     * @preserve
-     */
-    removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
 
     /**
      * Sets a selection filter on the data. (This will override any existing filter for the same key.)
@@ -128,12 +98,53 @@ class DynamicGrid {
     setSelect = (key, operator, value) => this.engine.setSelect(key, operator, value);
 
     /**
-     * Runs all the selection filters on the data.
-     * @preserve
+     * Removes a selection filter from the data.
+     * @param {string} key - The key to filter by.
+     * @param {string} [operator] - The operator used for filtering.
+     * @param {*} [value] - The value to filter by.
      */
-    runSelect = () => {
-        this.engine.runSelect();
-    }
+    removeSelect = (key, operator, value) => this.engine.removeSelect(key, operator, value);
+
+    /**
+     * Sets the sort order for the data.
+     * @param {string} key - The key to sort by.
+     * @param {'asc'|'desc'} direction - The direction to sort.
+     */
+    setSort = (key, direction) => this.engine.setSort(key, direction);
+
+    /**
+     * Removes the sort order from the data.
+     */
+    removeSort = () => this.engine.removeSort();
+
+    /**
+     * Sets a range filter on the data.
+     * @param {number} lower - The lower bound of the range.
+     * @param {number} upper - The upper bound of the range.
+     */
+    setRange = (lower, upper) => this.engine.setRange(lower, upper);
+
+    /**
+     * Removes the range filter from the data.
+     */
+    removeRange = () => this.engine.removeRange();
+
+    /**
+     * Groups the data by the specified key.
+     * @param {string} key - The key to group by.
+     */
+    setGroup = (key) => this.engine.setGroup(key);
+
+    /**
+     * Removes the grouping from the data.
+     */
+    removeGroup = () => this.engine.removeGroup();
+
+    /**
+     * Runs the current query and updates the grid.
+     * @returns {*} - The result of the query.
+     */
+    runCurrentQuery = () => this.engine.runCurrentQuery();
 
     addConnector(connector){
         connector.callbacks = {
@@ -151,6 +162,7 @@ class DynamicGridUI {
      * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
+     * @param {SJQLEngine} dynamicGrid.engine - The query engine for the grid.
      * @event dg-edit - Event fired when a cell is edited.
      */
     constructor(dynamicGrid, ui_config, eventEmitter) {
@@ -159,6 +171,7 @@ class DynamicGridUI {
 
         this.eventEmitter = eventEmitter;
         this.keyboardShortcuts = dynamicGrid.keyboardShortcuts;
+        this.engine = dynamicGrid.engine;
 
         this.table = null;
         this.header = null;
@@ -495,7 +508,7 @@ class DynamicGridUI {
             cell.className = 'cell';
             cell.textContent = headers;
 
-            if (!this.dynamicGrid.engine.headers[headers].isEditable) {
+            if (!this.engine.headers[headers].isEditable) {
                 //subtle styling for non-editable cells
                 cell.style.backgroundColor = '#fafafa';
                 cell.style.color = '#333';
@@ -515,8 +528,8 @@ class DynamicGridUI {
         headers.forEach((_header, index) => {
             const cell = createTableCell(_header);
             cell.title = _header;
-            cell.setAttribute('value_type', this.dynamicGrid.engine.headers[_header].type);
-            cell.setAttribute('editable', this.dynamicGrid.engine.headers[_header].isEditable);
+            cell.setAttribute('value_type', this.engine.headers[_header].type);
+            cell.setAttribute('editable', this.engine.headers[_header].isEditable);
 
             cell.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -528,13 +541,14 @@ class DynamicGridUI {
                 else {
                     this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
                 }
-                this.render(this.dynamicGrid.engine.sort(this.sortColumn, this.sortDirection));
+                this.engine.setSort(this.sortColumn, this.sortDirection);
+                this.render(this.engine.runCurrentQuery());
             });
 
             cell.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                this.dynamicGrid.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.dynamicGrid.engine, this);
+                this.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.engine, this);
             });
 
             index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
@@ -555,8 +569,8 @@ class DynamicGridUI {
 
     #_createTableCell(data, column) {
         const content = data[column];
-        const headerData = this.dynamicGrid.engine.headers[column];
-        const plugin = this.dynamicGrid.engine.getPlugin(headerData.type);
+        const headerData = this.engine.headers[column];
+        const plugin = this.engine.getPlugin(headerData.type);
 
         if (!this.config.allowFieldEditing || !headerData.isEditable) {
             const cell =  plugin.renderCell(content)
@@ -793,23 +807,28 @@ class TypePlugin {
         UI.contextMenu.clear();
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {
-                UI.render(engine.sort(key, 'asc'));
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Sort ' + key + ' descending', () => {
-                UI.render(engine.sort(key, 'desc'));
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Unsort ' + key, () => {
-                UI.render(engine.sort(key, 'original'));
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
             });
 
         if (!typeOptions.isUnique && typeOptions.isGroupable) {
             UI.contextMenu
             .separator()
             .button('Group by ' + key, () => {
-                UI.render(engine.groupBy(key));
+                engine.setGroup(key);
+                UI.render(engine.runCurrentQuery());
             })
             .button('Un-group', () => {
-                UI.render(engine.groupBy());
+                engine.setGroup();
+                UI.render(engine.runCurrentQuery());
             })
         }
 
@@ -895,11 +914,15 @@ class stringTypePlugin extends TypePlugin {
 class numberTypePlugin extends TypePlugin {
     constructor() {
         super();
-        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in']; //greater than, less than, greater than or equal, less than or equal, equals, not equals
+        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in', '><']; //greater than, less than, greater than or equal, less than or equal, equals, not equals, in, between
     }
 
     validate(value) {
-        return !isNaN(Number(value));
+        // Check if the value is a number or can be converted to a number
+        if (value === null || value === undefined) return false;
+
+        return !isNaN(Number(value)) ||
+               (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
     }
 
     //indices is a set of indices that match the query
@@ -927,8 +950,11 @@ class numberTypePlugin extends TypePlugin {
 
     evaluateCondition(dataValue, operator, value) {
 
-        if (operator === 'in' || operator === '><') {
+        if (operator === 'in') {
             value = JSON.parse(value);
+        }
+        else if (operator === '><') {
+            value = value.split("-");
         }
 
         if (Array.isArray(value) && value.length > 0 && operator === 'in') {
@@ -936,9 +962,11 @@ class numberTypePlugin extends TypePlugin {
         }
 
         if (Array.isArray(value) && value.length > 0 && operator === '><') {
-            if (value.length !== 2) {
-                throw new Error('between operator requires two values');
-            }
+            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
+            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
+
+            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
+
             return dataValue >= value[0] && dataValue <= value[1];
         }
 
@@ -986,8 +1014,7 @@ class numberTypePlugin extends TypePlugin {
     showMore(key, element, engine, UI) {
         const {x, y, width, height} = element.getBoundingClientRect();
         const typeOptions = engine.headers[key];
-
-        console.log(typeOptions);
+        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
 
         UI.contextMenu.clear();
         UI.contextMenu
@@ -1015,7 +1042,7 @@ class numberTypePlugin extends TypePlugin {
                         placeholder: 'Filter',
                         onChange: (value) => {
                             engine.setSelect(key, operator, value);
-                            UI.render(engine.runSelect());
+                            UI.render(engine.runCurrentQuery());
                         },
                         showWhen: {
                             elementId: 'dropdown-id',
@@ -1025,8 +1052,11 @@ class numberTypePlugin extends TypePlugin {
                     .input('Filter', {
                         placeholder: 'Van',
                         onChange: (value) => {
-                            engine.setSelect(key, operator, value);
-                            UI.render(engine.runSelect());
+                            vanTot.van = value || Number.MIN_SAFE_INTEGER;
+                            if (vanTot.tot === Number.MAX_SAFE_INTEGER || vanTot.van > vanTot.tot) return;
+
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
                         },
                         showWhen: {
                             elementId: 'dropdown-id',
@@ -1036,8 +1066,10 @@ class numberTypePlugin extends TypePlugin {
                     .input('Filter', {
                         placeholder: 'Tot',
                         onChange: (value) => {
-                            engine.addSelect(key, operator, value);
-                            UI.render(engine.runSelect());
+                            vanTot.tot = value || Number.MAX_SAFE_INTEGER;
+                            if (vanTot.van === Number.MIN_SAFE_INTEGER || vanTot.tot <= vanTot.van) return;
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
                         },
                         showWhen: {
                             elementId: 'dropdown-id',
@@ -1049,23 +1081,28 @@ class numberTypePlugin extends TypePlugin {
 
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {
-                UI.render(engine.sort(key, 'asc'));
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Sort ' + key + ' descending', () => {
-                UI.render(engine.sort(key, 'desc'));
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Unsort ' + key, () => {
-                UI.render(engine.sort(key, 'original'));
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
             });
 
         if (!typeOptions.isUnique && typeOptions.isGroupable) {
             UI.contextMenu
                 .separator()
                 .button('Group by ' + key, () => {
-                    UI.render(engine.groupBy(key));
+                    engine.setGroup(key);
+                    UI.render(engine.runCurrentQuery());
                 })
                 .button('Un-group', () => {
-                    UI.render(engine.groupBy());
+                    engine.setGroup();
+                    UI.render(engine.runCurrentQuery());
                 })
         }
 
@@ -1152,36 +1189,41 @@ class booleanTypePlugin extends TypePlugin {
         UI.contextMenu.clear();
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {
-                UI.render(engine.sort(key, 'asc'));
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Sort ' + key + ' descending', () => {
-                UI.render(engine.sort(key, 'desc'));
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Unsort ' + key, () => {
-                UI.render(engine.sort(key, 'original'));
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
             })
             .separator()
             .button('Only show true', () => {
                 engine.addSelect(key, '==', 'true');
                 engine.removeSelect(key, '==', 'false');
-                UI.render(engine.runSelect());
+                UI.render(engine.runCurrentQuery());
             })
             .button('Only show false', () => {
                 engine.addSelect(key, '==', 'false');
                 engine.removeSelect(key, '==', 'true');
-                UI.render(engine.runSelect());
+                UI.render(engine.runCurrentQuery());
             })
             .button('Show all', () => {
                 engine.removeSelect(key, '==', 'true');
                 engine.removeSelect(key, '==', 'false');
-                UI.render(engine.runSelect());
+                UI.render(engine.runCurrentQuery());
             })
             .separator()
             .button('Group by ' + key, () => {
-                UI.render(engine.groupBy(key));
+                engine.setGroup(key);
+                UI.render(engine.runCurrentQuery());
             })
             .button('Un-group', () => {
-                UI.render(engine.groupBy());
+                engine.setGroup();
+                UI.render(engine.runCurrentQuery());
             });
         // Display the context menu at the specified coordinates
         UI.contextMenu.showAt(x, y + height);
@@ -1317,7 +1359,6 @@ class SJQLEngine {
         this.data = [];
         this.headers = [];
         this.plugins = [];
-        this.currentQueryStr = '';
         this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
 
@@ -1328,6 +1369,8 @@ class SJQLEngine {
         };
 
         this.eventEmitter = eventEmitter;
+
+        this.currentQueryStr = '';
     }
 
     createDataIndex() {
@@ -1466,53 +1509,16 @@ class SJQLEngine {
         return this.data.filter((_, i) => validIndices.has(i));
     }
 
-    sort(key, direction) {
-        let query = '';
-
-        if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
-            query = 'sort ' + key + ' ' + direction;
-        else if (direction === 'asc' || direction === 'desc') {//if query is present, add sort to the query
-            query =  this.currentQueryStr.replace(QueryParser.QUERIES.SORT, '');
-            query += ' and sort ' + key + ' ' + direction;
-        }
-        else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
-        {
-            query = this.currentQueryStr;
-            query = query.replace(QueryParser.QUERIES.SORT, '');
-        }
-
-        return this.query(query);
-    }
-
-    groupBy(key = '') {
-        let query = '';
-
-        if (this.currentQueryStr.length === 0 && Object.keys(this.headers).includes(key)) //if no query is present, just group
-            query = 'group ' + key;
-        else if (this.currentQueryStr.length > 0 && Object.keys(this.headers).includes(key)) //if query is present, add sort to the query
-            query = this.currentQueryStr + ' and group ' + key;
-        else if (!key || key === '' || key === 'original') //if no direction is provided, just return the unsorted data
-        {
-            query = this.currentQueryStr;
-            query = query.replace(QueryParser.QUERIES.GROUP, '');
-        }
-
-        return this.query(query);
-    }
-
+    //================================================== SELECT ==================================================
     addSelect(key, operator, value) {
-        let parsedQuery = [];
-        if (this.currentQueryStr.length > 0) {
-            parsedQuery = this.QueryParser.parseQuery(this.currentQueryStr, this.plugins, this.headers);
-            if (key && operator && value) {
-                parsedQuery.push(this.QueryParser.parseMatch([undefined, key, operator, value], 'SELECT', this.plugins, this.headers));
-            }
-        }
-        else {
-            parsedQuery.push(this.QueryParser.parseMatch([undefined, key, operator, value], 'SELECT', this.plugins, this.headers));
-        }
+        if (!key || !operator || value === undefined) return;
 
-        this.futureQuery = parsedQuery;
+        const newClause = `${key} ${operator} ${value}`;
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += `and ${newClause}`;
     }
 
     setSelect(key, operator, value) {
@@ -1521,19 +1527,91 @@ class SJQLEngine {
     }
 
     removeSelect(key, operator, value) {
-
-        if (operator === undefined && value === undefined) {
-            //remove all selects where the key is the same
-            console.log(this.futureQuery);
-            this.futureQuery = this.futureQuery.filter(query => !(query.field.toString() === key.toString()));
-            console.log(this.futureQuery);
+        if (key !== undefined && operator === undefined && value === undefined) {
+            // Remove all clauses with the specified key
+            this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith(key)).join(' and ');
         }
 
-        this.futureQuery = this.futureQuery.filter(query =>  !(query.field.toString() === key.toString() && query.operator.toString() === operator.toString() && query.value.toString() === value.toString()));
+        else if (key !== undefined && operator !== undefined && value === undefined) {
+            // Remove all clauses with the specified key and operator
+            this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith(`${key} ${operator}`)).join(' and ');
+        }
+        else if (key !== undefined && operator !== undefined && value !== undefined) {
+            // Remove the specific clause
+            const clauseToRemove = `${key} ${operator} ${value}`;
+            this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => clause.trim() !== clauseToRemove).join(' and ');
+        }
     }
 
-    runSelect() {
-        return this.#_query(this.futureQuery);
+    //================================================== SORT ==================================================
+    setSort(key, direction) {
+        if (key === undefined || direction === undefined) {
+            this.removeSort();
+            return;
+        }
+
+        const newClause = `sort ${key} ${direction}`;
+
+        this.removeSort();
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += ` and ${newClause}`;
+    }
+
+    removeSort() {
+        // Remove the sort clause
+        this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith('sort')).join(' and ');
+    }
+
+    //================================================== RANGE ==================================================
+    setRange(lower, upper) {
+        if (lower === undefined || upper === undefined) {
+            this.removeRange();
+            return;
+        }
+
+        const newClause = `range ${lower} ${upper}`;
+
+        this.removeRange();
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += ` and ${newClause}`;
+    }
+
+    removeRange() {
+        // Remove the range clause
+        this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith('range')).join(' and ');
+    }
+
+    //================================================== GROUP ==================================================
+    setGroup(key) {
+        if (key === undefined){
+            this.removeGroup();
+            return;
+        }
+
+        const newClause = `group ${key}`;
+
+        this.removeGroup();
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += ` and ${newClause}`;
+    }
+
+    removeGroup() {
+        // Remove the group clause
+        this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith('group')).join(' and ');
+    }
+
+    runCurrentQuery() {
+        grid.eventEmitter.emit('dg-query-update', grid.engine.currentQueryStr);
+        return this.query(this.currentQueryStr);
     }
 
     //================================================== PLUGIN SYSTEM ==================================================
@@ -1672,6 +1750,13 @@ class EventEmitter {
     }
 
     /**
+     * Subscribe to an event. (alias for subscribe)
+     * @param {string} event - The name of the event to subscribe to. (case-insensitive)
+     * @param {Function} listener - The callback function to execute when the event is emitted.
+     */
+    on = this.subscribe; // Alias for subscribe
+
+    /**
      * Unsubscribe from an event.
      * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
      * @param {Function} listenerToRemove - The callback function to remove from the event.
@@ -1681,6 +1766,13 @@ class EventEmitter {
 
         this.events[event.toLocaleLowerCase()] = this.events[event.toLocaleLowerCase()].filter(listener => listener !== listenerToRemove);
     }
+
+    /**
+     * Unsubscribe from an event. (alias for unsubscribe)
+     * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
+     * @param {Function} listenerToRemove - The callback function to remove from the event.
+     */
+    off = this.unsubscribe; // Alias for unsubscribe
 
     /**
      * Emit an event.
@@ -1987,6 +2079,10 @@ class ContextMenu {
             position: this.items.length,
             ...config
         };
+
+        if (item.id === undefined) {
+            item.id = this._generateId();
+        }
 
         if (item.type === ContextMenu.ITEM_TYPES.SUBMENU) {
             item.submenu.options.indentLevel = (this.options.indentLevel || 0) + 1;
@@ -2601,6 +2697,16 @@ class ContextMenu {
   color: var(--context-menu-text);
   animation: contextMenuSlideIn var(--transition-fast) forwards;
   transform-origin: top center;
+}
+
+.context-menu:has(> .context-menu-dropdown)::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 500%;
+    z-index: -1;
 }
 
 .context-menu-button,

@@ -3,7 +3,6 @@ class SJQLEngine {
         this.data = [];
         this.headers = [];
         this.plugins = [];
-        this.currentQueryStr = '';
         this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
 
@@ -14,6 +13,8 @@ class SJQLEngine {
         };
 
         this.eventEmitter = eventEmitter;
+
+        this.currentQueryStr = '';
     }
 
     createDataIndex() {
@@ -152,40 +153,7 @@ class SJQLEngine {
         return this.data.filter((_, i) => validIndices.has(i));
     }
 
-    sort(key, direction) {
-        let query = '';
-
-        if (this.currentQueryStr.length === 0 && (direction === 'asc' || direction === 'desc')) //if no query is present, just sort
-            query = 'sort ' + key + ' ' + direction;
-        else if (direction === 'asc' || direction === 'desc') {//if query is present, add sort to the query
-            query =  this.currentQueryStr.replace(QueryParser.QUERIES.SORT, '');
-            query += ' and sort ' + key + ' ' + direction;
-        }
-        else if (!direction || direction === '' || direction === 'original') //if no direction is provided, just return the unsorted data
-        {
-            query = this.currentQueryStr;
-            query = query.replace(QueryParser.QUERIES.SORT, '');
-        }
-
-        return this.query(query);
-    }
-
-    groupBy(key = '') {
-        let query = '';
-
-        if (this.currentQueryStr.length === 0 && Object.keys(this.headers).includes(key)) //if no query is present, just group
-            query = 'group ' + key;
-        else if (this.currentQueryStr.length > 0 && Object.keys(this.headers).includes(key)) //if query is present, add sort to the query
-            query = this.currentQueryStr + ' and group ' + key;
-        else if (!key || key === '' || key === 'original') //if no direction is provided, just return the unsorted data
-        {
-            query = this.currentQueryStr;
-            query = query.replace(QueryParser.QUERIES.GROUP, '');
-        }
-
-        return this.query(query);
-    }
-
+    //================================================== SELECT ==================================================
     addSelect(key, operator, value) {
         if (!key || !operator || value === undefined) return;
 
@@ -219,8 +187,74 @@ class SJQLEngine {
         }
     }
 
-    runSelect() {
-        console.log(this.currentQueryStr);
+    //================================================== SORT ==================================================
+    setSort(key, direction) {
+        if (key === undefined || direction === undefined) {
+            this.removeSort();
+            return;
+        }
+
+        const newClause = `sort ${key} ${direction}`;
+
+        this.removeSort();
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += ` and ${newClause}`;
+    }
+
+    removeSort() {
+        // Remove the sort clause
+        this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith('sort')).join(' and ');
+    }
+
+    //================================================== RANGE ==================================================
+    setRange(lower, upper) {
+        if (lower === undefined || upper === undefined) {
+            this.removeRange();
+            return;
+        }
+
+        const newClause = `range ${lower} ${upper}`;
+
+        this.removeRange();
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += ` and ${newClause}`;
+    }
+
+    removeRange() {
+        // Remove the range clause
+        this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith('range')).join(' and ');
+    }
+
+    //================================================== GROUP ==================================================
+    setGroup(key) {
+        if (key === undefined){
+            this.removeGroup();
+            return;
+        }
+
+        const newClause = `group ${key}`;
+
+        this.removeGroup();
+
+        if (this.currentQueryStr.length === 0)
+            this.currentQueryStr = newClause;
+        else
+            this.currentQueryStr += ` and ${newClause}`;
+    }
+
+    removeGroup() {
+        // Remove the group clause
+        this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith('group')).join(' and ');
+    }
+
+    runCurrentQuery() {
+        grid.eventEmitter.emit('dg-query-update', grid.engine.currentQueryStr);
         return this.query(this.currentQueryStr);
     }
 

@@ -149,23 +149,28 @@ class TypePlugin {
         UI.contextMenu.clear();
         UI.contextMenu
             .button('Sort ' + key + ' ascending', () => {
-                UI.render(engine.sort(key, 'asc'));
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Sort ' + key + ' descending', () => {
-                UI.render(engine.sort(key, 'desc'));
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
             })
             .button('Unsort ' + key, () => {
-                UI.render(engine.sort(key, 'original'));
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
             });
 
         if (!typeOptions.isUnique && typeOptions.isGroupable) {
             UI.contextMenu
             .separator()
             .button('Group by ' + key, () => {
-                UI.render(engine.groupBy(key));
+                engine.setGroup(key);
+                UI.render(engine.runCurrentQuery());
             })
             .button('Un-group', () => {
-                UI.render(engine.groupBy());
+                engine.setGroup();
+                UI.render(engine.runCurrentQuery());
             })
         }
 
