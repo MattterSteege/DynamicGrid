@@ -49,6 +49,8 @@ class DynamicGrid {
             this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
             delete APIconfig.connector;
         }
+
+        this.eventEmitter.emit('grid-initialized', { config });
     }
 
 
@@ -61,6 +63,7 @@ class DynamicGrid {
     importData(data, config) {
         this.engine.importData(data, config);
         this.engine.createDataIndex();
+        this.eventEmitter.emit('grid-data-imported', { data, config });
     }
 
     /**
@@ -70,6 +73,7 @@ class DynamicGrid {
      */
     render(input) {
         this.ui.render(this.engine.query(input));
+        this.eventEmitter.emit('ui-rendered', { input });
     }
 
     /**
@@ -79,6 +83,7 @@ class DynamicGrid {
      */
     renderRaw(input) {
         this.ui.render(input);
+        this.eventEmitter.emit('ui-raw-rendered', { input });
     }
 
     /**
@@ -153,6 +158,7 @@ class DynamicGrid {
     }
 }
 
+
 // ./DynamicGrid/DynamicGridUI.js
 class DynamicGridUI {
     /**
@@ -163,13 +169,14 @@ class DynamicGridUI {
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
      * @param {SJQLEngine} dynamicGrid.engine - The query engine for the grid.
-     * @event dg-edit - Event fired when a cell is edited.
+     * @event ui-cell-edit - Event fired when a cell is edited.
      */
     constructor(dynamicGrid, ui_config, eventEmitter) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
 
         this.eventEmitter = eventEmitter;
+        this.eventEmitter.emit('ui-initialized', { containerId: this.containerId });
         this.keyboardShortcuts = dynamicGrid.keyboardShortcuts;
         this.engine = dynamicGrid.engine;
 
@@ -237,6 +244,7 @@ class DynamicGridUI {
         }
 
         this.#_renderTable(data, isGroupedData);
+        this.eventEmitter.emit('ui-rendered', { data });
     }
 
     toggleColumn(index) {
@@ -245,6 +253,7 @@ class DynamicGridUI {
         const showingColumns = this.columnWidths.filter(width => width > 0).length;
         this.columnWidths = this.columnWidths.map(width => width === 0 ? 0 : 100 / showingColumns);
         this.#_updateColumnWidths(this.table);
+        this.eventEmitter.emit('ui-column-toggled', { index, columnWidths: this.columnWidths });
     }
 
     // ======================================== PRIVATE METHODS ========================================
@@ -257,6 +266,7 @@ class DynamicGridUI {
 
         //register UI interactions and keyboard shortcuts
         this.keyboardShortcuts.addShortcut('ctrl+s', () => this.eventEmitter.emit('dg-save'));
+        this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 
 
@@ -391,6 +401,7 @@ class DynamicGridUI {
             container.removeChild(container.lastChild);
         }
         container.appendChild(visibleRowsContainer);
+        this.eventEmitter.emit('ui-visible-rows-updated', { startRow, endRow });
     }
 
 
@@ -588,7 +599,7 @@ class DynamicGridUI {
         }
         else {
             const onEdit = (callback) => {
-                this.eventEmitter.emit('dg-edit', { column: column, row: data, previousValue: content, newValue: callback });
+                this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
             }
 
             const cell = plugin.renderEditableCell(content, onEdit);
@@ -654,6 +665,7 @@ optimizations:
 
 
 */
+
 
 // ./DynamicGrid/TypePlugin.js
 /**
@@ -1175,7 +1187,6 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.name = 'checkbox';
 
         checkbox.addEventListener('change', (e) => {
-            //eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: checkbox.checked });
             onEdit(checkbox.checked);
         });
 
@@ -1354,6 +1365,10 @@ class QueryParser {
 
 
 // ./DynamicGrid/SJQLEngine.js
+/**
+ * @file manages the SQL-like query engine for the grid, handling data parsing, indexing, and query execution.
+ * @module SJQLEngine
+ */
 class SJQLEngine {
     constructor(engine_config, eventEmitter) {
         this.data = [];
@@ -1610,7 +1625,7 @@ class SJQLEngine {
     }
 
     runCurrentQuery() {
-        grid.eventEmitter.emit('dg-query-update', grid.engine.currentQueryStr);
+        grid.eventEmitter.emit('engine-query-update', grid.engine.currentQueryStr);
         return this.query(this.currentQueryStr);
     }
 
@@ -1803,7 +1818,6 @@ class KeyboardShortcuts {
      * shortcuts.clearShortcuts();
      *
      * shortcuts.destroy();
-     * @preserve
      */
     constructor() {
         this.shortcuts = new Map();
@@ -1815,7 +1829,6 @@ class KeyboardShortcuts {
      * Normalizes a key string by converting it to lowercase and removing whitespace.
      * @param {string} key - The key string to normalize.
      * @returns {string} The normalized key string.
-     * @preserve
      */
     #_normalizeKey(key) {
         return key.toLowerCase().replace(/\s+/g, '');
@@ -1825,7 +1838,6 @@ class KeyboardShortcuts {
      * Handles the keydown event and executes the corresponding shortcut callback if available.
      * This also prevents the default browser behavior for the shortcut key combination.
      * @param {KeyboardEvent} event - The keydown event.
-     * @preserve
      */
     #_handleKeyPress(event) {
         const pressedKey = this.#_normalizeKey(
@@ -1842,7 +1854,6 @@ class KeyboardShortcuts {
      * Adds a new keyboard shortcut.
      * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
      * @param {Function} callback - The function to execute when the shortcut is triggered.
-     * @preserve
      */
     addShortcut(keys, callback) {
         const normalizedKeys = this.#_normalizeKey(keys);
@@ -1856,7 +1867,6 @@ class KeyboardShortcuts {
     /**
      * Removes an existing keyboard shortcut.
      * @param {string} keys - The key combination of the shortcut to remove.
-     * @preserve
      */
     removeShortcut(keys) {
         const normalizedKeys = this.#_normalizeKey(keys);
@@ -1870,7 +1880,6 @@ class KeyboardShortcuts {
     /**
      * Lists all registered keyboard shortcuts.
      * @returns {string[]} An array of registered key combinations.
-     * @preserve
      */
     listShortcuts() {
         return Array.from(this.shortcuts.keys());
@@ -1878,7 +1887,6 @@ class KeyboardShortcuts {
 
     /**
      * Clears all registered keyboard shortcuts.
-     * @preserve
      */
     clearShortcuts() {
         this.shortcuts.clear();
@@ -1886,7 +1894,6 @@ class KeyboardShortcuts {
 
     /**
      * Destroys the KeyboardShortcuts instance by removing the event listener and clearing shortcuts.
-     * @preserve
      */
     destroy() {
         document.removeEventListener('keydown', this.listener);

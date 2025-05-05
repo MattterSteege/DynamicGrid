@@ -20,7 +20,7 @@ class APIConnector {
 
 
         //subscribe to events
-        this.eventEmitter.subscribe('dg-edit', this.onEdit.bind(this)); //When any cell is edited
+        this.eventEmitter.subscribe('ui-cell-edit', this.onEdit.bind(this)); //When any cell is edited
         this.eventEmitter.subscribe('dg-save', this.onSave.bind(this)); //When the grid is saved
     }
 

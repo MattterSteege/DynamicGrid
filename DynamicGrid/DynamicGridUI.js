@@ -7,13 +7,14 @@ class DynamicGridUI {
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
      * @param {SJQLEngine} dynamicGrid.engine - The query engine for the grid.
-     * @event dg-edit - Event fired when a cell is edited.
+     * @event ui-cell-edit - Event fired when a cell is edited.
      */
     constructor(dynamicGrid, ui_config, eventEmitter) {
         this.dynamicGrid = dynamicGrid;
         this.containerId = ui_config.containerId;
 
         this.eventEmitter = eventEmitter;
+        this.eventEmitter.emit('ui-initialized', { containerId: this.containerId });
         this.keyboardShortcuts = dynamicGrid.keyboardShortcuts;
         this.engine = dynamicGrid.engine;
 
@@ -81,6 +82,7 @@ class DynamicGridUI {
         }
 
         this.#_renderTable(data, isGroupedData);
+        this.eventEmitter.emit('ui-rendered', { data });
     }
 
     toggleColumn(index) {
@@ -89,6 +91,7 @@ class DynamicGridUI {
         const showingColumns = this.columnWidths.filter(width => width > 0).length;
         this.columnWidths = this.columnWidths.map(width => width === 0 ? 0 : 100 / showingColumns);
         this.#_updateColumnWidths(this.table);
+        this.eventEmitter.emit('ui-column-toggled', { index, columnWidths: this.columnWidths });
     }
 
     // ======================================== PRIVATE METHODS ========================================
@@ -101,6 +104,7 @@ class DynamicGridUI {
 
         //register UI interactions and keyboard shortcuts
         this.keyboardShortcuts.addShortcut('ctrl+s', () => this.eventEmitter.emit('dg-save'));
+        this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 
 
@@ -235,6 +239,7 @@ class DynamicGridUI {
             container.removeChild(container.lastChild);
         }
         container.appendChild(visibleRowsContainer);
+        this.eventEmitter.emit('ui-visible-rows-updated', { startRow, endRow });
     }
 
 
@@ -432,7 +437,7 @@ class DynamicGridUI {
         }
         else {
             const onEdit = (callback) => {
-                this.eventEmitter.emit('dg-edit', { column: column, row: data, previousValue: content, newValue: callback });
+                this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
             }
 
             const cell = plugin.renderEditableCell(content, onEdit);

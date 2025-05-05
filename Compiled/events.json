@@ -1,0 +1,57 @@
+[
+  {
+    "eventName": "grid-initialized",
+    "file": "DynamicGrid.js",
+    "line": 52
+  },
+  {
+    "eventName": "grid-data-imported",
+    "file": "DynamicGrid.js",
+    "line": 65
+  },
+  {
+    "eventName": "ui-rendered",
+    "file": "DynamicGrid.js",
+    "line": 75
+  },
+  {
+    "eventName": "ui-raw-rendered",
+    "file": "DynamicGrid.js",
+    "line": 85
+  },
+  {
+    "eventName": "ui-initialized",
+    "file": "DynamicGridUI.js",
+    "line": 17
+  },
+  {
+    "eventName": "ui-rendered",
+    "file": "DynamicGridUI.js",
+    "line": 85
+  },
+  {
+    "eventName": "ui-column-toggled",
+    "file": "DynamicGridUI.js",
+    "line": 94
+  },
+  {
+    "eventName": "ui-container-initialized",
+    "file": "DynamicGridUI.js",
+    "line": 107
+  },
+  {
+    "eventName": "ui-visible-rows-updated",
+    "file": "DynamicGridUI.js",
+    "line": 242
+  },
+  {
+    "eventName": "ui-cell-edit",
+    "file": "DynamicGridUI.js",
+    "line": 440
+  },
+  {
+    "eventName": "engine-query-update",
+    "file": "SJQLEngine.js",
+    "line": 261
+  }
+]

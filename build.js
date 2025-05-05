@@ -38,6 +38,9 @@ const separateFiles = [
     "./DynamicGrid/KeyboardShortcuts.js",
 ];
 
+const eventRegex = /eventEmitter\.emit\('([^']*)',/g;
+const events = [];
+
 // Helper function to add delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -58,8 +61,21 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         for (const file of files) {
             combinedCode += `// ${file}\n`;
-            combinedCode += fs.readFileSync(file, 'utf8') + '\n\n';
-            console.log(`  Added: ${file}`);
+            const currFile = fs.readFileSync(file, 'utf8') + '\n\n';
+            combinedCode += currFile;
+            console.log(`↳  Added: ${file}`);
+
+            // Extract events from the current file
+            let match;
+            while ((match = eventRegex.exec(currFile)) !== null) {
+                //add event to list:
+                // {eventName: 'eventName', file: 'fileName', line: lineNumber}
+                const eventName = match[1];
+                const lineNumber = currFile.substring(0, match.index).split('\n').length;
+                events.push({ eventName, file: file.split('/').pop(), line: lineNumber });
+                console.log(`  ↳ Found event: ${eventName} in ${file} at line ${lineNumber}`);
+            }
+
             await delay(100); // Small delay for each file
         }
 
@@ -67,7 +83,13 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         await delay(300);
         const combinedFilePath = outputDir + 'DynamicGrid.js';
         fs.writeFileSync(combinedFilePath, combinedCode);
-        console.log(`  Combined file saved: ${combinedFilePath}`);
+        console.log(`↳  Combined file saved: ${combinedFilePath}`);
+
+        //save events to a file
+        const eventsFilePath = outputDir + 'events.json';
+        fs.writeFileSync(eventsFilePath, JSON.stringify(events, null, 2));
+        console.log(`↳  Events saved: ${eventsFilePath} (${events.length})`);
+        await delay(300);
 
         console.log('\nMinifying combined file...');
         await delay(300);
@@ -80,14 +102,14 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         });
         fs.writeFileSync(outputDir + 'DynamicGrid.min.js', minifiedCombined.code);
         fs.writeFileSync(outputDir + 'DynamicGrid.min.js.map', minifiedCombined.map);
-        console.log('  Minified combined file and source map saved.');
+        console.log('↳  Minified combined file and source map saved.');
         await delay(300);
 
         console.log('\nProcessing separate files...');
         await delay(200);
 
         for (const file of separateFiles) {
-            console.log(`  Processing: ${file}`);
+            console.log(`↳  Processing: ${file}`);
             await delay(100); // Delay for reading each file
 
             const fileCode = fs.readFileSync(file, 'utf8');
@@ -98,7 +120,8 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
             // Save the unminified file in the Compiled folder
             fs.writeFileSync(unminifiedFilePath, fileCode);
-            console.log(`    Unminified file saved: ${unminifiedFilePath}`);
+
+            console.log(`  ↳ Unminified file saved:`);
             await delay(100);
 
             // Minify the file and save the minified version and source map
@@ -113,7 +136,7 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
             fs.writeFileSync(minifiedFilePath, minifiedFile.code);
             fs.writeFileSync(sourceMapPath, minifiedFile.map);
-            console.log(`    Minified file and source map saved: ${minifiedFilePath}, ${sourceMapPath}`);
+            console.log(`  ↳ Minified file and source map saved\n`);
             await delay(200); // Delay after saving each file
         }
 

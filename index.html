@@ -187,7 +187,7 @@
     });
 
     const input = document.getElementById('search');
-    grid.eventEmitter.subscribe('dg-query-update', function (query) {
+    grid.eventEmitter.subscribe('engine-query-update', function (query) {
         input.value = query;
     });
 

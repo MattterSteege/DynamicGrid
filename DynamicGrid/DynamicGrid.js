@@ -48,6 +48,8 @@ class DynamicGrid {
             this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
             delete APIconfig.connector;
         }
+
+        this.eventEmitter.emit('grid-initialized', { config });
     }
 
 
@@ -60,6 +62,7 @@ class DynamicGrid {
     importData(data, config) {
         this.engine.importData(data, config);
         this.engine.createDataIndex();
+        this.eventEmitter.emit('grid-data-imported', { data, config });
     }
 
     /**
@@ -69,6 +72,7 @@ class DynamicGrid {
      */
     render(input) {
         this.ui.render(this.engine.query(input));
+        this.eventEmitter.emit('ui-rendered', { input });
     }
 
     /**
@@ -78,6 +82,7 @@ class DynamicGrid {
      */
     renderRaw(input) {
         this.ui.render(input);
+        this.eventEmitter.emit('ui-raw-rendered', { input });
     }
 
     /**

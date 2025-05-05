@@ -1,3 +1,7 @@
+/**
+ * @file manages the SQL-like query engine for the grid, handling data parsing, indexing, and query execution.
+ * @module SJQLEngine
+ */
 class SJQLEngine {
     constructor(engine_config, eventEmitter) {
         this.data = [];
@@ -254,7 +258,7 @@ class SJQLEngine {
     }
 
     runCurrentQuery() {
-        grid.eventEmitter.emit('dg-query-update', grid.engine.currentQueryStr);
+        grid.eventEmitter.emit('engine-query-update', grid.engine.currentQueryStr);
         return this.query(this.currentQueryStr);
     }
 

@@ -335,7 +335,6 @@ class booleanTypePlugin extends TypePlugin {
         checkbox.name = 'checkbox';
 
         checkbox.addEventListener('change', (e) => {
-            //eventEmitter.emit('UI.CellEdit', { originEvent: e, edit: checkbox.checked });
             onEdit(checkbox.checked);
         });
 
