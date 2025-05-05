@@ -8,6 +8,11 @@ class stringTypePlugin extends TypePlugin {
         return typeof value === 'string';
     }
 
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return String(value);
+    }
+
     //query = {field: 'name', operator: 'eq', value: 'John'}
     evaluate(query, dataIndexes, data, indices) {
         //loop over the indices and remove the ones that do not match the query
@@ -83,6 +88,11 @@ class numberTypePlugin extends TypePlugin {
 
         return !isNaN(Number(value)) ||
                (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return Number(value);
     }
 
     //indices is a set of indices that match the query
@@ -280,6 +290,11 @@ class booleanTypePlugin extends TypePlugin {
     validate(value) {
         value = Boolean(value);
         return value === true || value === false;
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return Boolean(value);
     }
 
     evaluate(query, dataIndexes, data, indices) {

@@ -34,6 +34,16 @@ class TypePlugin {
     }
 
     /**
+     * Parses the string representation of a value into the appropriate type
+     * @param {string} value The string value to parse
+     * @returns {*} Parsed value
+     * @abstract
+     */
+    parseValue(value) {
+        throw new Error('parseValue must be implemented by subclass');
+    }
+
+    /**
      * Evaluate a query against data
      * @param {Object} query Query to evaluate
      * @param {Map<string, Set>} dataIndexes Map of column names to indices
