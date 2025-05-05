@@ -404,4 +404,201 @@ class booleanTypePlugin extends TypePlugin {
     }
 }
 
-//TODO: add the following types: date
+class dateTypePlugin extends TypePlugin {
+    constructor() {
+        super();
+        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in', '><']; //greater than, less than, greater than or equal, less than or equal, equals, not equals, in, between
+    }
+
+    validate(value) {
+        // Check if the value is a date or can be converted to a date
+        if (value === null || value === undefined) return false;
+
+        return !isNaN(new Date(value).getTime()) ||
+               (value.split('-').length === 2 && !isNaN(new Date(value.split('-')[0]).getTime()) && !isNaN(new Date(value.split('-')[1]).getTime()));
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return new Date(value).getTime();
+    }
+
+    evaluate(query, dataIndexes, data, indices) {
+        //loop over the indices and remove the ones that do not match the query
+        //console.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for DateTypePlugin');
+        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
+            for (const index of dataIndexes.keys()) {
+                if (!this.evaluateCondition(index, query.operator, query.value)) {
+                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
+                }
+            }
+        } else {
+            for (const index of indices) {
+                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+                    indices.delete(index);
+                }
+            }
+        }
+
+        return indices;
+    }
+
+    evaluateCondition(dataValue, operator, value) {
+        if (operator === 'in') {
+            value = JSON.parse(value);
+        } else if (operator === '><') {
+            value = value.split("-");
+        }
+
+        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
+            return value.includes(dataValue);
+        }
+
+        if (Array.isArray(value) && value.length > 0 && operator === '><') {
+            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
+            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
+
+            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
+
+            return dataValue >= value[0] && dataValue <= value[1];
+        }
+
+        dataValue = new Date(dataValue).getTime();
+        value = new Date(value).getTime();
+
+        switch (operator) {
+            case '>':
+                return dataValue > value;
+            case '<':
+                return dataValue < value;
+            case '>=':
+                return dataValue >= value;
+            case '<=':
+                return dataValue <= value;
+            case '==':
+                return dataValue === value;
+            case '!=':
+                return dataValue !== value;
+        }
+    }
+
+    renderCell(value) {
+        const cell = document.createElement('div');
+        const date = new Date(value);
+        cell.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        return cell;
+    }
+
+    renderEditableCell(value, onEdit) {
+        const cell = document.createElement('div');
+        const date = new Date(value);
+        const input = document.createElement('input');
+        input.type = 'datetime-local';
+        input.value = date.toISOString().slice(0, 16);
+        input.style.width = '-webkit-fill-available';
+
+        input.addEventListener('change', (e) => {
+            onEdit(new Date(input.value).getTime());
+        });
+
+        cell.appendChild(input);
+        return cell;
+    }
+
+    showMore(key, element, engine, UI) {
+        const {x, y, width, height} = element.getBoundingClientRect();
+        const typeOptions = engine.headers[key];
+        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
+
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .submenu('Filter ' + key, (submenu) => {
+                var operator = '==';
+                submenu
+                    .dropdown('Filter ' + key, [
+                        {label: 'Gelijk aan', value: '=='},
+                        {label: 'Niet gelijk aan', value: '!='},
+                        {label: 'Groter dan', value: '>'},
+                        {label: 'Groter dan of gelijk aan', value: '>='},
+                        {label: 'Kleiner dan', value: '<'},
+                        {label: 'Kleiner dan of gelijk aan', value: '<='},
+                        {label: 'tussen', value: '><'},
+                        {label: 'blank', value: '== null'},
+                        {label: 'niet blank', value: '!= null'},
+                    ], {
+                        value: '==',
+                        onChange: (value) => {
+                            operator = value;
+                        },
+                        id: 'dropdown-id'
+                    })
+                    .input('Filter', {
+                        placeholder: 'Filter',
+                        onChange: (value) => {
+                            engine.setSelect(key, operator, new Date(value).getTime());
+                            UI.render(engine.runCurrentQuery());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['==', '!=', '>', '<', '>=', '<='],
+                        }
+                    })
+                    .input('Filter', {
+                        placeholder: 'Van',
+                        onChange: (value) => {
+                            vanTot.van = new Date(value).getTime() || Number.MIN_SAFE_INTEGER;
+                            if (vanTot.tot === Number.MAX_SAFE_INTEGER || vanTot.van > vanTot.tot) return;
+
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['><'],
+                        }
+                    })
+                    .input('Filter', {
+                        placeholder: 'Tot',
+                        onChange: (value) => {
+                            vanTot.tot = new Date(value).getTime() || Number.MAX_SAFE_INTEGER;
+                            if (vanTot.van === Number.MIN_SAFE_INTEGER || vanTot.tot <= vanTot.van) return;
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['><'],
+                        }
+                    })
+            });
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Sort ' + key + ' descending', () => {
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Unsort ' + key, () => {
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
+            });
+        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+            UI.contextMenu
+                .separator()
+                .button('Group by ' + key, () => {
+                    engine.setGroup(key);
+                    UI.render(engine.runCurrentQuery());
+                })
+                .button('Un-group', () => {
+                    engine.setGroup();
+                    UI.render(engine.runCurrentQuery());
+                })
+        }
+
+        // Display the context menu at the specified coordinates
+        UI.contextMenu.showAt(x, y + height);
+    }
+
+}

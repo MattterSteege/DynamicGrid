@@ -1,84 +1,146 @@
-# Custom Type Plugins in DynamicGrid
+# Adding Custom Type Plugins in DynamicGrid
 
 ## Overview
 
-DynamicGrid provides a powerful plugin system that allows you to create custom type plugins to handle specific data types and their rendering, sorting, and filtering behaviors. This guide will walk you through creating your own type plugins step by step.
+DynamicGrid allows you to extend its functionality by creating custom type plugins. These plugins define how specific data types are validated, rendered, sorted, and filtered. This guide explains how to create and register custom type plugins, following the structure used in `InherentTypePlugin.js`.
 
-## Understanding the TypePlugin Architecture
+## Plugin Structure
 
-Each type plugin is a class that extends the abstract `TypePlugin` base class or any class that is based on that class (so it can extend the default `string`, `bool` and `numberTypePlugin`. The plugin must implement several key methods to integrate seamlessly with the DynamicGrid system:
+Each type plugin extends the `TypePlugin` base class and overrides its methods to implement type-specific behavior. Below are the key methods you need to implement:
 
-### Required Methods to Implement
+### Required Methods
 
 1. **`constructor()`**
-    - Initialize your plugin
-    - Define supported operators
-    - Set up any type-specific configurations
+   - Initialize the plugin and define supported operators.
+   - Example:
+     ```javascript
+     constructor() {
+         super();
+         this.operators = ['==', '!=', '>', '<']; // Define operators
+     }
+     ```
 
 2. **`validate(value)`**
-    - Validates if a given value matches the plugin's type
-    - Returns `true` if the value is valid, `false` otherwise
-    - Used to ensure type consistency
+   - Validates if a value matches the plugin's type.
+   - Example:
+     ```javascript
+     validate(value) {
+         return typeof value === 'string'; // Example for string type
+     }
+     ```
 
-3. **`getJSQLFormat(value)`**
-    - Converts the value to a standardized format for querying
-    - Should handle type-specific formatting requirements
-    - Throw an error if the value cannot be formatted
+3. **`parseValue(value)`**
+   - Converts a value to the appropriate type.
+   - Example:
+     ```javascript
+     parseValue(value) {
+         return String(value); // Example for string type
+     }
+     ```
 
 4. **`evaluate(query, dataIndexes, data, indices)`**
-    - Filters data based on the given query
-    - Handles type-specific filtering logic
-    - Manipulates the set of indices to match the query conditions
+   - Filters data based on the query.
+   - Example:
+     ```javascript
+     evaluate(query, dataIndexes, data, indices) {
+         for (const index of indices) {
+             if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+                 indices.delete(index);
+             }
+         }
+         return indices;
+     }
+     ```
 
 5. **`evaluateCondition(dataValue, operator, value)`**
-    - Performs the actual comparison for a single condition
-    - Implements type-specific comparison logic for different operators
+   - Compares a data value with a query value using the specified operator.
+   - Example:
+     ```javascript
+     evaluateCondition(dataValue, operator, value) {
+         switch (operator) {
+             case '==': return dataValue === value;
+             case '!=': return dataValue !== value;
+             // Add more operators as needed
+         }
+     }
+     ```
 
-6. **`renderHeader(key)`**
-    - Creates and returns the header cell for this type
-    - Customize header rendering as needed
+6. **`sort(query, data)`**
+   - Sorts data based on the query.
+   - Example:
+     ```javascript
+     sort(query, data) {
+         const { field, value: direction } = query;
+         return data.sort((a, b) => direction === 'asc' ? a[field] - b[field] : b[field] - a[field]);
+     }
+     ```
 
 7. **`renderCell(value)`**
-    - Converts the raw value to a displayable string or HTML
-    - Implement type-specific formatting
+   - Creates a table cell for displaying the value.
+   - Example:
+     ```javascript
+     renderCell(value) {
+         const cell = document.createElement('div');
+         cell.innerText = String(value);
+         return cell;
+     }
+     ```
 
-8. **`sort(query, data)`**
-    - Implements custom sorting logic for the type
-    - Sorts data based on the specified field and direction
+8. **`renderEditableCell(value, onEdit)`**
+   - Creates an editable table cell.
+   - Example:
+     ```javascript
+     renderEditableCell(value, onEdit) {
+         const cell = document.createElement('div');
+         cell.contentEditable = true;
+         cell.innerText = String(value);
+         cell.addEventListener('focusout', () => onEdit(cell.innerText));
+         return cell;
+     }
+     ```
 
-9. **`showMore(key, element, dynamicGrid)` (Optional)**
-    - Provides additional interactions for the column
-    - Can create context menus or additional UI elements
+9. **`showMore(key, element, engine, UI)` (Optional)**
+   - Adds additional interactions for the column, such as context menus.
+   - Example:
+     ```javascript
+     showMore(key, element, engine, UI) {
+         const { x, y, height } = element.getBoundingClientRect();
+         UI.contextMenu.clear();
+         UI.contextMenu
+             .button('Sort ascending', () => {
+                 engine.setSort(key, 'asc');
+                 UI.render(engine.runCurrentQuery());
+             })
+             .button('Sort descending', () => {
+                 engine.setSort(key, 'desc');
+                 UI.render(engine.runCurrentQuery());
+             });
+         UI.contextMenu.showAt(x, y + height);
+     }
+     ```
 
-## Complete Example: Creating a Date Type Plugin
+## Example: String Type Plugin
 
-Here's a comprehensive example of a custom date type plugin:
+Below is an example of a custom plugin for handling string data:
 
 ```javascript
-class dateTypePlugin extends TypePlugin {
-    constructor() { //you can add more parameters to the constructor if needed (like the format of the date) (this is optional
+class stringTypePlugin extends TypePlugin {
+    constructor() {
         super();
-        // Add date-specific operators
-        this.operators = [
-            '==', '!=',  // equality
-            '>', '<',    // greater/less than
-            '>=', '<='   // greater/less than or equal
-        ];
+        this.operators = ['==', '!=', '%=', '=%', '*=', '!*=']; // Define operators
     }
 
     validate(value) {
-        // check if the value passed is valid for this type return true/false
+        return typeof value === 'string';
     }
 
+    parseValue(value) {
+        return String(value);
+    }
 
     evaluate(query, dataIndexes, data, indices) {
-        // Similar to number/string plugins, filter indices
         for (const index of indices) {
-            if (!this.evaluateCondition(
-                new Date(data[index][query.field]), 
-                query.operator, 
-                new Date(query.value)
-            )) {
+            if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
                 indices.delete(index);
             }
         }
@@ -86,103 +148,62 @@ class dateTypePlugin extends TypePlugin {
     }
 
     evaluateCondition(dataValue, operator, value) {
-        // dataValue is the value of the dataset
-        // operator is the operator used in the query
-        // value is the value of the query
-        
-        //return true/false based on the condition
-    }
-
-    renderHeader(key) {
-        //return a htmlElement that represents the header of the column
-    }
-
-    renderCell(value) {
-        // return a string that represents the value of the cell, can be a stringed html element
+        switch (operator) {
+            case '==': return dataValue === value;
+            case '!=': return dataValue !== value;
+            case '%=': return dataValue.startsWith(value);
+            case '=%': return dataValue.endsWith(value);
+            case '*=': return dataValue.includes(value);
+            case '!*=': return !dataValue.includes(value);
+        }
     }
 
     sort(query, data) {
-        //based on the query, sort the data, return the sorted data
-    }
-
-    showMore(key, element, dynamicGrid) {
-        // Implement date-specific context menu or interactions
-        // Check the docs for the context menu for more information
+        const { field, value: direction } = query;
+        return data.sort((a, b) => direction === 'asc' ? a[field].localeCompare(b[field]) : b[field].localeCompare(a[field]));
     }
 }
 ```
 
-## Registering Your Custom Plugin
+## Registering Plugins
 
-To use your custom plugin, register it when creating a DynamicGrid instance:
+To use your custom plugin, register it with the `DynamicGrid` instance:
 
 ```javascript
 const grid = new DynamicGrid({
     plugins: {
-        date: new dateTypePlugin(/*optional params for settings to this plugin*/),
-        // You can add multiple custom plugins
-        custom: new myCustomTypePlugin()
-        
-        string: new customStringPlugin(), //you can also override the default plugins (string, number, bool)
+        string: new stringTypePlugin(), //is registered by default (can override by custom plugin)
+        number: new numberTypePlugin(), //is registered by default (can override by custom plugin)
+        boolean: new booleanTypePlugin(), //is registered by default (can override by custom plugin)
     }
 });
 ```
 
-## Best Practices
-
-1. **Type Validation**: Always implement robust `validate()` method
-2. **Performance**: Optimize `evaluate()` and `evaluateCondition()` methods
-3. **Consistency**: Follow the existing plugin patterns in the library
-
 ## Extending Existing Plugins
 
-You can also extend existing plugins to modify parts their behavior but keep the rest intact. For example, you can extend the `numberTypePlugin` to create a custom money type plugin:
+You can extend existing plugins to modify or add functionality. For example, to create a custom money type plugin:
 
 ```javascript
 class moneyTypePlugin extends numberTypePlugin {
     renderCell(value) {
-        const parts = value.toFixed(2).split("."); // Ensure two decimal places
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands | 3000.53 => 3.000.53
-        return '€' + parts.join(","); // Join with a comma for decimals | 3000.53 => €3.000,53
+        const parts = value.toFixed(2).split(".");
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        return '€' + parts.join(",");
     }
 }
 ```
 
-## Troubleshooting
+## Best Practices
 
-- Ensure all required methods are implemented
-- Check that operators match the method implementations
-- Verify type conversion and validation logic
-- Use console logging during development to debug
+1. **Keep Plugins Modular**: Each plugin should handle only one type.
+2. **Optimize Performance**: Ensure `evaluate` and `evaluateCondition` are efficient.
+3. **Follow Patterns**: Use the structure and style of existing plugins for consistency.
 
-## Advanced Techniques
+## Debugging Tips
 
-### Dynamic Operators
+- Use `console.log()` to debug your plugin during development.
+- Test your plugin with various datasets and queries.
 
-You can dynamically add or modify operators in the constructor:
+## Conclusion
 
-```javascript
-constructor() {
-    super();
-    // Add custom operators
-    this.operators = ['==', '!=', 'CustomOperator']; //as long as the operator has no spaces, it will work
-    //make sure to implement the evaluateCondition method for the new operator
-}
-```
-
-## Limitations and Considerations
-
-- Performance can degrade with very complex type plugins
-- Ensure type plugins are immutable and stateless
-- Test thoroughly with various data scenarios
-
-## Contributing
-
-If you develop a useful type plugin, consider contributing it back to the DynamicGrid project!
-
-## Compatibility
-
-- Requires modern browser support for ES6+ features
-
-**Pro Tip**: Always design your type plugins to be as generic and reusable as possible. The more flexible your plugin, the more use cases it can support!<br>
-**Pro Tip 2**: console.log() is your best friend when debugging your plugin. Use it liberally to understand the flow of data and logic in your plugin.
+Custom plugins allow you to tailor DynamicGrid to your specific needs. By following the structure outlined above, you can create robust and reusable plugins for any data type.

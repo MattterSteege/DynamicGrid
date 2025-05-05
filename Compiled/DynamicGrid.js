@@ -17,6 +17,7 @@ class DynamicGrid {
         this.engine.addPlugin(new stringTypePlugin, true);
         this.engine.addPlugin(new numberTypePlugin, true);
         this.engine.addPlugin(new booleanTypePlugin, true);
+        this.engine.addPlugin(new dateTypePlugin, true);
 
         // Set up headers
         if (config.headers) {
