@@ -43,15 +43,37 @@ class APIConnector {
     onEdit(data){
         this.updates.push(data);
 
+        this.updates = this.cleanUpdates(this.updates);
+
         if (this.config.timeoutDelay < 0) return;
 
         clearTimeout(this.updateTimeout);
 
         //send all updates to the API after x amount of time where no edits are made
         this.updateTimeout = setTimeout(async () => {
-            const updates = this.updates;
-            this.updates = [];
-            this.post('update', updates)
+            await this.save();
+        }, this.config.timeoutDelay);
+    }
+
+    onSave = async () => {
+        await this.save();
+    }
+
+    async save(){
+        const updates = this.updates.map(update => {
+            //remove the row.internal_id from the update object
+            const { internal_id, ...row } = update.row;
+            console.log(row)
+            return {
+                ...update,
+                row: row,
+            };
+        });
+
+        console.log(updates)
+
+        this.updates = [];
+        this.post('update', updates)
             .then(response => {
                 if (response.error) {
                     console.error('API Error:', response.error);
@@ -65,29 +87,21 @@ class APIConnector {
                 console.error('API Error:', error);
                 this.updates.push(...updates);
             });
-        }, this.config.timeoutDelay);
     }
 
-    onSave(){
-        if (this.updates.length === 0) return;
+    cleanUpdates(updates) {
+        const latestUpdates = new Map();
 
-        const updates = this.updates;
-        this.updates = [];
-        this.post('update', updates)
-        .then(response => {
-            if (response.error) {
-                console.error('API Error:', response.error);
-                this.updates.push(...updates);
-            }
-            else {
-                this.eventEmitter.emit('dg-saved');
-            }
-        })
-        .catch(error => {
-            console.error('API Error:', error);
-            this.updates.push(...updates);
+        // Group updates by row internal_id + column, and keep only the last one
+        updates.forEach((update, index) => {
+            const key = `${update.row.internal_id}_${update.column}`;
+            latestUpdates.set(key, { ...update, originalIndex: index });
         });
+
+        // Filter out any updates where previousValue === newValue
+        return Array.from(latestUpdates.values()).filter(update => update.previousValue !== update.newValue);
     }
+
 
     //HELPERS
     async get(endpoint){

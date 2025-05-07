@@ -155,15 +155,15 @@
         //     email: {type: 'string', isUnique: true},
         // },
         headers: {
-            index: {type: 'number', isUnique: true, isHidden: false},
-            guid: {type: 'string', isUnique: true, isHidden: false},
-            about: {type: 'string', isUnique: false, isHidden: false},
-            age: {type: 'number', isUnique: false, isHidden: false},
-            balance: {type: 'string', isUnique: false, isHidden: false},
-            company: {type: 'string', isUnique: false, isHidden: false},
-            email: {type: 'string', isUnique: true, isHidden: false},
-            eyeColor: {type: 'string', isUnique: false, isHidden: false},
-            gender: {type: 'string', isUnique: false, isHidden: false},
+            index: {type: 'number', isUnique: true, isHidden: false, isEditable: false},
+            guid: {type: 'string', isUnique: true, isHidden: false, isEditable: false},
+            about: {type: 'string', isUnique: false, isHidden: true},
+            age: {type: 'number', isUnique: false, isHidden: true},
+            balance: {type: 'string', isUnique: false, isHidden: true},
+            company: {type: 'string', isUnique: false, isHidden: true},
+            email: {type: 'string', isUnique: true, isHidden: true},
+            eyeColor: {type: 'string', isUnique: false, isHidden: true},
+            gender: {type: 'string', isUnique: false, isHidden: true},
             isActive: {type: 'boolean', isUnique: false, isHidden: false},
             latitude: {type: 'number', isUnique: false, isHidden: false},
             longitude: {type: 'number', isUnique: false, isHidden: false},
@@ -239,7 +239,7 @@
             document.querySelector('.bottom-er').remove();
         }, 3000);
 
-        fetch('https://grid.kronk.tech/testData/generated_100.json')
+        fetch('https://grid.kronk.tech/testData/generated_1000.json')
             .then(response => response.text())
             .then(data => {
                 grid.importData(data, { type: 'json' });

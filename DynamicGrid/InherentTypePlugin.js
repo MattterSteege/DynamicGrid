@@ -404,201 +404,150 @@ class booleanTypePlugin extends TypePlugin {
     }
 }
 
-class dateTypePlugin extends TypePlugin {
-    constructor() {
+/**
+ * Date type plugin for the DynamicGrid
+ * @class dateTypePlugin
+ * @extends numberTypePlugin
+ * @description This plugin is used to handle date values in the DynamicGrid. It extends the numberTypePlugin and provides additional functionality for parsing, rendering, and editing date values.
+ * @constructor
+ * @param {boolean} [onlyDate=false] - If true, only the date part will be shown (no time)
+ * @param {boolean} [writeMonthFully=false] - If true, the month will be written fully (e.g. January instead of 01)
+ */
+class dateTypePlugin extends numberTypePlugin {
+    constructor(onlyDate = false, writeMonthAsText = true) {
         super();
-        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in', '><']; //greater than, less than, greater than or equal, less than or equal, equals, not equals, in, between
+
+        this.options = {
+            onlyDate: onlyDate, //only show date (no HH:mm:ss)
+            writeMonthAsText: writeMonthAsText, //write month short (e.g. Jan instead of 01)
+        }
+
+        this.monthsShort = [
+            'jan', 'feb', 'mar', 'apr', 'mei', 'jun',
+            'jul', 'aug', 'sep', 'okt', 'nov', 'dec'
+        ];
+
+        this.monthsShortEnglish = [
+            'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+        ];
     }
 
-    validate(value) {
-        // Check if the value is a date or can be converted to a date
-        if (value === null || value === undefined) return false;
-
-        return !isNaN(new Date(value).getTime()) ||
-               (value.split('-').length === 2 && !isNaN(new Date(value.split('-')[0]).getTime()) && !isNaN(new Date(value.split('-')[1]).getTime()));
-    }
-
+    /**
+     * Parse the value to a date
+     * @param value
+     * @returns {number} - The date in milliseconds since 1970
+     * @example
+     * const allowedDatesFormats = [
+     *     '13-09-2024', // dd-MM-yyyy
+     *     '13-Sep-2024', // dd-MMM-yyyy
+     *     '13-September-2024', // dd-MMMM-yyyy
+     *     '13-09-24', // dd-MM-yy
+     *     '13-Sep-24', // dd-MMM-yy
+     *     '13-September-24', // dd-MMMM-yy
+     *     '13-09-2024 14:30:00', // dd-MM-yyyy HH:mm:ss
+     *     '13-Sep-2024 14:30:00', // dd-MMM-yyyy HH:mm:ss
+     *     '13-September-2024 14:30:00', // dd-MMMM-yyyy HH:mm:ss
+     *     '13-09-24 14:30:00', // dd-MM-yy HH:mm:ss
+     *     '13-Sep-24 14:30:00', // dd-MMM-yy HH:mm:ss
+     *     '13-September-24 14:30:00', // dd-MMMM-yy HH:mm:ss
+     *     1694591400000, // Timestamp in milliseconds
+     *     1694591400 // Timestamp in seconds
+     * ]
+     */
     parseValue(value) {
+        //value is either a datestring or a timestamp in seconds or milliseconds
         if (value === null || value === undefined) return null;
-        return new Date(value).getTime();
+        if (typeof value === 'string') {
+
+            //parse this date to UTC ms timestamp
+            //[d|dd]-[MM|MMM|MMMM]-[yy|yyyy] [HH:mm:ss]
+            const dateParts = value.split(' ');
+            const date = dateParts[0].split('-');
+            const time = dateParts[1] ? dateParts[1].split(':') : ['0', '0', '0'];
+            const day = parseInt(date[0]);
+            const month = isNaN(Number(date[1])) ? this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 === -1 ? this.monthsShortEnglish.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : parseInt(date[1]);
+            const year = parseInt(date[2]) < 1000 ? parseInt(date[2]) + 2000 : parseInt(date[2]);
+            const hours = parseInt(time[0] ?? '0');
+            const minutes = parseInt(time[1] ?? '0');
+            const seconds = parseInt(time[2] ?? '0');
+            const d = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+            const utc = d.getTime();
+            //console.log('parsed date', d, utc);
+            //check if the date is in seconds or milliseconds
+            if (utc < 1e10) { //1e10
+                return utc * 1000;
+            }
+            else {
+                return utc;
+            }
+        }
+        else if (typeof value === 'number') {
+            //check if the value is in seconds or milliseconds
+            if (value < 1e10) { //1e10
+                value *= 1000;
+            }
+            return value;
+        }
     }
 
-    evaluate(query, dataIndexes, data, indices) {
-        //loop over the indices and remove the ones that do not match the query
-        //console.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for DateTypePlugin');
-        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
-            for (const index of dataIndexes.keys()) {
-                if (!this.evaluateCondition(index, query.operator, query.value)) {
-                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
-                }
-            }
-        } else {
-            for (const index of indices) {
-                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                    indices.delete(index);
-                }
-            }
+    dateToString(date) {
+        if (date === null || date === undefined) return null;
+        const d = new Date(0);
+
+        if (date < 1e10) { //1e10
+            date *= 1000;
         }
 
-        return indices;
-    }
+        d.setUTCMilliseconds(date);
 
-    evaluateCondition(dataValue, operator, value) {
-        if (operator === 'in') {
-            value = JSON.parse(value);
-        } else if (operator === '><') {
-            value = value.split("-");
-        }
+        console.log(d, date)
 
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.includes(dataValue);
-        }
+        /*
+        when onlyDate is true, return the date in the format dd-MM-yyyy
+        when onlyDate is false, return the date in the format dd-MM-yyyy HH:mm:ss
+            if HH:mm:ss is 00:00:00, return the date in the format dd-MM-yyyy
+        when writeMonthAsText is true, return the date in the format dd-MMM-yyyy
+        when writeMonthAsText is false, return the date in the format dd-MM-yyyy
+         */
 
-        if (Array.isArray(value) && value.length > 0 && operator === '><') {
-            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
-            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
-
-            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
-
-            return dataValue >= value[0] && dataValue <= value[1];
-        }
-
-        dataValue = new Date(dataValue).getTime();
-        value = new Date(value).getTime();
-
-        switch (operator) {
-            case '>':
-                return dataValue > value;
-            case '<':
-                return dataValue < value;
-            case '>=':
-                return dataValue >= value;
-            case '<=':
-                return dataValue <= value;
-            case '==':
-                return dataValue === value;
-            case '!=':
-                return dataValue !== value;
-        }
+        const day = d.getUTCDate().toString().padStart(2, '0');
+        const month = this.options.writeMonthAsText ? this.monthsShort[d.getUTCMonth()] : (d.getUTCMonth() + 1).toString().padStart(2, '0');
+        const year = d.getUTCFullYear().toString().padStart(4, '0');
+        const hours = d.getUTCHours().toString().padStart(2, '0');
+        const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+        const dateString = this.options.onlyDate || (hours + minutes === "0000") ? `${day}-${month}-${year}` : `${day}-${month}-${year} ${hours}:${minutes}`;
+        return dateString;
     }
 
     renderCell(value) {
         const cell = document.createElement('div');
-        const date = new Date(value);
-        cell.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        cell.innerText = this.dateToString(value);
         return cell;
     }
 
     renderEditableCell(value, onEdit) {
-        const cell = document.createElement('div');
-        const date = new Date(value);
-        const input = document.createElement('input');
-        input.type = 'datetime-local';
-        input.value = date.toISOString().slice(0, 16);
-        input.style.width = '-webkit-fill-available';
+        const cell = this.renderCell(value);
+        cell.contentEditable = true;
 
-        input.addEventListener('change', (e) => {
-            onEdit(new Date(input.value).getTime());
+        cell.addEventListener('focusout', (e) => {
+
+            console.log(cell.innerText, this.parseValue(cell.innerText));
+
+            const date = this.parseValue(cell.innerText);
+
+            onEdit(date);
+
+            cell.innerText = this.dateToString(date);
         });
 
-        cell.appendChild(input);
+        cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                cell.blur();
+                e.preventDefault();
+            }
+        });
+
         return cell;
     }
-
-    showMore(key, element, engine, UI) {
-        const {x, y, width, height} = element.getBoundingClientRect();
-        const typeOptions = engine.headers[key];
-        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
-
-        UI.contextMenu.clear();
-        UI.contextMenu
-            .submenu('Filter ' + key, (submenu) => {
-                var operator = '==';
-                submenu
-                    .dropdown('Filter ' + key, [
-                        {label: 'Gelijk aan', value: '=='},
-                        {label: 'Niet gelijk aan', value: '!='},
-                        {label: 'Groter dan', value: '>'},
-                        {label: 'Groter dan of gelijk aan', value: '>='},
-                        {label: 'Kleiner dan', value: '<'},
-                        {label: 'Kleiner dan of gelijk aan', value: '<='},
-                        {label: 'tussen', value: '><'},
-                        {label: 'blank', value: '== null'},
-                        {label: 'niet blank', value: '!= null'},
-                    ], {
-                        value: '==',
-                        onChange: (value) => {
-                            operator = value;
-                        },
-                        id: 'dropdown-id'
-                    })
-                    .input('Filter', {
-                        placeholder: 'Filter',
-                        onChange: (value) => {
-                            engine.setSelect(key, operator, new Date(value).getTime());
-                            UI.render(engine.runCurrentQuery());
-                        },
-                        showWhen: {
-                            elementId: 'dropdown-id',
-                            value: ['==', '!=', '>', '<', '>=', '<='],
-                        }
-                    })
-                    .input('Filter', {
-                        placeholder: 'Van',
-                        onChange: (value) => {
-                            vanTot.van = new Date(value).getTime() || Number.MIN_SAFE_INTEGER;
-                            if (vanTot.tot === Number.MAX_SAFE_INTEGER || vanTot.van > vanTot.tot) return;
-
-                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
-                            UI.render(engine.runCurrentQuery());
-                        },
-                        showWhen: {
-                            elementId: 'dropdown-id',
-                            value: ['><'],
-                        }
-                    })
-                    .input('Filter', {
-                        placeholder: 'Tot',
-                        onChange: (value) => {
-                            vanTot.tot = new Date(value).getTime() || Number.MAX_SAFE_INTEGER;
-                            if (vanTot.van === Number.MIN_SAFE_INTEGER || vanTot.tot <= vanTot.van) return;
-                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
-                            UI.render(engine.runCurrentQuery());
-                        },
-                        showWhen: {
-                            elementId: 'dropdown-id',
-                            value: ['><'],
-                        }
-                    })
-            });
-        UI.contextMenu
-            .button('Sort ' + key + ' ascending', () => {
-                engine.setSort(key, 'asc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Sort ' + key + ' descending', () => {
-                engine.setSort(key, 'desc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Unsort ' + key, () => {
-                engine.setSort(key);
-                UI.render(engine.runCurrentQuery());
-            });
-        if (!typeOptions.isUnique && typeOptions.isGroupable) {
-            UI.contextMenu
-                .separator()
-                .button('Group by ' + key, () => {
-                    engine.setGroup(key);
-                    UI.render(engine.runCurrentQuery());
-                })
-                .button('Un-group', () => {
-                    engine.setGroup();
-                    UI.render(engine.runCurrentQuery());
-                })
-        }
-
-        // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
-    }
-
 }

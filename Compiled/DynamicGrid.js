@@ -586,6 +586,7 @@ class DynamicGridUI {
 
         if (!this.config.allowFieldEditing || !headerData.isEditable) {
             const cell =  plugin.renderCell(content)
+
             cell.classList.add('cell');
 
             if (!headerData.isEditable) {
@@ -600,6 +601,7 @@ class DynamicGridUI {
         }
         else {
             const onEdit = (callback) => {
+                callback = plugin.parseValue(callback);
                 this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
             }
 
@@ -702,6 +704,16 @@ class TypePlugin {
      */
     validate(value) {
         throw new Error('validate must be implemented by subclass');
+    }
+
+    /**
+     * Parses the string representation of a value into the appropriate type
+     * @param {string} value The string value to parse
+     * @returns {*} Parsed value
+     * @abstract
+     */
+    parseValue(value) {
+        throw new Error('parseValue must be implemented by subclass');
     }
 
     /**
@@ -861,6 +873,11 @@ class stringTypePlugin extends TypePlugin {
         return typeof value === 'string';
     }
 
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return String(value);
+    }
+
     //query = {field: 'name', operator: 'eq', value: 'John'}
     evaluate(query, dataIndexes, data, indices) {
         //loop over the indices and remove the ones that do not match the query
@@ -936,6 +953,11 @@ class numberTypePlugin extends TypePlugin {
 
         return !isNaN(Number(value)) ||
                (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return Number(value);
     }
 
     //indices is a set of indices that match the query
@@ -1135,6 +1157,11 @@ class booleanTypePlugin extends TypePlugin {
         return value === true || value === false;
     }
 
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return Boolean(value);
+    }
+
     evaluate(query, dataIndexes, data, indices) {
         query.value = query.value === 'true';
         if (dataIndexes){
@@ -1242,7 +1269,153 @@ class booleanTypePlugin extends TypePlugin {
     }
 }
 
-//TODO: add the following types: date
+/**
+ * Date type plugin for the DynamicGrid
+ * @class dateTypePlugin
+ * @extends numberTypePlugin
+ * @description This plugin is used to handle date values in the DynamicGrid. It extends the numberTypePlugin and provides additional functionality for parsing, rendering, and editing date values.
+ * @constructor
+ * @param {boolean} [onlyDate=false] - If true, only the date part will be shown (no time)
+ * @param {boolean} [writeMonthFully=false] - If true, the month will be written fully (e.g. January instead of 01)
+ */
+class dateTypePlugin extends numberTypePlugin {
+    constructor(onlyDate = false, writeMonthAsText = true) {
+        super();
+
+        this.options = {
+            onlyDate: onlyDate, //only show date (no HH:mm:ss)
+            writeMonthAsText: writeMonthAsText, //write month short (e.g. Jan instead of 01)
+        }
+
+        this.monthsShort = [
+            'jan', 'feb', 'mar', 'apr', 'mei', 'jun',
+            'jul', 'aug', 'sep', 'okt', 'nov', 'dec'
+        ];
+
+        this.monthsShortEnglish = [
+            'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+        ];
+    }
+
+    /**
+     * Parse the value to a date
+     * @param value
+     * @returns {number} - The date in milliseconds since 1970
+     * @example
+     * const allowedDatesFormats = [
+     *     '13-09-2024', // dd-MM-yyyy
+     *     '13-Sep-2024', // dd-MMM-yyyy
+     *     '13-September-2024', // dd-MMMM-yyyy
+     *     '13-09-24', // dd-MM-yy
+     *     '13-Sep-24', // dd-MMM-yy
+     *     '13-September-24', // dd-MMMM-yy
+     *     '13-09-2024 14:30:00', // dd-MM-yyyy HH:mm:ss
+     *     '13-Sep-2024 14:30:00', // dd-MMM-yyyy HH:mm:ss
+     *     '13-September-2024 14:30:00', // dd-MMMM-yyyy HH:mm:ss
+     *     '13-09-24 14:30:00', // dd-MM-yy HH:mm:ss
+     *     '13-Sep-24 14:30:00', // dd-MMM-yy HH:mm:ss
+     *     '13-September-24 14:30:00', // dd-MMMM-yy HH:mm:ss
+     *     1694591400000, // Timestamp in milliseconds
+     *     1694591400 // Timestamp in seconds
+     * ]
+     */
+    parseValue(value) {
+        //value is either a datestring or a timestamp in seconds or milliseconds
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+
+            //parse this date to UTC ms timestamp
+            //[d|dd]-[MM|MMM|MMMM]-[yy|yyyy] [HH:mm:ss]
+            const dateParts = value.split(' ');
+            const date = dateParts[0].split('-');
+            const time = dateParts[1] ? dateParts[1].split(':') : ['0', '0', '0'];
+            const day = parseInt(date[0]);
+            const month = isNaN(Number(date[1])) ? this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 === -1 ? this.monthsShortEnglish.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : parseInt(date[1]);
+            const year = parseInt(date[2]) < 1000 ? parseInt(date[2]) + 2000 : parseInt(date[2]);
+            const hours = parseInt(time[0] ?? '0');
+            const minutes = parseInt(time[1] ?? '0');
+            const seconds = parseInt(time[2] ?? '0');
+            const d = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+            const utc = d.getTime();
+            //console.log('parsed date', d, utc);
+            //check if the date is in seconds or milliseconds
+            if (utc < 1e10) { //1e10
+                return utc * 1000;
+            }
+            else {
+                return utc;
+            }
+        }
+        else if (typeof value === 'number') {
+            //check if the value is in seconds or milliseconds
+            if (value < 1e10) { //1e10
+                value *= 1000;
+            }
+            return value;
+        }
+    }
+
+    dateToString(date) {
+        if (date === null || date === undefined) return null;
+        const d = new Date(0);
+
+        if (date < 1e10) { //1e10
+            date *= 1000;
+        }
+
+        d.setUTCMilliseconds(date);
+
+        console.log(d, date)
+
+        /*
+        when onlyDate is true, return the date in the format dd-MM-yyyy
+        when onlyDate is false, return the date in the format dd-MM-yyyy HH:mm:ss
+            if HH:mm:ss is 00:00:00, return the date in the format dd-MM-yyyy
+        when writeMonthAsText is true, return the date in the format dd-MMM-yyyy
+        when writeMonthAsText is false, return the date in the format dd-MM-yyyy
+         */
+
+        const day = d.getUTCDate().toString().padStart(2, '0');
+        const month = this.options.writeMonthAsText ? this.monthsShort[d.getUTCMonth()] : (d.getUTCMonth() + 1).toString().padStart(2, '0');
+        const year = d.getUTCFullYear().toString().padStart(4, '0');
+        const hours = d.getUTCHours().toString().padStart(2, '0');
+        const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+        const dateString = this.options.onlyDate || (hours + minutes === "0000") ? `${day}-${month}-${year}` : `${day}-${month}-${year} ${hours}:${minutes}`;
+        return dateString;
+    }
+
+    renderCell(value) {
+        const cell = document.createElement('div');
+        cell.innerText = this.dateToString(value);
+        return cell;
+    }
+
+    renderEditableCell(value, onEdit) {
+        const cell = this.renderCell(value);
+        cell.contentEditable = true;
+
+        cell.addEventListener('focusout', (e) => {
+
+            console.log(cell.innerText, this.parseValue(cell.innerText));
+
+            const date = this.parseValue(cell.innerText);
+
+            onEdit(date);
+
+            cell.innerText = this.dateToString(date);
+        });
+
+        cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                cell.blur();
+                e.preventDefault();
+            }
+        });
+
+        return cell;
+    }
+}
 
 // ./DynamicGrid/QueryParser.js
 class QueryParser {
@@ -2005,6 +2178,45 @@ async function waitState() {
         }
     });
 }
+
+Number.prototype.padLeft = function (n, str) {
+    let s = String(this);
+    while (s.length < n) {
+        s = str + s;
+    }
+    return s;
+}
+
+Date.prototype.addDays = function(days) {
+    var date = new Date(this.valueOf());
+    date.setDate(date.getDate() + days);
+    return date;
+}
+
+Date.prototype.addHours = function(hours) {
+    var date = new Date(this.valueOf());
+    date.setHours(date.getHours() + hours);
+    return date;
+}
+
+Date.prototype.addMinutes = function(minutes) {
+    var date = new Date(this.valueOf());
+    date.setMinutes(date.getMinutes() + minutes);
+    return date;
+}
+
+Date.prototype.addSeconds = function(seconds) {
+    var date = new Date(this.valueOf());
+    date.setSeconds(date.getSeconds() + seconds);
+    return date;
+}
+
+Date.prototype.addMilliseconds = function(milliseconds) {
+    var date = new Date(this.valueOf());
+    date.setMilliseconds(date.getMilliseconds() + milliseconds);
+    return date;
+}
+
 
 // ./DynamicGrid/ContextMenu.js
 class ContextMenu {

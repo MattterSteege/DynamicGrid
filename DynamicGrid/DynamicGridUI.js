@@ -423,6 +423,7 @@ class DynamicGridUI {
 
         if (!this.config.allowFieldEditing || !headerData.isEditable) {
             const cell =  plugin.renderCell(content)
+
             cell.classList.add('cell');
 
             if (!headerData.isEditable) {
