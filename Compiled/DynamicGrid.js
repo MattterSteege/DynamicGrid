@@ -51,6 +51,14 @@ class DynamicGrid {
             delete APIconfig.connector;
         }
 
+        // Set up **possible** Export connector
+        if (config.ExportConnector && config.ExportConnector.connector) {
+            const APIconfig = config.ExportConnector;
+            this.ExportConnector = new config.ExportConnector.connector(this, this.eventEmitter, APIconfig);
+            delete APIconfig.connector;
+            this.ExportConnector.addConnector(new CSVExportConnector(), true);
+        }
+
         this.eventEmitter.emit('grid-initialized', { config });
     }
 
@@ -602,6 +610,7 @@ class DynamicGridUI {
         else {
             const onEdit = (callback) => {
                 callback = plugin.parseValue(callback);
+                this.engine.alterData(data['internal_id'], column, callback);
                 this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
             }
 
@@ -670,7 +679,7 @@ optimizations:
 */
 
 
-// ./DynamicGrid/TypePlugin.js
+// ./DynamicGrid/typePlugins/TypePlugin.js
 /**
  * Abstract base class for type-specific plugins that handle data operations and rendering.
  * @abstract
@@ -862,7 +871,7 @@ class TypePlugin {
     }
 }
 
-// ./DynamicGrid/InherentTypePlugin.js
+// ./DynamicGrid/typePlugins/InherentTypePlugin.js
 class stringTypePlugin extends TypePlugin {
     constructor() {
         super();
@@ -1365,9 +1374,7 @@ class dateTypePlugin extends numberTypePlugin {
         }
 
         d.setUTCMilliseconds(date);
-
-        console.log(d, date)
-
+        
         /*
         when onlyDate is true, return the date in the format dd-MM-yyyy
         when onlyDate is false, return the date in the format dd-MM-yyyy HH:mm:ss
@@ -1416,6 +1423,91 @@ class dateTypePlugin extends numberTypePlugin {
         return cell;
     }
 }
+
+// ./DynamicGrid/exportConnectors/ExportConnector.js
+class ExportConnector {
+    constructor(dynamicGrid, eventEmitter, config) {
+        this.dynamicGrid = dynamicGrid;
+        this.eventEmitter = eventEmitter;
+
+        this.Connectors = config.Connectors || [];
+    }
+
+    addConnector(Connector, dontOverride = false) {
+        if (!(Connector instanceof ExportConnector)) {
+            throw new GridError('Connector must extend ExportConnector');
+        }
+
+        //if already exists, remove it and add the new one, while warning the user
+        const existingConnector = this.getConnector(Connector.name, true);
+        if (dontOverride && existingConnector) return;
+        if (existingConnector && !dontOverride) {
+            console.warn('Connector already exists, removing the old Connector');
+            //set the new Connector to have key of the name of the Connector
+            this.Connectors[Connector.name.replace("ExportConnector", "")] = Connector;
+        }
+        else {
+            this.Connectors[Connector.name.replace("ExportConnector", "")] = Connector;
+        }
+    }
+
+    /**
+     * Retrieves a Connector by its name.
+     *
+     * @param {string} name - The name of the Connector to retrieve.
+     * @param {boolean} [justChecking=false] - If true, only checks if the Connector exists without throwing an error.
+     * @returns {ExportConnector|boolean} - The Connector if found, or false if not found and justChecking is true.
+     * @throws {GridError} - If the Connector name is not provided or the Connector is not found and justChecking is false.
+     */
+    getConnector(name, justChecking = false) {
+        if (!name) throw new GridError('Connector name not provided');
+        if (typeof name !== 'string') return false;
+
+        const Connector = this.Connectors[name.replace("ExportConnector", "")];
+
+        if (!Connector && !justChecking) throw new GridError('Connector not found: ' + name);
+        else if (!Connector && justChecking)  return false;
+
+
+        return Connector;
+    }
+
+    //============================
+    requestExport(fileType, fileName, data) {
+        const Connector = this.getConnector(fileType);
+        if (!Connector) {
+            console.error('Connector not found: ' + fileType);
+            return;
+        }
+
+        const exportData = Connector.export(data);
+        const blob = new Blob([exportData], { type: Connector.mimeType });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || 'export.' + Connector.extension;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
+class ExportConnector {
+    constructor() {
+        this.name = 'ExportConnector';
+        this.mimeType = 'application/octet-stream';
+        this.extension = 'bin';
+    }
+
+    export(data) {
+        throw new Error('Export method not implemented');
+    }
+}
+
+// ./DynamicGrid/exportConnectors/InherentExportConnector.js
+
 
 // ./DynamicGrid/QueryParser.js
 class QueryParser {
@@ -1843,6 +1935,46 @@ class SJQLEngine {
         return plugin;
     }
 
+    //================================================== EXPORT CONNECTORS ============================================
+    addConnector(Connector, dontOverride = false) {
+        if (!(Connector instanceof ExportConnector)) {
+            throw new GridError('Connector must extend ExportConnector');
+        }
+
+        //if already exists, remove it and add the new one, while warning the user
+        const existingConnector = this.getConnector(Connector.name, true);
+        if (dontOverride && existingConnector) return;
+        if (existingConnector && !dontOverride) {
+            console.warn('Connector already exists, removing the old Connector');
+            //set the new Connector to have key of the name of the Connector
+            this.connectors[Connector.name.replace("ExportConnector", "")] = Connector;
+        }
+        else {
+            this.connectors[Connector.name.replace("ExportConnector", "")] = Connector;
+        }
+    }
+
+    /**
+     * Retrieves a Connector by its name.
+     *
+     * @param {string} name - The name of the Connector to retrieve.
+     * @param {boolean} [justChecking=false] - If true, only checks if the Connector exists without throwing an error.
+     * @returns {ExportConnector|boolean} - The Connector if found, or false if not found and justChecking is true.
+     * @throws {GridError} - If the Connector name is not provided or the Connector is not found and justChecking is false.
+     */
+    getConnector(name, justChecking = false) {
+        if (!name) throw new GridError('Connector name not provided');
+        if (typeof name !== 'string') return false;
+
+        const Connector = this.connectors[name.replace("ExportConnector", "")];
+
+        if (!Connector && !justChecking) throw new GridError('Connector not found: ' + name);
+        else if (!Connector && justChecking)  return false;
+
+
+        return Connector;
+    }
+
     //================================================== DATA PARSER ==================================================
     importData(data, config) {
         if (this.data && this.data.length > 0) {
@@ -1861,6 +1993,12 @@ class SJQLEngine {
         if (Object.keys(this.headers).length === 0) {
             console.warn('No headers provided, auto detecting headers, please provide so the system can you more optimal plugins');
             this.autoDetectHeaders(this.data[0]);
+        }
+    }
+
+    alterData(datum, column, value) {
+        if (this.data && this.data.length > 0) {
+            this.data[datum][column] = value;
         }
     }
 
@@ -1907,171 +2045,6 @@ class SJQLEngine {
             return newItem;
         })
         .slice(0, -1);
-    }
-}
-
-// ./DynamicGrid/EventEmitter.js
-/**
- * A simple event emitter class.
- * @class
- * @example
- * const emitter = new EventEmitter();
- * emitter.sub('event', data => console.log(data));
- * emitter.emit('event', 'Hello, world!');
- * // Output: Hello, world!
- */
-class EventEmitter {
-    constructor() {
-        this.events = {};
-    }
-
-    /**
-     * Subscribe to an event.
-     * @param {string} event - The name of the event to subscribe to. (case-insensitive)
-     * @param {Function} listener - The callback function to execute when the event is emitted.
-     */
-    subscribe(event, listener) {
-        if (!this.events[event.toLocaleLowerCase()]) {
-            this.events[event.toLocaleLowerCase()] = [];
-        }
-        this.events[event.toLocaleLowerCase()].push(listener);
-        return () => this.unsubscribe(event, listener);
-    }
-
-    /**
-     * Subscribe to an event. (alias for subscribe)
-     * @param {string} event - The name of the event to subscribe to. (case-insensitive)
-     * @param {Function} listener - The callback function to execute when the event is emitted.
-     */
-    on = this.subscribe; // Alias for subscribe
-
-    /**
-     * Unsubscribe from an event.
-     * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
-     * @param {Function} listenerToRemove - The callback function to remove from the event.
-     */
-    unsubscribe(event, listenerToRemove) {
-        if (!this.events[event.toLocaleLowerCase()]) return;
-
-        this.events[event.toLocaleLowerCase()] = this.events[event.toLocaleLowerCase()].filter(listener => listener !== listenerToRemove);
-    }
-
-    /**
-     * Unsubscribe from an event. (alias for unsubscribe)
-     * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
-     * @param {Function} listenerToRemove - The callback function to remove from the event.
-     */
-    off = this.unsubscribe; // Alias for unsubscribe
-
-    /**
-     * Emit an event.
-     * @param {string} event - The name of the event to emit. (case-insensitive)
-     * @param {*} data - The data to pass to the event listeners.
-     */
-    emit(event, data) {
-        if (!this.events[event.toLocaleLowerCase()]) return;
-
-        this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
-    }
-}
-
-// ./DynamicGrid/KeyboardShortcuts.js
-class KeyboardShortcuts {
-    /**
-     * Initializes the KeyboardShortcuts instance and binds the event listener.
-     *
-     * @example
-     * const shortcuts = new KeyboardShortcuts();
-     * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
-     * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
-     * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
-     *
-     * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
-     *
-     * shortcuts.removeShortcut('ctrl+z');
-     * shortcuts.clearShortcuts();
-     *
-     * shortcuts.destroy();
-     */
-    constructor() {
-        this.shortcuts = new Map();
-        this.listener = this.#_handleKeyPress.bind(this);
-        document.addEventListener('keydown', this.listener);
-    }
-
-    /**
-     * Normalizes a key string by converting it to lowercase and removing whitespace.
-     * @param {string} key - The key string to normalize.
-     * @returns {string} The normalized key string.
-     */
-    #_normalizeKey(key) {
-        return key.toLowerCase().replace(/\s+/g, '');
-    }
-
-    /**
-     * Handles the keydown event and executes the corresponding shortcut callback if available.
-     * This also prevents the default browser behavior for the shortcut key combination.
-     * @param {KeyboardEvent} event - The keydown event.
-     */
-    #_handleKeyPress(event) {
-        const pressedKey = this.#_normalizeKey(
-            `${event.ctrlKey ? 'ctrl+' : ''}${event.shiftKey ? 'shift+' : ''}${event.altKey ? 'alt+' : ''}${event.metaKey ? 'meta+' : ''}${event.key}`
-        );
-        const callback = this.shortcuts.get(pressedKey);
-        if (callback) {
-            event.preventDefault();
-            callback(event);
-        }
-    }
-
-    /**
-     * Adds a new keyboard shortcut.
-     * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
-     * @param {Function} callback - The function to execute when the shortcut is triggered.
-     */
-    addShortcut(keys, callback) {
-        const normalizedKeys = this.#_normalizeKey(keys);
-        if (this.shortcuts.has(normalizedKeys)) {
-            console.warn(`Shortcut '${keys}' is already assigned.`);
-        } else {
-            this.shortcuts.set(normalizedKeys, callback);
-        }
-    }
-
-    /**
-     * Removes an existing keyboard shortcut.
-     * @param {string} keys - The key combination of the shortcut to remove.
-     */
-    removeShortcut(keys) {
-        const normalizedKeys = this.#_normalizeKey(keys);
-        if (this.shortcuts.has(normalizedKeys)) {
-            this.shortcuts.delete(normalizedKeys);
-        } else {
-            console.warn(`Shortcut '${keys}' does not exist.`);
-        }
-    }
-
-    /**
-     * Lists all registered keyboard shortcuts.
-     * @returns {string[]} An array of registered key combinations.
-     */
-    listShortcuts() {
-        return Array.from(this.shortcuts.keys());
-    }
-
-    /**
-     * Clears all registered keyboard shortcuts.
-     */
-    clearShortcuts() {
-        this.shortcuts.clear();
-    }
-
-    /**
-     * Destroys the KeyboardShortcuts instance by removing the event listener and clearing shortcuts.
-     */
-    destroy() {
-        document.removeEventListener('keydown', this.listener);
-        this.clearShortcuts();
     }
 }
 
@@ -2218,7 +2191,172 @@ Date.prototype.addMilliseconds = function(milliseconds) {
 }
 
 
-// ./DynamicGrid/ContextMenu.js
+// ./DynamicGrid/libs/EventEmitter.js
+/**
+ * A simple event emitter class.
+ * @class
+ * @example
+ * const emitter = new EventEmitter();
+ * emitter.sub('event', data => console.log(data));
+ * emitter.emit('event', 'Hello, world!');
+ * // Output: Hello, world!
+ */
+class EventEmitter {
+    constructor() {
+        this.events = {};
+    }
+
+    /**
+     * Subscribe to an event.
+     * @param {string} event - The name of the event to subscribe to. (case-insensitive)
+     * @param {Function} listener - The callback function to execute when the event is emitted.
+     */
+    subscribe(event, listener) {
+        if (!this.events[event.toLocaleLowerCase()]) {
+            this.events[event.toLocaleLowerCase()] = [];
+        }
+        this.events[event.toLocaleLowerCase()].push(listener);
+        return () => this.unsubscribe(event, listener);
+    }
+
+    /**
+     * Subscribe to an event. (alias for subscribe)
+     * @param {string} event - The name of the event to subscribe to. (case-insensitive)
+     * @param {Function} listener - The callback function to execute when the event is emitted.
+     */
+    on = this.subscribe; // Alias for subscribe
+
+    /**
+     * Unsubscribe from an event.
+     * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
+     * @param {Function} listenerToRemove - The callback function to remove from the event.
+     */
+    unsubscribe(event, listenerToRemove) {
+        if (!this.events[event.toLocaleLowerCase()]) return;
+
+        this.events[event.toLocaleLowerCase()] = this.events[event.toLocaleLowerCase()].filter(listener => listener !== listenerToRemove);
+    }
+
+    /**
+     * Unsubscribe from an event. (alias for unsubscribe)
+     * @param {string} event - The name of the event to unsubscribe from. (case-insensitive)
+     * @param {Function} listenerToRemove - The callback function to remove from the event.
+     */
+    off = this.unsubscribe; // Alias for unsubscribe
+
+    /**
+     * Emit an event.
+     * @param {string} event - The name of the event to emit. (case-insensitive)
+     * @param {*} data - The data to pass to the event listeners.
+     */
+    emit(event, data) {
+        if (!this.events[event.toLocaleLowerCase()]) return;
+
+        this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
+    }
+}
+
+// ./DynamicGrid/libs/KeyboardShortcuts.js
+class KeyboardShortcuts {
+    /**
+     * Initializes the KeyboardShortcuts instance and binds the event listener.
+     *
+     * @example
+     * const shortcuts = new KeyboardShortcuts();
+     * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
+     * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
+     * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
+     *
+     * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
+     *
+     * shortcuts.removeShortcut('ctrl+z');
+     * shortcuts.clearShortcuts();
+     *
+     * shortcuts.destroy();
+     */
+    constructor() {
+        this.shortcuts = new Map();
+        this.listener = this.#_handleKeyPress.bind(this);
+        document.addEventListener('keydown', this.listener);
+    }
+
+    /**
+     * Normalizes a key string by converting it to lowercase and removing whitespace.
+     * @param {string} key - The key string to normalize.
+     * @returns {string} The normalized key string.
+     */
+    #_normalizeKey(key) {
+        return key.toLowerCase().replace(/\s+/g, '');
+    }
+
+    /**
+     * Handles the keydown event and executes the corresponding shortcut callback if available.
+     * This also prevents the default browser behavior for the shortcut key combination.
+     * @param {KeyboardEvent} event - The keydown event.
+     */
+    #_handleKeyPress(event) {
+        const pressedKey = this.#_normalizeKey(
+            `${event.ctrlKey ? 'ctrl+' : ''}${event.shiftKey ? 'shift+' : ''}${event.altKey ? 'alt+' : ''}${event.metaKey ? 'meta+' : ''}${event.key}`
+        );
+        const callback = this.shortcuts.get(pressedKey);
+        if (callback) {
+            event.preventDefault();
+            callback(event);
+        }
+    }
+
+    /**
+     * Adds a new keyboard shortcut.
+     * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
+     * @param {Function} callback - The function to execute when the shortcut is triggered.
+     */
+    addShortcut(keys, callback) {
+        const normalizedKeys = this.#_normalizeKey(keys);
+        if (this.shortcuts.has(normalizedKeys)) {
+            console.warn(`Shortcut '${keys}' is already assigned.`);
+        } else {
+            this.shortcuts.set(normalizedKeys, callback);
+        }
+    }
+
+    /**
+     * Removes an existing keyboard shortcut.
+     * @param {string} keys - The key combination of the shortcut to remove.
+     */
+    removeShortcut(keys) {
+        const normalizedKeys = this.#_normalizeKey(keys);
+        if (this.shortcuts.has(normalizedKeys)) {
+            this.shortcuts.delete(normalizedKeys);
+        } else {
+            console.warn(`Shortcut '${keys}' does not exist.`);
+        }
+    }
+
+    /**
+     * Lists all registered keyboard shortcuts.
+     * @returns {string[]} An array of registered key combinations.
+     */
+    listShortcuts() {
+        return Array.from(this.shortcuts.keys());
+    }
+
+    /**
+     * Clears all registered keyboard shortcuts.
+     */
+    clearShortcuts() {
+        this.shortcuts.clear();
+    }
+
+    /**
+     * Destroys the KeyboardShortcuts instance by removing the event listener and clearing shortcuts.
+     */
+    destroy() {
+        document.removeEventListener('keydown', this.listener);
+        this.clearShortcuts();
+    }
+}
+
+// ./DynamicGrid/libs/ContextMenu.js
 class ContextMenu {
     static ITEM_TYPES = {
         BUTTON: 'button',

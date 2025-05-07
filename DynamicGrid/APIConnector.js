@@ -1,5 +1,5 @@
 class APIConnector {
-    constructor(dynamicGrid, eventEmitter, config){
+    constructor(dynamicGrid, eventEmitter, config) {
 
         this.dynamicGrid = dynamicGrid;
         this.eventEmitter = eventEmitter;
@@ -16,7 +16,6 @@ class APIConnector {
         }
 
         this.updates = [];
-
 
 
         //subscribe to events
@@ -40,9 +39,8 @@ class APIConnector {
      *    ...
      *];
      */
-    onEdit(data){
+    onEdit(data) {
         this.updates.push(data);
-
         this.updates = this.cleanUpdates(this.updates);
 
         if (this.config.timeoutDelay < 0) return;
@@ -59,18 +57,15 @@ class APIConnector {
         await this.save();
     }
 
-    async save(){
+    async save() {
         const updates = this.updates.map(update => {
             //remove the row.internal_id from the update object
-            const { internal_id, ...row } = update.row;
-            console.log(row)
+            const {internal_id, ...row} = update.row;
             return {
                 ...update,
                 row: row,
             };
         });
-
-        console.log(updates)
 
         this.updates = [];
         this.post('update', updates)
@@ -78,8 +73,7 @@ class APIConnector {
                 if (response.error) {
                     console.error('API Error:', response.error);
                     this.updates.push(...updates);
-                }
-                else {
+                } else {
                     this.eventEmitter.emit('dg-saved');
                 }
             })
@@ -93,9 +87,9 @@ class APIConnector {
         const latestUpdates = new Map();
 
         // Group updates by row internal_id + column, and keep only the last one
-        updates.forEach((update, index) => {
+        updates.forEach((update) => {
             const key = `${update.row.internal_id}_${update.column}`;
-            latestUpdates.set(key, { ...update, originalIndex: index });
+            latestUpdates.set(key, {...update});
         });
 
         // Filter out any updates where previousValue === newValue
@@ -104,12 +98,12 @@ class APIConnector {
 
 
     //HELPERS
-    async get(endpoint){
+    async get(endpoint) {
         const response = await fetch(this.endpoints.get + endpoint);
         return await response.json();
     }
 
-    async post(endpoint, data){
+    async post(endpoint, data) {
         const response = await fetch(this.endpoints.post + endpoint, {
             method: 'POST',
             headers: {
@@ -120,7 +114,7 @@ class APIConnector {
         return await response.json();
     }
 
-    async put(endpoint, data){
+    async put(endpoint, data) {
         const response = await fetch(this.endpoints.put + endpoint, {
             method: 'PUT',
             headers: {
@@ -131,7 +125,7 @@ class APIConnector {
         return await response.json();
     }
 
-    async delete(endpoint){
+    async delete(endpoint) {
         const response = await fetch(this.endpoints.delete + endpoint, {
             method: 'DELETE',
         });

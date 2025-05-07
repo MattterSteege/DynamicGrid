@@ -18,6 +18,10 @@ class DynamicGrid {
         this.engine.addPlugin(new booleanTypePlugin, true);
         this.engine.addPlugin(new dateTypePlugin, true);
 
+        this.engine.connectors = config.connectors || [];
+        this.engine.addConnector(new CSVExportConnector(), true);
+
+
         // Set up headers
         if (config.headers) {
             Object.entries(config.headers).forEach(([key, value]) => {

@@ -22,20 +22,22 @@ const config = {
 const files = [
     "./DynamicGrid/DynamicGrid.js",
     "./DynamicGrid/DynamicGridUI.js",
-    "./DynamicGrid/TypePlugin.js",
-    "./DynamicGrid/InherentTypePlugin.js",
+    "./DynamicGrid/typePlugins/TypePlugin.js",
+    "./DynamicGrid/typePlugins/InherentTypePlugin.js",
+    "./DynamicGrid/exportConnectors/ExportConnector.js",
+    "./DynamicGrid/exportConnectors/InherentExportConnector.js",
     "./DynamicGrid/QueryParser.js",
     "./DynamicGrid/SJQLEngine.js",
-    "./DynamicGrid/EventEmitter.js",
-    "./DynamicGrid/KeyboardShortcuts.js",
     "./DynamicGrid/DynamicGridUtils.js",
-    "./DynamicGrid/ContextMenu.js"
+    "./DynamicGrid/libs/EventEmitter.js",
+    "./DynamicGrid/libs/KeyboardShortcuts.js",
+    "./DynamicGrid/libs/ContextMenu.js",
 ];
 
 const separateFiles = [
     "./DynamicGrid/APIConnector.js",
-    "./DynamicGrid/ContextMenu.js",
-    "./DynamicGrid/KeyboardShortcuts.js",
+    "./DynamicGrid/libs/ContextMenu.js",
+    "./DynamicGrid/libs/KeyboardShortcuts.js",
 ];
 
 const eventRegex = /eventEmitter\.emit\('([^']*)',/g;

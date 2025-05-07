@@ -500,9 +500,7 @@ class dateTypePlugin extends numberTypePlugin {
         }
 
         d.setUTCMilliseconds(date);
-
-        console.log(d, date)
-
+        
         /*
         when onlyDate is true, return the date in the format dd-MM-yyyy
         when onlyDate is false, return the date in the format dd-MM-yyyy HH:mm:ss

@@ -7,6 +7,7 @@ class SJQLEngine {
         this.data = [];
         this.headers = [];
         this.plugins = [];
+        this.connectors = [];
         this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
 
@@ -302,7 +303,47 @@ class SJQLEngine {
         return plugin;
     }
 
-    //================================================== DATA PARSER ==================================================
+    //================================================== EXPORT CONNECTORS ==================================================
+    addConnector(Connector, dontOverride = false) {
+        if (!(Connector instanceof ExportConnector)) {
+            throw new GridError('Connector must extend ExportConnector');
+        }
+
+        //if already exists, remove it and add the new one, while warning the user
+        const existingConnector = this.getConnector(Connector.name, true);
+        if (dontOverride && existingConnector) return;
+        if (existingConnector && !dontOverride) {
+            console.warn('Connector already exists, removing the old Connector');
+            //set the new Connector to have key of the name of the Connector
+            this.connectors[Connector.name.replace("ExportConnector", "")] = Connector;
+        }
+        else {
+            this.connectors[Connector.name.replace("ExportConnector", "")] = Connector;
+        }
+    }
+
+    /**
+     * Retrieves a Connector by its name.
+     *
+     * @param {string} name - The name of the Connector to retrieve.
+     * @param {boolean} [justChecking=false] - If true, only checks if the Connector exists without throwing an error.
+     * @returns {ExportConnector|boolean} - The Connector if found, or false if not found and justChecking is true.
+     * @throws {GridError} - If the Connector name is not provided or the Connector is not found and justChecking is false.
+     */
+    getConnector(name, justChecking = false) {
+        if (!name) throw new GridError('Connector name not provided');
+        if (typeof name !== 'string') return false;
+
+        const Connector = this.connectors[name];
+
+        if (!Connector && !justChecking) throw new GridError('Connector not found: ' + name);
+        else if (!Connector && justChecking)  return false;
+
+
+        return Connector;
+    }
+
+    //================================================== IMPORT ==================================================
     importData(data, config) {
         if (this.data && this.data.length > 0) {
             throw new GridError('Data already imported, re-importing data is not (yet) supported');
@@ -320,6 +361,12 @@ class SJQLEngine {
         if (Object.keys(this.headers).length === 0) {
             console.warn('No headers provided, auto detecting headers, please provide so the system can you more optimal plugins');
             this.autoDetectHeaders(this.data[0]);
+        }
+    }
+
+    alterData(datum, column, value) {
+        if (this.data && this.data.length > 0) {
+            this.data[datum][column] = value;
         }
     }
 
@@ -366,5 +413,36 @@ class SJQLEngine {
             return newItem;
         })
         .slice(0, -1);
+    }
+
+    //=================================================== EXPORT ==================================================
+    requestExport(fileType, fileName) {
+        const Connector = this.getConnector(fileType);
+        if (!Connector) {
+            console.error('Connector not found: ' + fileType);
+            return;
+        }
+
+        //export the data without the internal_id
+        const exportData = Connector.export(this.data.map(row => {
+            const newRow = {};
+            Object.keys(row).forEach(key => {
+                if (key !== 'internal_id') {
+                    newRow[key] = row[key];
+                }
+            });
+            return newRow;
+        }), this.headers);
+
+        const blob = new Blob([exportData], { type: Connector.mimeType });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || 'export.' + Connector.extension;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 }
