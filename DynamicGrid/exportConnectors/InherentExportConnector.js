@@ -36,48 +36,75 @@ class CSVExportConnector extends ExportConnector {
     }
 }
 
+
+//TODO: implement https://www.npmjs.com/package/xlsx-js-style too!
 class XLSXExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'xlsx'
         this.mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         this.extension = 'xlsx';
+
+        // Initialize library loading
+        this.loadLibrary();
     }
 
+    /**
+     * Load the SheetJS library in advance
+     */
+    loadLibrary() {
+        // Check if the library is already loaded
+        if (window.XLSX) return;
 
-    //TODO: fix xlsx export
-    export(data, headers) {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = "https://unpkg.com/write-excel-file@1.4.30/bundle/write-excel-file.min.js";
-            script.onload = () => {
-                const rebuildHeaders = Object.keys(headers)
-                    .filter((key) => headers.hasOwnProperty(key))
-                    .map((key) => {
-                        const header = headers[key];
-                        return {
-                            column: key,
-                            type: header.type === 'string' ? String
-                                : header.type === 'Number' ? Number
-                                    : header.type === 'Boolean' ? Boolean
-                                        : Date
-                        };
-                    });
-
-                console.log(data, headers, rebuildHeaders);
-
-                const blob = writeXlsxFile(data, {
-                    columns: rebuildHeaders,
-                    fileName: 'file.xlsx'
-                });
-
-                resolve(blob);
-            };
-
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
+        // Create and append the script tag
+        const script = document.createElement('script');
+        script.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+        document.head.appendChild(script);
     }
 
-    //https://unpkg.com/write-excel-file@1.4.30/bundle/write-excel-file.min.js
+    /**
+     * Synchronously exports data to XLSX format
+     * @param {Array<Object>} data - The data to export
+     * @returns {Uint8Array} - The XLSX file as a binary array
+     */
+    export(data, headers, name) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for XLSX export');
+        }
+
+        if (!window.XLSX) {
+            throw new Error('XLSX library not loaded. Please try again in a moment.');
+        }
+
+        try {
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet');
+
+            const headerCount = Object.keys(headers).length
+
+            worksheet['!autofilter'] = { ref:"A1:" + this.getExcelHeaderLetter(headerCount - 1) + "1" };
+
+            // Generate XLSX as an array
+            const excelData = XLSX.write(workbook, {
+                type: 'array',
+                bookType: 'xlsx'
+            });
+
+            return excelData;
+        } catch (error) {
+            console.error('XLSX export failed:', error);
+            throw error;
+        }
+    }
+
+    getExcelHeaderLetter(index) {
+        // Convert index to Excel column letter (A, B, C, ... AA, AB, ...)
+        let letter = '';
+        while (index >= 0) {
+            letter = String.fromCharCode((index % 26) + 65) + letter;
+            index = Math.floor(index / 26) - 1;
+        }
+        return letter;
+    }
 }

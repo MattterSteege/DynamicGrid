@@ -416,6 +416,11 @@ class SJQLEngine {
     }
 
     //=================================================== EXPORT ==================================================
+    /**
+     * Request and handle an export in the specified file type
+     * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
+     * @param {string} fileName - The name for the exported file
+     */
     requestExport(fileType, fileName) {
         const Connector = this.getConnector(fileType);
         if (!Connector) {
@@ -423,8 +428,8 @@ class SJQLEngine {
             return;
         }
 
-        //export the data without the internal_id
-        const exportData = Connector.export(this.data.map(row => {
+        // Prepare data without internal_id
+        const exportData = this.data.map(row => {
             const newRow = {};
             Object.keys(row).forEach(key => {
                 if (key !== 'internal_id') {
@@ -432,17 +437,40 @@ class SJQLEngine {
                 }
             });
             return newRow;
-        }), this.headers);
+        });
 
-        const blob = new Blob([exportData], { type: Connector.mimeType });
-        const url = URL.createObjectURL(blob);
+        try {
+            //export the data without the internal_id
+            const exportResult = Connector.export(this.data.map(row => {
+                const newRow = {};
+                Object.keys(row).forEach(key => {
+                    if (key !== 'internal_id') {
+                        newRow[key] = row[key];
+                    }
+                });
+                return newRow;
+            }), this.headers, fileName);
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName || 'export.' + Connector.extension;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+            if (!exportResult) {
+                console.warn('No data returned for export');
+                return;
+            }
+
+            // Create a blob using the returned data
+            const blob = new Blob([exportResult], { type: Connector.mimeType });
+
+            // Create a download link and trigger it
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${fileName || 'export'}.${Connector.extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error.message)
+            alert('Export failed. See console for details.');
+        }
     }
 }

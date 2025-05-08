@@ -19,6 +19,10 @@ class DynamicGrid {
         this.engine.addPlugin(new booleanTypePlugin, true);
         this.engine.addPlugin(new dateTypePlugin, true);
 
+        this.engine.connectors = config.connectors || [];
+        this.engine.addConnector(new CSVExportConnector(), true);
+
+
         // Set up headers
         if (config.headers) {
             Object.entries(config.headers).forEach(([key, value]) => {
@@ -49,14 +53,6 @@ class DynamicGrid {
             const APIconfig = config.APIConnector;
             this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
             delete APIconfig.connector;
-        }
-
-        // Set up **possible** Export connector
-        if (config.ExportConnector && config.ExportConnector.connector) {
-            const APIconfig = config.ExportConnector;
-            this.ExportConnector = new config.ExportConnector.connector(this, this.eventEmitter, APIconfig);
-            delete APIconfig.connector;
-            this.ExportConnector.addConnector(new CSVExportConnector(), true);
         }
 
         this.eventEmitter.emit('grid-initialized', { config });
@@ -1426,88 +1422,141 @@ class dateTypePlugin extends numberTypePlugin {
 
 // ./DynamicGrid/exportConnectors/ExportConnector.js
 class ExportConnector {
-    constructor(dynamicGrid, eventEmitter, config) {
-        this.dynamicGrid = dynamicGrid;
-        this.eventEmitter = eventEmitter;
-
-        this.Connectors = config.Connectors || [];
-    }
-
-    addConnector(Connector, dontOverride = false) {
-        if (!(Connector instanceof ExportConnector)) {
-            throw new GridError('Connector must extend ExportConnector');
-        }
-
-        //if already exists, remove it and add the new one, while warning the user
-        const existingConnector = this.getConnector(Connector.name, true);
-        if (dontOverride && existingConnector) return;
-        if (existingConnector && !dontOverride) {
-            console.warn('Connector already exists, removing the old Connector');
-            //set the new Connector to have key of the name of the Connector
-            this.Connectors[Connector.name.replace("ExportConnector", "")] = Connector;
-        }
-        else {
-            this.Connectors[Connector.name.replace("ExportConnector", "")] = Connector;
-        }
-    }
-
-    /**
-     * Retrieves a Connector by its name.
-     *
-     * @param {string} name - The name of the Connector to retrieve.
-     * @param {boolean} [justChecking=false] - If true, only checks if the Connector exists without throwing an error.
-     * @returns {ExportConnector|boolean} - The Connector if found, or false if not found and justChecking is true.
-     * @throws {GridError} - If the Connector name is not provided or the Connector is not found and justChecking is false.
-     */
-    getConnector(name, justChecking = false) {
-        if (!name) throw new GridError('Connector name not provided');
-        if (typeof name !== 'string') return false;
-
-        const Connector = this.Connectors[name.replace("ExportConnector", "")];
-
-        if (!Connector && !justChecking) throw new GridError('Connector not found: ' + name);
-        else if (!Connector && justChecking)  return false;
-
-
-        return Connector;
-    }
-
-    //============================
-    requestExport(fileType, fileName, data) {
-        const Connector = this.getConnector(fileType);
-        if (!Connector) {
-            console.error('Connector not found: ' + fileType);
-            return;
-        }
-
-        const exportData = Connector.export(data);
-        const blob = new Blob([exportData], { type: Connector.mimeType });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName || 'export.' + Connector.extension;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-}
-
-class ExportConnector {
     constructor() {
         this.name = 'ExportConnector';
         this.mimeType = 'application/octet-stream';
         this.extension = 'bin';
     }
 
-    export(data) {
+    /**
+     * The entrance point which is overwritten by the child, turns the data object into an downloadable blob for the client (must be overridden)
+     * @param data {Array<Object>} data - The data to export.
+     * @param headers {Object<Object>} headers - The headers to export.
+     * @param name {String} name - The name of the file to be downloaded.
+     * @example
+     * //If you want to know the format of the data object,
+     * //go to the console when an datagrid is instantiated and type
+     * DynamicGrid.engine.data
+     * DynamicGrid.engine.headers
+     * @returns a single blob that complies with the defined filetype
+     * @override Must be overridden by the child class
+     */
+    export(data, headers, name) {
         throw new Error('Export method not implemented');
     }
 }
 
 // ./DynamicGrid/exportConnectors/InherentExportConnector.js
+class CSVExportConnector extends ExportConnector {
+    constructor() {
+        super();
+        this.name = 'csv'
+        this.mimeType = 'text/csv';
+        this.extension = 'csv';
+        this.delimiter = ';';
+    }
 
+    /**
+     * Converts the data object into a CSV string.
+     * @param {Array<Object>} data - The data to export.
+     * @returns {string} - The CSV string.
+     */
+    export(data) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for CSV export');
+        }
+
+        // Extract headers from the keys of the first object
+        const headers = Object.keys(data[0]);
+
+        // Map data rows to CSV format
+        const rows = data.map(row =>
+            headers.map(header => {
+                const value = row[header];
+                // Escape double quotes and wrap values in quotes if necessary
+                return typeof value === 'string' && value.includes(this.delimiter)
+                    ? `"${value.replace(/"/g, '""')}"`
+                    : value;
+            }).join(this.delimiter)
+        );
+
+        // Combine headers and rows into a single CSV string
+        return [headers.join(this.delimiter), ...rows].join('\n');
+    }
+}
+
+
+//TODO: implement https://www.npmjs.com/package/xlsx-js-style too!
+class XLSXExportConnector extends ExportConnector {
+    constructor() {
+        super();
+        this.name = 'xlsx'
+        this.mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        this.extension = 'xlsx';
+
+        // Initialize library loading
+        this.loadLibrary();
+    }
+
+    /**
+     * Load the SheetJS library in advance
+     */
+    loadLibrary() {
+        // Check if the library is already loaded
+        if (window.XLSX) return;
+
+        // Create and append the script tag
+        const script = document.createElement('script');
+        script.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+        document.head.appendChild(script);
+    }
+
+    /**
+     * Synchronously exports data to XLSX format
+     * @param {Array<Object>} data - The data to export
+     * @returns {Uint8Array} - The XLSX file as a binary array
+     */
+    export(data, headers, name) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for XLSX export');
+        }
+
+        if (!window.XLSX) {
+            throw new Error('XLSX library not loaded. Please try again in a moment.');
+        }
+
+        try {
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet');
+
+            const headerCount = Object.keys(headers).length
+
+            worksheet['!autofilter'] = { ref:"A1:" + this.getExcelHeaderLetter(headerCount - 1) + "1" };
+
+            // Generate XLSX as an array
+            const excelData = XLSX.write(workbook, {
+                type: 'array',
+                bookType: 'xlsx'
+            });
+
+            return excelData;
+        } catch (error) {
+            console.error('XLSX export failed:', error);
+            throw error;
+        }
+    }
+
+    getExcelHeaderLetter(index) {
+        // Convert index to Excel column letter (A, B, C, ... AA, AB, ...)
+        let letter = '';
+        while (index >= 0) {
+            letter = String.fromCharCode((index % 26) + 65) + letter;
+            index = Math.floor(index / 26) - 1;
+        }
+        return letter;
+    }
+}
 
 // ./DynamicGrid/QueryParser.js
 class QueryParser {
@@ -1640,6 +1689,7 @@ class SJQLEngine {
         this.data = [];
         this.headers = [];
         this.plugins = [];
+        this.connectors = [];
         this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
 
@@ -1935,7 +1985,7 @@ class SJQLEngine {
         return plugin;
     }
 
-    //================================================== EXPORT CONNECTORS ============================================
+    //================================================== EXPORT CONNECTORS ==================================================
     addConnector(Connector, dontOverride = false) {
         if (!(Connector instanceof ExportConnector)) {
             throw new GridError('Connector must extend ExportConnector');
@@ -1966,7 +2016,7 @@ class SJQLEngine {
         if (!name) throw new GridError('Connector name not provided');
         if (typeof name !== 'string') return false;
 
-        const Connector = this.connectors[name.replace("ExportConnector", "")];
+        const Connector = this.connectors[name];
 
         if (!Connector && !justChecking) throw new GridError('Connector not found: ' + name);
         else if (!Connector && justChecking)  return false;
@@ -1975,7 +2025,7 @@ class SJQLEngine {
         return Connector;
     }
 
-    //================================================== DATA PARSER ==================================================
+    //================================================== IMPORT ==================================================
     importData(data, config) {
         if (this.data && this.data.length > 0) {
             throw new GridError('Data already imported, re-importing data is not (yet) supported');
@@ -2045,6 +2095,65 @@ class SJQLEngine {
             return newItem;
         })
         .slice(0, -1);
+    }
+
+    //=================================================== EXPORT ==================================================
+    /**
+     * Request and handle an export in the specified file type
+     * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
+     * @param {string} fileName - The name for the exported file
+     */
+    requestExport(fileType, fileName) {
+        const Connector = this.getConnector(fileType);
+        if (!Connector) {
+            console.error('Connector not found: ' + fileType);
+            return;
+        }
+
+        // Prepare data without internal_id
+        const exportData = this.data.map(row => {
+            const newRow = {};
+            Object.keys(row).forEach(key => {
+                if (key !== 'internal_id') {
+                    newRow[key] = row[key];
+                }
+            });
+            return newRow;
+        });
+
+        try {
+            //export the data without the internal_id
+            const exportResult = Connector.export(this.data.map(row => {
+                const newRow = {};
+                Object.keys(row).forEach(key => {
+                    if (key !== 'internal_id') {
+                        newRow[key] = row[key];
+                    }
+                });
+                return newRow;
+            }), this.headers, fileName);
+
+            if (!exportResult) {
+                console.warn('No data returned for export');
+                return;
+            }
+
+            // Create a blob using the returned data
+            const blob = new Blob([exportResult], { type: Connector.mimeType });
+
+            // Create a download link and trigger it
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${fileName || 'export'}.${Connector.extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error.message)
+            alert('Export failed. See console for details.');
+        }
     }
 }
 

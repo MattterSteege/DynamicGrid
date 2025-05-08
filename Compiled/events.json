@@ -2,22 +2,22 @@
   {
     "eventName": "grid-initialized",
     "file": "DynamicGrid.js",
-    "line": 61
+    "line": 57
   },
   {
     "eventName": "grid-data-imported",
     "file": "DynamicGrid.js",
-    "line": 74
+    "line": 70
   },
   {
     "eventName": "ui-rendered",
     "file": "DynamicGrid.js",
-    "line": 84
+    "line": 80
   },
   {
     "eventName": "ui-raw-rendered",
     "file": "DynamicGrid.js",
-    "line": 94
+    "line": 90
   },
   {
     "eventName": "ui-initialized",
@@ -52,6 +52,6 @@
   {
     "eventName": "engine-query-update",
     "file": "SJQLEngine.js",
-    "line": 261
+    "line": 262
   }
 ]
