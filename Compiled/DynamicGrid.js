@@ -21,6 +21,11 @@ class DynamicGrid {
 
         this.engine.connectors = config.connectors || [];
         this.engine.addConnector(new CSVExportConnector(), true);
+        this.engine.addConnector(new XLSXExportConnector(), true);
+        this.engine.addConnector(new JSONExportConnector(), true);
+        this.engine.addConnector(new XMLExportConnector(), true);
+        this.engine.addConnector(new HTMLExportConnector(), true);
+        this.engine.addConnector(new TXTExportConnector(), true);
 
 
         // Set up headers
@@ -91,6 +96,7 @@ class DynamicGrid {
         this.eventEmitter.emit('ui-raw-rendered', { input });
     }
 
+    //============================ SORTING, FILTERING, GROUPING, RANGE ============================
     /**
      * Adds a selection filter to the data.
      * @param {string} key - The key to filter by.
@@ -156,11 +162,22 @@ class DynamicGrid {
      */
     runCurrentQuery = () => this.engine.runCurrentQuery();
 
-    addConnector(connector){
-        connector.callbacks = {
+    /**
+     * Exports the current data in the specified format.
+     * @param {string} [filename] - The name of the file to save.
+     * @param {string} format - The format to export the data in. (optional if filename has extension)
+     * @returns {void} - Results in an file download.
+     */
+    exportData = (filename, format) =>
+        !format && filename && filename.includes('.')
+            ? this.engine.requestExport(filename.split('.')[0], filename.split('.')[1])
+            : this.engine.requestExport(filename, format);
 
-        }
-    }
+    /**
+     * Gets all export connectors.
+     * @returns {Array<string>} - An array of all exportable formats.
+     */
+    get exportableFileFormats () {return this.engine.getExportConnectors();}
 }
 
 
@@ -1438,7 +1455,7 @@ class ExportConnector {
      * //go to the console when an datagrid is instantiated and type
      * DynamicGrid.engine.data
      * DynamicGrid.engine.headers
-     * @returns a single blob that complies with the defined filetype
+     * @return {any} a single blob that complies with the defined filetype
      * @override Must be overridden by the child class
      */
     export(data, headers, name) {
@@ -1485,8 +1502,7 @@ class CSVExportConnector extends ExportConnector {
     }
 }
 
-
-//TODO: implement https://www.npmjs.com/package/xlsx-js-style too!
+//TODO: find a diffrent host for xlsx.bundle.js
 class XLSXExportConnector extends ExportConnector {
     constructor() {
         super();
@@ -1507,7 +1523,7 @@ class XLSXExportConnector extends ExportConnector {
 
         // Create and append the script tag
         const script = document.createElement('script');
-        script.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+        script.src = "xlsx.bundle.js";
         document.head.appendChild(script);
     }
 
@@ -1527,12 +1543,23 @@ class XLSXExportConnector extends ExportConnector {
 
         try {
             const workbook = XLSX.utils.book_new();
-            const worksheet = XLSX.utils.json_to_sheet(data);
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet');
+            const ws = XLSX.utils.json_to_sheet(data);
 
             const headerCount = Object.keys(headers).length
 
-            worksheet['!autofilter'] = { ref:"A1:" + this.getExcelHeaderLetter(headerCount - 1) + "1" };
+            ws['!autofilter'] = { ref:"A1:" + this.getExcelHeaderLetter(headerCount - 2) + "1" };
+            ws['!cols'] = this.fitToColumn(data)
+
+            ws['!cols'].forEach((col, index) => {
+                const colLetter = this.getExcelHeaderLetter(index);
+                ws[colLetter + '1'].s = {
+                    font: { bold: true, color: { rgb: 'FFFFFF' } },
+                    fill: { fgColor: { rgb: '4BACC6' } },
+                    alignment: { horizontal: 'left', vertical: 'top' },
+                };
+            });
+
+            XLSX.utils.book_append_sheet(workbook, ws, 'Sheet');
 
             // Generate XLSX as an array
             const excelData = XLSX.write(workbook, {
@@ -1556,7 +1583,145 @@ class XLSXExportConnector extends ExportConnector {
         }
         return letter;
     }
+
+    fitToColumn(data, headers) {
+        const widths = []
+        for (const field in data[0]) {
+            widths.push({
+                wch: Math.max(
+                    field.length + 3, // Add some padding for the filter button
+                    ...data.map(item => item[field]?.toString()?.length ?? 0)
+                )
+            })
+        }
+        return widths
+    }
 }
+
+class JSONExportConnector extends ExportConnector {
+    constructor() {
+        super();
+        this.name = 'json'
+        this.mimeType = 'application/json';
+        this.extension = 'json';
+    }
+
+    export(data, headers, name) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for JSON export');
+        }
+
+        // Convert the data object to a JSON string
+        return JSON.stringify(data, null, 2);
+    }
+}
+
+class XMLExportConnector extends ExportConnector {
+    constructor() {
+        super();
+        this.name = 'xml'
+        this.mimeType = 'application/xml';
+        this.extension = 'xml';
+    }
+
+    export(data, headers, name) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for XML export');
+        }
+
+        // Convert the data object to an XML string
+        const xmlString = this.jsonToXML(data);
+        return xmlString;
+    }
+
+    jsonToXML(json) {
+        let xml = '<root>\n';
+        json.forEach(item => {
+            xml += '  <item>\n';
+            for (const key in item) {
+                xml += `    <${key}>${item[key]}</${key}>\n`;
+            }
+            xml += '  </item>\n';
+        });
+        xml += '</root>';
+        return xml;
+    }
+}
+
+class HTMLExportConnector extends ExportConnector {
+    constructor() {
+        super();
+        this.name = 'html'
+        this.mimeType = 'text/html';
+        this.extension = 'html';
+    }
+
+    export(data, headers, name) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for HTML export');
+        }
+
+        // Convert the data object to an HTML string
+        let htmlString = '<table>\n';
+        htmlString += this.headersToHTML(Object.keys(headers));
+        htmlString += this.jsonToHTML(data);
+        htmlString += '</table>';
+        return htmlString;
+    }
+
+    headersToHTML(headers) {
+        let html = '  <tr>\n';
+        headers.forEach(header => {
+            html += `    <th>${header}</th>\n`;
+        });
+        html += '  </tr>\n';
+        return html;
+    }
+
+    jsonToHTML(json) {
+        let html = '';
+        json.forEach(item => {
+            html += '  <tr>\n';
+            for (const key in item) {
+                html += `    <td>${item[key]}</td>\n`;
+            }
+            html += '  </tr>\n';
+        });
+        return html;
+    }
+}
+
+class TXTExportConnector extends ExportConnector {
+    constructor() {
+        super();
+        this.name = 'txt'
+        this.mimeType = 'text/plain';
+        this.extension = 'txt';
+    }
+
+    export(data, headers, name) {
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Invalid or empty data provided for TXT export');
+        }
+
+        // Convert the data object to a TXT string
+        return data.map(item => Object.values(item).join('\t')).join('\n');
+    }
+}
+
+/*
+Diffrent filetypes exporting should suppert:
+- [x] CSV
+- [x] XLSX
+- [x] JSON
+- [ ] PDF
+- [x] XML
+- [x] HTML
+- [X] TXT
+- [ ] SQL
+- [ ] YAML
+- [ ] Markdown
+ */
 
 // ./DynamicGrid/QueryParser.js
 class QueryParser {
@@ -2100,10 +2265,10 @@ class SJQLEngine {
     //=================================================== EXPORT ==================================================
     /**
      * Request and handle an export in the specified file type
-     * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
      * @param {string} fileName - The name for the exported file
+     * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
      */
-    requestExport(fileType, fileName) {
+    requestExport(fileName, fileType) {
         const Connector = this.getConnector(fileType);
         if (!Connector) {
             console.error('Connector not found: ' + fileType);
@@ -2155,6 +2320,8 @@ class SJQLEngine {
             alert('Export failed. See console for details.');
         }
     }
+
+    getExportConnectors = () => Object.keys(this.connectors);
 }
 
 // ./DynamicGrid/DynamicGridUtils.js

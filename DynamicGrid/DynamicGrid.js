@@ -20,6 +20,11 @@ class DynamicGrid {
 
         this.engine.connectors = config.connectors || [];
         this.engine.addConnector(new CSVExportConnector(), true);
+        this.engine.addConnector(new XLSXExportConnector(), true);
+        this.engine.addConnector(new JSONExportConnector(), true);
+        this.engine.addConnector(new XMLExportConnector(), true);
+        this.engine.addConnector(new HTMLExportConnector(), true);
+        this.engine.addConnector(new TXTExportConnector(), true);
 
 
         // Set up headers
@@ -90,6 +95,7 @@ class DynamicGrid {
         this.eventEmitter.emit('ui-raw-rendered', { input });
     }
 
+    //============================ SORTING, FILTERING, GROUPING, RANGE ============================
     /**
      * Adds a selection filter to the data.
      * @param {string} key - The key to filter by.
@@ -155,9 +161,20 @@ class DynamicGrid {
      */
     runCurrentQuery = () => this.engine.runCurrentQuery();
 
-    addConnector(connector){
-        connector.callbacks = {
+    /**
+     * Exports the current data in the specified format.
+     * @param {string} [filename] - The name of the file to save.
+     * @param {string} format - The format to export the data in. (optional if filename has extension)
+     * @returns {void} - Results in an file download.
+     */
+    exportData = (filename, format) =>
+        !format && filename && filename.includes('.')
+            ? this.engine.requestExport(filename.split('.')[0], filename.split('.')[1])
+            : this.engine.requestExport(filename, format);
 
-        }
-    }
+    /**
+     * Gets all export connectors.
+     * @returns {Array<string>} - An array of all exportable formats.
+     */
+    get exportableFileFormats () {return this.engine.getExportConnectors();}
 }

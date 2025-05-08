@@ -15,7 +15,7 @@ class ExportConnector {
      * //go to the console when an datagrid is instantiated and type
      * DynamicGrid.engine.data
      * DynamicGrid.engine.headers
-     * @returns a single blob that complies with the defined filetype
+     * @return {any} a single blob that complies with the defined filetype
      * @override Must be overridden by the child class
      */
     export(data, headers, name) {

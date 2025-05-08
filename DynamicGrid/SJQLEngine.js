@@ -418,10 +418,10 @@ class SJQLEngine {
     //=================================================== EXPORT ==================================================
     /**
      * Request and handle an export in the specified file type
-     * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
      * @param {string} fileName - The name for the exported file
+     * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
      */
-    requestExport(fileType, fileName) {
+    requestExport(fileName, fileType) {
         const Connector = this.getConnector(fileType);
         if (!Connector) {
             console.error('Connector not found: ' + fileType);
@@ -473,4 +473,6 @@ class SJQLEngine {
             alert('Export failed. See console for details.');
         }
     }
+
+    getExportConnectors = () => Object.keys(this.connectors);
 }
