@@ -10,12 +10,15 @@ class SJQLEngine {
         this.connectors = [];
         this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
+        this.updateTracker = new EditTracker();
 
         this.config = {
             UseDataIndexing: engine_config.UseDataIndexing || true,
             useStrictCase: engine_config.useStrictCase || false,
             SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
         };
+
+        this.APIConnector = engine_config.APIConnector || null;
 
         this.eventEmitter = eventEmitter;
 

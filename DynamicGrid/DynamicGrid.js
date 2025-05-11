@@ -55,8 +55,14 @@ class DynamicGrid {
         // Set up **possible** API connector
         if (config.APIConnector && config.APIConnector.connector) {
             const APIconfig = config.APIConnector;
-            this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
+            this.APIConnector = new config.APIConnector.connector(this, APIconfig);
             delete APIconfig.connector;
+
+            console.log('APIConnector:', this.APIConnector);
+            //this.importData((await this.APIConnector.fetchData()), {type: 'json'});
+            this.APIConnector.fetchData().then((data) => {
+                this.importData(data, { type: 'json' });
+            });
         }
 
         this.eventEmitter.emit('grid-initialized', { config });

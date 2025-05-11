@@ -8,16 +8,16 @@
     <script src="DynamicGrid/DynamicGridUI.js"></script>
     <script src="DynamicGrid/typePlugins/TypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/InherentTypePlugin.js"></script>
+    <script src="DynamicGrid/EditTracker.js"></script>
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
-    <script src="DynamicGrid/APIConnector.js"></script>
+    <script src="DynamicGrid/apiBase/APIBase.js"></script>
     <script src="DynamicGrid/exportConnectors/ExportConnector.js"></script>
     <script src="DynamicGrid/exportConnectors/InherentExportConnector.js"></script>
     <script src="DynamicGrid/libs/EventEmitter.js"></script>
     <script src="DynamicGrid/libs/KeyboardShortcuts.js"></script>
     <script src="DynamicGrid/DynamicGridUtils.js"></script>
     <script src="DynamicGrid/libs/ContextMenu.js"></script>
-<!--        <script src="/Compiled/DynamicGrid.min.js"></script>-->
 
     <style>
         /* General body styling */
@@ -122,6 +122,7 @@
             transform: scale(0.98);
         }
     </style>
+    <script src="BootAPI.js"></script>
 </head>
 <body>
 
@@ -156,24 +157,24 @@
         //     gender: {type: 'string', isGroupable: true},
         //     email: {type: 'string', isUnique: true},
         // },
-        // headers: {
-        //     index: {type: 'number', isUnique: true, isHidden: false, isEditable: false},
-        //     guid: {type: 'string', isUnique: true, isHidden: false, isEditable: false},
-        //     about: {type: 'string', isUnique: false, isHidden: true},
-        //     age: {type: 'number', isUnique: false, isHidden: true},
-        //     balance: {type: 'string', isUnique: false, isHidden: true},
-        //     company: {type: 'string', isUnique: false, isHidden: true},
-        //     email: {type: 'string', isUnique: true, isHidden: true},
-        //     eyeColor: {type: 'string', isUnique: false, isHidden: true},
-        //     gender: {type: 'string', isUnique: false, isHidden: true},
-        //     isActive: {type: 'boolean', isUnique: false, isHidden: false},
-        //     latitude: {type: 'number', isUnique: false, isHidden: false},
-        //     longitude: {type: 'number', isUnique: false, isHidden: false},
-        //     name: {type: 'string', isUnique: false, isHidden: false},
-        //     phone: {type: 'string', isUnique: false, isHidden: false},
-        //     picture: {type: 'string', isUnique: false, isHidden: false},
-        //     registered: {type: 'date', isUnique: false, isHidden: false}
-        // },
+        headers: {
+            index: {type: 'number', isUnique: true, isHidden: false, isEditable: false},
+            guid: {type: 'string', isUnique: true, isHidden: false, isEditable: false},
+            about: {type: 'string', isUnique: false, isHidden: true},
+            age: {type: 'number', isUnique: false, isHidden: true},
+            balance: {type: 'string', isUnique: false, isHidden: true},
+            company: {type: 'string', isUnique: false, isHidden: true},
+            email: {type: 'string', isUnique: true, isHidden: true},
+            eyeColor: {type: 'string', isUnique: false, isHidden: true},
+            gender: {type: 'string', isUnique: false, isHidden: true},
+            isActive: {type: 'boolean', isUnique: false, isHidden: false},
+            latitude: {type: 'number', isUnique: false, isHidden: false},
+            longitude: {type: 'number', isUnique: false, isHidden: false},
+            name: {type: 'string', isUnique: false, isHidden: false},
+            phone: {type: 'string', isUnique: false, isHidden: false},
+            picture: {type: 'string', isUnique: false, isHidden: false},
+            registered: {type: 'date', isUnique: false, isHidden: false}
+        },
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,
@@ -193,16 +194,9 @@
             //string: new customStringTypePlugin(),
         },
         APIConnector: {
-            connector: APIConnector,
-            options: {
-                timeoutDelay: -1,
-            },
-            endpoints: {
-                get: 'https://example.com/get',
-                put: 'https://example.com/put',
-                post: 'https://example.com/post',
-                delete:'https://example.com/delete',
-            }
+            connector: BootAPI,
+            baseUrl: 'https://localhost:5001/api',
+            apiVersion: undefined,
         },
         connectors: {
             //csv: new CSVExportConnector(),

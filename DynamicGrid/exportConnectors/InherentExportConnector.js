@@ -57,7 +57,9 @@ class XLSXExportConnector extends ExportConnector {
 
         // Create and append the script tag
         const script = document.createElement('script');
-        script.src = "xlsx.bundle.js";
+        script.src = "https://grid.kronk.tech/xlsx.bundle.js";
+        //type is script
+        script.type = 'application/javascript';
         document.head.appendChild(script);
     }
 

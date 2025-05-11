@@ -439,6 +439,7 @@ class DynamicGridUI {
         else {
             const onEdit = (callback) => {
                 callback = plugin.parseValue(callback);
+                this.engine.updateTracker.addEdit({ column: column, row: data, previousValue: content, newValue: callback });
                 this.engine.alterData(data['internal_id'], column, callback);
                 this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
             }
