@@ -15,10 +15,12 @@ class BootAPI extends APIBase {
      * @returns {Promise<Object>} The response data.
      */
     async fetchData(params = {}, options = {}) {
-        return this.request('GET', this.resourcePath, {
+        const promise = this.request('GET', this.resourcePath + '?roles=role.admin&requestedProperties=*', {
             params,
             ...options
         });
+
+        return promise.then((response) => response);
     }
 
     /**

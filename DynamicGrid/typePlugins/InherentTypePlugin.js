@@ -163,6 +163,11 @@ class numberTypePlugin extends TypePlugin {
 
     renderCell(value) {
         const cell = document.createElement('div');
+        if (isNaN(value)) {
+            cell.innerText = '';
+            return cell;
+        }
+
         const parts = value.toString().split("."); // Ensure two decimal places
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
         cell.textContent = parts.join(",");

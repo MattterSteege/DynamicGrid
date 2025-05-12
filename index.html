@@ -126,22 +126,22 @@
 </head>
 <body>
 
-<div class="top">
+<div class="top active">
     <input type="text" id="search" placeholder="Search... (e.g. isactive == true and id > 50)">
     <button onclick="grid.render(document.getElementById('search').value)">Search</button>
 </div>
-<div class="bottom">
-    <input type="file" id="file" accept=".csv, .json" onchange="handleFile(this.files[0])">
-    or
-    <button onclick="fetchPresetData()" style="margin-left: 10px;">use preset</button>
+<!--<div class="bottom">-->
+<!--    <input type="file" id="file" accept=".csv, .json" onchange="handleFile(this.files[0])">-->
+<!--    or-->
+<!--    <button onclick="fetchPresetData()" style="margin-left: 10px;">use preset</button>-->
 
-</div>
+<!--</div>-->
 
-<span class="bottom-er">
-    To use this grid, either use the preset data or upload a CSV or JSON file. You can use the grid by writing a query in the bar above using, or using right-click on the header and using the context menu. You can also consult the readme on github for more information.
-    <a href="https://grid.kronk.tech/testData/generated_100.json" target="_blank" class="bottom-er" style="bottom: 10vh;">Click here to view the preset data</a>
-    <a href="https://github.com/MattterSteege/DynamicGrid" target="_blank" class="bottom-er" style="bottom: 15vh;">Click here to view the readme/github repo</a>
-</span>
+<!--<span class="bottom-er">-->
+<!--    To use this grid, either use the preset data or upload a CSV or JSON file. You can use the grid by writing a query in the bar above using, or using right-click on the header and using the context menu. You can also consult the readme on github for more information.-->
+<!--    <a href="https://grid.kronk.tech/testData/generated_100.json" target="_blank" class="bottom-er" style="bottom: 10vh;">Click here to view the preset data</a>-->
+<!--    <a href="https://github.com/MattterSteege/DynamicGrid" target="_blank" class="bottom-er" style="bottom: 15vh;">Click here to view the readme/github repo</a>-->
+<!--</span>-->
 
 <div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: calc(50% + 2vh); left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
 
@@ -157,31 +157,31 @@
         //     gender: {type: 'string', isGroupable: true},
         //     email: {type: 'string', isUnique: true},
         // },
-        headers: {
-            index: {type: 'number', isUnique: true, isHidden: false, isEditable: false},
-            guid: {type: 'string', isUnique: true, isHidden: false, isEditable: false},
-            about: {type: 'string', isUnique: false, isHidden: true},
-            age: {type: 'number', isUnique: false, isHidden: true},
-            balance: {type: 'string', isUnique: false, isHidden: true},
-            company: {type: 'string', isUnique: false, isHidden: true},
-            email: {type: 'string', isUnique: true, isHidden: true},
-            eyeColor: {type: 'string', isUnique: false, isHidden: true},
-            gender: {type: 'string', isUnique: false, isHidden: true},
-            isActive: {type: 'boolean', isUnique: false, isHidden: false},
-            latitude: {type: 'number', isUnique: false, isHidden: false},
-            longitude: {type: 'number', isUnique: false, isHidden: false},
-            name: {type: 'string', isUnique: false, isHidden: false},
-            phone: {type: 'string', isUnique: false, isHidden: false},
-            picture: {type: 'string', isUnique: false, isHidden: false},
-            registered: {type: 'date', isUnique: false, isHidden: false}
-        },
+        // headers: {
+        //     index: {type: 'number', isUnique: true, isHidden: false, isEditable: false},
+        //     guid: {type: 'string', isUnique: true, isHidden: false, isEditable: false},
+        //     about: {type: 'string', isUnique: false, isHidden: true},
+        //     age: {type: 'number', isUnique: false, isHidden: true},
+        //     balance: {type: 'string', isUnique: false, isHidden: true},
+        //     company: {type: 'string', isUnique: false, isHidden: true},
+        //     email: {type: 'string', isUnique: true, isHidden: true},
+        //     eyeColor: {type: 'string', isUnique: false, isHidden: true},
+        //     gender: {type: 'string', isUnique: false, isHidden: true},
+        //     isActive: {type: 'boolean', isUnique: false, isHidden: false},
+        //     latitude: {type: 'number', isUnique: false, isHidden: false},
+        //     longitude: {type: 'number', isUnique: false, isHidden: false},
+        //     name: {type: 'string', isUnique: false, isHidden: false},
+        //     phone: {type: 'string', isUnique: false, isHidden: false},
+        //     picture: {type: 'string', isUnique: false, isHidden: false},
+        //     registered: {type: 'date', isUnique: false, isHidden: false}
+        // },
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,
             visibleRows: 20,
             overscan: 5,
             minColumnWidth: 5,
-            autoFitCellWidth: 'both',
+            autoFitCellWidth: 'header',
 
             allowFieldEditing: true,
         },

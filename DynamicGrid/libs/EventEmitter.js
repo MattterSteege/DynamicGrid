@@ -58,6 +58,8 @@ class EventEmitter {
     emit(event, data) {
         if (!this.events[event.toLocaleLowerCase()]) return;
 
+        console.info(`Event emitted: ${event}`, data);
+
         this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
     }
 }

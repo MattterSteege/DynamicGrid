@@ -58,10 +58,9 @@ class DynamicGrid {
             this.APIConnector = new config.APIConnector.connector(this, APIconfig);
             delete APIconfig.connector;
 
-            console.log('APIConnector:', this.APIConnector);
-            //this.importData((await this.APIConnector.fetchData()), {type: 'json'});
             this.APIConnector.fetchData().then((data) => {
                 this.importData(data, { type: 'json' });
+                this.render();
             });
         }
 

@@ -48,13 +48,13 @@ class SJQLEngine {
         //else it's a string
         for (const key of Object.keys(data)) {
             if (data[key] === true || data[key] === false) {
-                this.headers[key] = { type: 'boolean', isUnique: false, isHidden: false };
+                this.headers[key] = { type: 'boolean', isUnique: false, isHidden: false, isEditable: true };
             }
             else if (!isNaN(data[key])) {
-                this.headers[key] = { type: 'number', isUnique: false, isHidden: false };
+                this.headers[key] = { type: 'number', isUnique: false, isHidden: false, isEditable: true  };
             }
             else {
-                this.headers[key] = { type: 'string', isUnique: false, isHidden: false };
+                this.headers[key] = { type: 'string', isUnique: false, isHidden: false, isEditable: true  };
             }
         }
     }
@@ -374,11 +374,11 @@ class SJQLEngine {
     }
 
     #parseJsonData(data, config) {
-        if (!(typeof data === 'string')) {
-            throw new GridError('Data must be a string (raw JSON)');
+        if (!(typeof data === 'string') && !(typeof data === 'object')) {
+            throw new GridError('Data must be a string (raw JSON) OR an object (parsed JSON)');
         }
 
-        data = JSON.parse(data);
+        data = typeof data === 'string' ? JSON.parse(data) : data;
 
         if (!Array.isArray(data)) {
             throw new GridError('Data must be an array');

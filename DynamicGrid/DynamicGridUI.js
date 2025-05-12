@@ -324,27 +324,49 @@ class DynamicGridUI {
         return this.table;
     }
 
+    // #_calculateColumnWidths(data, columns) {
+    //     columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
+    //
+    //     //base the width of the columns on the length of the header as a percentage of the total header length
+    //     if (this.config.autoFitCellWidth === 'header') {
+    //         const charCount = columns.reduce((acc, header) => acc + header.length, 0);
+    //         this.columnWidths = columns.map(header => (header.length / charCount) * 100);
+    //     }
+    //     //base the width of the columns on the length of the content as a percentage of the total content length
+    //     else if (this.config.autoFitCellWidth === 'content') {
+    //         const charCount = columns.reduce((acc, header) => acc + Math.max(data[header]?.toString().length ?? 1, 5), 0);
+    //         this.columnWidths = columns.map(header => (Math.max(data[header]?.toString().length ?? 1, 5) / charCount) * 100);
+    //     }
+    //     //base the width of the columns on the length of the header and content as a percentage of the total header and content length
+    //     else if (this.config.autoFitCellWidth === 'both') {
+    //         const charCount = columns.reduce((acc, header) => acc + Math.max(header.length, 5) + Math.max(data[header]?.toString().length ?? 1, 5), 0);
+    //         this.columnWidths = columns.map(header => ((Math.max(header.length, 5) + Math.max(data[header]?.toString().length ?? 1, 5)) / charCount) * 100);
+    //     }
+    //     //use 1/n*100% for each column where n is the number of columns
+    //     else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
+    //         this.columnWidths = Array(columns.length).fill(100 / columns.length);
+    //     }
+    //
+    //     return this.columnWidths;
+    // }
+
     #_calculateColumnWidths(data, columns) {
         columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
 
-        //base the width of the columns on the length of the header as a percentage of the total header length
         if (this.config.autoFitCellWidth === 'header') {
-            const charCount = columns.reduce((acc, header) => acc + header.length, 0);
-            this.columnWidths = columns.map(header => (header.length / charCount) * 100);
+            //the widths are a list of the amount of characters in the header per cell
+            this.columnWidths = columns.map(header => header.length);
         }
-        //base the width of the columns on the length of the content as a percentage of the total content length
         else if (this.config.autoFitCellWidth === 'content') {
-            const charCount = columns.reduce((acc, header) => acc + Math.max(data[header].toString().length, 5), 0);
-            this.columnWidths = columns.map(header => (Math.max(data[header].toString().length, 5) / charCount) * 100);
+            //the widths are a list of the amount of characters in the content per cell
+            this.columnWidths = columns.map(header => Math.min(...data.map(item => item[header]?.toString().length ?? 0), 5));
         }
-        //base the width of the columns on the length of the header and content as a percentage of the total header and content length
         else if (this.config.autoFitCellWidth === 'both') {
-            const charCount = columns.reduce((acc, header) => acc + Math.max(header.length, 5) + Math.max(data[header].toString().length, 5), 0);
-            this.columnWidths = columns.map(header => ((Math.max(header.length, 5) + Math.max(data[header].toString().length, 5)) / charCount) * 100);
+            //the widths are a list of the amount of characters in the header and content per cell + the first row of data / 2
+            this.columnWidths = columns.map(header => Math.max(header.length, 5) + Math.min(...data.map(item => item[header]?.toString().length ?? 0), 5));
         }
-        //use 1/n*100% for each column where n is the number of columns
         else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
-            this.columnWidths = Array(columns.length).fill(100 / columns.length);
+            this.columnWidths = columns.map(() => 5);
         }
 
         return this.columnWidths;
@@ -493,9 +515,13 @@ class DynamicGridUI {
     }
 
     #_updateColumnWidths(table) {
+        // this.columnWidths.forEach((width, index) => {
+        //     table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
+        // });
         this.columnWidths.forEach((width, index) => {
-            table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
+            table.style.setProperty(`--column-width-${index + 1}`, `${width}ch`);
         });
+
     }
 }
 
