@@ -56,8 +56,13 @@ class DynamicGrid {
         // Set up **possible** API connector
         if (config.APIConnector && config.APIConnector.connector) {
             const APIconfig = config.APIConnector;
-            this.APIConnector = new config.APIConnector.connector(this, this.eventEmitter, APIconfig);
+            this.APIConnector = new config.APIConnector.connector(this, APIconfig);
             delete APIconfig.connector;
+
+            this.APIConnector.fetchData().then((data) => {
+                this.importData(data, { type: 'json' });
+                this.render();
+            });
         }
 
         this.eventEmitter.emit('grid-initialized', { config });
@@ -286,8 +291,6 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
-        //register UI interactions and keyboard shortcuts
-        this.keyboardShortcuts.addShortcut('ctrl+s', () => this.eventEmitter.emit('dg-save'));
         this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 
@@ -508,27 +511,49 @@ class DynamicGridUI {
         return this.table;
     }
 
+    // #_calculateColumnWidths(data, columns) {
+    //     columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
+    //
+    //     //base the width of the columns on the length of the header as a percentage of the total header length
+    //     if (this.config.autoFitCellWidth === 'header') {
+    //         const charCount = columns.reduce((acc, header) => acc + header.length, 0);
+    //         this.columnWidths = columns.map(header => (header.length / charCount) * 100);
+    //     }
+    //     //base the width of the columns on the length of the content as a percentage of the total content length
+    //     else if (this.config.autoFitCellWidth === 'content') {
+    //         const charCount = columns.reduce((acc, header) => acc + Math.max(data[header]?.toString().length ?? 1, 5), 0);
+    //         this.columnWidths = columns.map(header => (Math.max(data[header]?.toString().length ?? 1, 5) / charCount) * 100);
+    //     }
+    //     //base the width of the columns on the length of the header and content as a percentage of the total header and content length
+    //     else if (this.config.autoFitCellWidth === 'both') {
+    //         const charCount = columns.reduce((acc, header) => acc + Math.max(header.length, 5) + Math.max(data[header]?.toString().length ?? 1, 5), 0);
+    //         this.columnWidths = columns.map(header => ((Math.max(header.length, 5) + Math.max(data[header]?.toString().length ?? 1, 5)) / charCount) * 100);
+    //     }
+    //     //use 1/n*100% for each column where n is the number of columns
+    //     else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
+    //         this.columnWidths = Array(columns.length).fill(100 / columns.length);
+    //     }
+    //
+    //     return this.columnWidths;
+    // }
+
     #_calculateColumnWidths(data, columns) {
         columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
 
-        //base the width of the columns on the length of the header as a percentage of the total header length
         if (this.config.autoFitCellWidth === 'header') {
-            const charCount = columns.reduce((acc, header) => acc + header.length, 0);
-            this.columnWidths = columns.map(header => (header.length / charCount) * 100);
+            //the widths are a list of the amount of characters in the header per cell
+            this.columnWidths = columns.map(header => header.length);
         }
-        //base the width of the columns on the length of the content as a percentage of the total content length
         else if (this.config.autoFitCellWidth === 'content') {
-            const charCount = columns.reduce((acc, header) => acc + Math.max(data[header].toString().length, 5), 0);
-            this.columnWidths = columns.map(header => (Math.max(data[header].toString().length, 5) / charCount) * 100);
+            //the widths are a list of the amount of characters in the content per cell
+            this.columnWidths = columns.map(header => Math.min(...data.map(item => item[header]?.toString().length ?? 0), 5));
         }
-        //base the width of the columns on the length of the header and content as a percentage of the total header and content length
         else if (this.config.autoFitCellWidth === 'both') {
-            const charCount = columns.reduce((acc, header) => acc + Math.max(header.length, 5) + Math.max(data[header].toString().length, 5), 0);
-            this.columnWidths = columns.map(header => ((Math.max(header.length, 5) + Math.max(data[header].toString().length, 5)) / charCount) * 100);
+            //the widths are a list of the amount of characters in the header and content per cell + the first row of data / 2
+            this.columnWidths = columns.map(header => Math.max(header.length, 5) + Math.min(...data.map(item => item[header]?.toString().length ?? 0), 5));
         }
-        //use 1/n*100% for each column where n is the number of columns
         else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
-            this.columnWidths = Array(columns.length).fill(100 / columns.length);
+            this.columnWidths = columns.map(() => 5);
         }
 
         return this.columnWidths;
@@ -623,6 +648,7 @@ class DynamicGridUI {
         else {
             const onEdit = (callback) => {
                 callback = plugin.parseValue(callback);
+                this.engine.updateTracker.addEdit({ column: column, row: data, previousValue: content, newValue: callback });
                 this.engine.alterData(data['internal_id'], column, callback);
                 this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
             }
@@ -676,9 +702,13 @@ class DynamicGridUI {
     }
 
     #_updateColumnWidths(table) {
+        // this.columnWidths.forEach((width, index) => {
+        //     table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
+        // });
         this.columnWidths.forEach((width, index) => {
-            table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
+            table.style.setProperty(`--column-width-${index + 1}`, `${width}ch`);
         });
+
     }
 }
 
@@ -1050,6 +1080,11 @@ class numberTypePlugin extends TypePlugin {
 
     renderCell(value) {
         const cell = document.createElement('div');
+        if (isNaN(value)) {
+            cell.innerText = '';
+            return cell;
+        }
+
         const parts = value.toString().split("."); // Ensure two decimal places
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
         cell.textContent = parts.join(",");
@@ -1523,7 +1558,9 @@ class XLSXExportConnector extends ExportConnector {
 
         // Create and append the script tag
         const script = document.createElement('script');
-        script.src = "xlsx.bundle.js";
+        script.src = "https://grid.kronk.tech/xlsx.bundle.js";
+        //type is script
+        script.type = 'application/javascript';
         document.head.appendChild(script);
     }
 
@@ -1857,12 +1894,15 @@ class SJQLEngine {
         this.connectors = [];
         this.futureQuery = [];
         this.QueryParser = new QueryParser(engine_config);
+        this.updateTracker = new EditTracker();
 
         this.config = {
             UseDataIndexing: engine_config.UseDataIndexing || true,
             useStrictCase: engine_config.useStrictCase || false,
             SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
         };
+
+        this.APIConnector = engine_config.APIConnector || null;
 
         this.eventEmitter = eventEmitter;
 
@@ -1892,13 +1932,13 @@ class SJQLEngine {
         //else it's a string
         for (const key of Object.keys(data)) {
             if (data[key] === true || data[key] === false) {
-                this.headers[key] = { type: 'boolean', isUnique: false, isHidden: false };
+                this.headers[key] = { type: 'boolean', isUnique: false, isHidden: false, isEditable: true };
             }
             else if (!isNaN(data[key])) {
-                this.headers[key] = { type: 'number', isUnique: false, isHidden: false };
+                this.headers[key] = { type: 'number', isUnique: false, isHidden: false, isEditable: true  };
             }
             else {
-                this.headers[key] = { type: 'string', isUnique: false, isHidden: false };
+                this.headers[key] = { type: 'string', isUnique: false, isHidden: false, isEditable: true  };
             }
         }
     }
@@ -2218,11 +2258,11 @@ class SJQLEngine {
     }
 
     #parseJsonData(data, config) {
-        if (!(typeof data === 'string')) {
-            throw new GridError('Data must be a string (raw JSON)');
+        if (!(typeof data === 'string') && !(typeof data === 'object')) {
+            throw new GridError('Data must be a string (raw JSON) OR an object (parsed JSON)');
         }
 
-        data = JSON.parse(data);
+        data = typeof data === 'string' ? JSON.parse(data) : data;
 
         if (!Array.isArray(data)) {
             throw new GridError('Data must be an array');
@@ -2527,6 +2567,8 @@ class EventEmitter {
      */
     emit(event, data) {
         if (!this.events[event.toLocaleLowerCase()]) return;
+
+        console.info(`Event emitted: ${event}`, data);
 
         this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
     }

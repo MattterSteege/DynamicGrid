@@ -193,11 +193,11 @@
         plugins: {
             //string: new customStringTypePlugin(),
         },
-        APIConnector: {
-            connector: BootAPI,
-            baseUrl: 'https://localhost:5001/api',
-            apiVersion: undefined,
-        },
+        // APIConnector: {
+        //     connector: BootAPI,
+        //     baseUrl: 'https://localhost:5001/api',
+        //     apiVersion: undefined,
+        // },
         connectors: {
             //csv: new CSVExportConnector(),
         }
@@ -231,12 +231,12 @@
 
     function fetchPresetData() {
         document.querySelector('.top').classList.add('active');
-        document.querySelector('.bottom').classList.add('active');
-        document.querySelector('.bottom-er').classList.add('active');
-        setTimeout(() => {
-            document.querySelector('.bottom').remove();
-            document.querySelector('.bottom-er').remove();
-        }, 3000);
+        //document.querySelector('.bottom').classList.add('active');
+        //document.querySelector('.bottom-er').classList.add('active');
+        //setTimeout(() => {
+        //    document.querySelector('.bottom').remove();
+        //    document.querySelector('.bottom-er').remove();
+        //}, 3000);
 
         fetch('https://grid.kronk.tech/testData/generated_1000.json')
             .then(response => response.text())
@@ -246,7 +246,7 @@
             });
     }
 
-    //fetchPresetData();
+    fetchPresetData();
 </script>
 
 </body>

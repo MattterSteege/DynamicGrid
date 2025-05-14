@@ -102,8 +102,6 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
-        //register UI interactions and keyboard shortcuts
-        this.keyboardShortcuts.addShortcut('ctrl+s', () => this.eventEmitter.emit('dg-save'));
         this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 

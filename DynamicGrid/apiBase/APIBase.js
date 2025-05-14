@@ -29,6 +29,8 @@ class APIBase {
         this.authToken = config.authToken || null;
         this.apiVersion = config.apiVersion;
         this.abortControllers = new Map();
+
+        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
     }
 
     /**
