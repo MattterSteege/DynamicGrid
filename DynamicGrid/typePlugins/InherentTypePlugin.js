@@ -162,7 +162,7 @@ class numberTypePlugin extends TypePlugin {
     }
 
     renderCell(value) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('td');
         if (isNaN(value)) {
             cell.innerText = '';
             return cell;
@@ -334,7 +334,7 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     renderCell(value) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('td');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.setAttributeNode(document.createAttribute('disabled'));
@@ -345,7 +345,7 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     renderEditableCell(value, onEdit) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('td');
 
         //render a checkbox that is checked if value is true
         const checkbox = document.createElement('input');
@@ -524,7 +524,7 @@ class dateTypePlugin extends numberTypePlugin {
     }
 
     renderCell(value) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('td');
         cell.innerText = this.dateToString(value);
         return cell;
     }

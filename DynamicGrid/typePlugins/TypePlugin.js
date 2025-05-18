@@ -110,7 +110,7 @@ class TypePlugin {
      * @virtual (should be overridden, not required)
      */
     renderCell(value) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('td');
         cell.innerText = String(value);
         return cell;
     }
@@ -123,7 +123,7 @@ class TypePlugin {
      * @virtual (should be overridden, not required)
      */
     renderEditableCell(value, onEdit) {
-        const cell = document.createElement('div');
+        const cell = document.createElement('td');
         cell.innerHTML = String(value);
         cell.contentEditable = true;
         cell.spellcheck = false;

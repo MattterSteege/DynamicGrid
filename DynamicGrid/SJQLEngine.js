@@ -297,7 +297,11 @@ class SJQLEngine {
         if (!name) throw new GridError('Plugin name not provided');
         if (typeof name !== 'string') return false;
 
-        const plugin = this.plugins[name.replace("TypePlugin", "")];
+        var plugin = this.plugins[name.replace("TypePlugin", "")];
+
+        if (!plugin) {
+            plugin = this.plugins[this.headers[name]?.type];
+        }
 
         if (!plugin && !justChecking) throw new GridError('Plugin not found: ' + name);
         else if (!plugin && justChecking)  return false;

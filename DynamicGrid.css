@@ -12,113 +12,146 @@
     background: #888;
 }
 
-.table {
+/* === DynamicGrid Specific Overrides === */
+.dynamic-grid-table-header {
+    border-collapse: collapse;
     background: #f9f9f9;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     font-family: Arial, sans-serif;
-    overflow-x: scroll;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: fit-content;
+    table-layout: fixed;
 }
 
-/* Header Styles */
-.header {
-    position: sticky;
-    top: 0;
-    z-index: 1;
+/* Header row */
+.dynamic-grid-table-header .header-row {
     background: #007bff;
-    border-bottom: 2px solid #0056b3;
     color: white;
-    font-size: 16px;
-    text-transform: uppercase;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-right: 6px;
-}
-
-.header .row {
-    display: grid; /* Retaining grid display */
-}
-
-.header .cell {
-    font-weight: bold;
-    text-align: center;
-    cursor: pointer;
-    user-select: none;
-    min-width: 50px;
-}
-
-/* Common Cell Styles */
-.cell {
-    padding: 12px;
-    border: transparent;
-    border-right: 1px solid #fafafa;
-    border-bottom: 1px solid #eee;
-    position: relative;
-    overflow: hidden;
-    white-space: nowrap;
-    background: white;
     font-size: 14px;
-    color: #333;
-    outline: transparent;
+    text-transform: uppercase;
+    height: 30px;
 }
 
-.cell:hover {
-    background: #f1f1f1;
-    color: #007bff;
+/* Header cells */
+.dynamic-grid-table-header .header-cell {
+    max-height: 30px;
+    height: 30px;
+    /*overflow: hidden;*/
+    vertical-align: middle;
 }
 
-.cell:last-child {
+.dynamic-grid-table-header .header-cell:last-child {
     border-right: none;
 }
 
-/* Resizer Styles */
-.resizer {
-    width: 5px;
-    cursor: col-resize;
-    position: absolute;
-    right: -2.5px;
-    top: 0;
-    bottom: 0;
-    background: transparent;
-    z-index: 2;
+.header-cell-content {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    margin: 4px;
+    align-items: center;
 }
 
-.resizer:hover {
-    background: #007bff;
-    opacity: 0.6;
-}
-
-/* Virtual Scrolling Container */
-.virtual-scroll-container {
-    position: absolute;
-    width: 100%;
-}
-
-.table details {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    outline: 0;
-    font-size: 100%;
-    vertical-align: baseline;
-    background-color: transparent;
+.dynamic-grid-table-header .header-cell-button {
     display: block;
-    overflow: hidden;
-    height: auto;
-}
-
-.table summary {
-    padding: 12px;
-    border-right: 1px solid #eee;
-    position: relative;
+    height: 32px;
     overflow: hidden;
     white-space: nowrap;
-    background: white;
-    font-size: 14px;
-    color: #333;
-    border-top: 1px solid #0056b3;
+    text-overflow: ellipsis;
+    line-height: 12px;
+    padding: 0;
+    margin: 0;
+    font-size: 12px;
+    scale: 1 0.5;
 }
 
-.table details[open] summary {
-    border-bottom: 1px solid #0056b3;
+.dynamic-grid-table-header .header-cell-text {
+    display: block;
+    font-size: 10px;
+    margin-top: 2px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Data rows */
+.dynamic-grid-table-header .data-row {
+    height: 30px;
+    background: white;
+}
+
+.dynamic-grid-table-header .data-row:hover {
+    background-color: #f1f1f1;
+}
+
+/* Data cells */
+.dynamic-grid-table-header .data-cell {
+    border-right: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    padding: 8px;
+    white-space: nowrap;
+    font-size: 13px;
+    color: #333;
+    text-align: left;
+}
+
+.dynamic-grid-table-header .data-cell:last-child {
+    border-right: none;
+}
+
+.header-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    background-color: transparent;
+}
+
+.header-resize-handle.hover {
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+}
+
+.header-resize-handle.hover::after, .header-resize-handle.hover::before {
+    content: '';
+    height: 50%;
+    background: gray;
+    width: 2px;
+    position: absolute;
+    translate: -1px 0;
+}
+
+.header-resize-handle.hover::before {
+    translate: 5px 0;
+}
+
+.header-resize-handle.hover:active::after {
+    content: '';
+    height: 500px;
+    background: green;
+    width: 2px;
+    position: absolute;
+    translate: 2px 0;
+    top: 0;
+}
+
+.header-resize-handle.hover:active::before {
+    background: transparent;
+}
+
+.scroll-container {
+    overflow-y: auto;
+    max-height: 500px;
+    position: relative;
+}
+.dynamic-grid-table-body {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
 }
