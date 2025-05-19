@@ -24,7 +24,7 @@ class DynamicGridUI {
         this.scrollContainer = null;
 
         this.config = {
-            minColumnWidth: ui_config.minColumnWidth ?? 100,
+            minColumnWidth: ui_config.minColumnWidth ?? 50,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 10,
             autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header',
@@ -116,114 +116,46 @@ class DynamicGridUI {
         headerTable.className = 'dynamic-grid-table-header';
 
         const colgroup = this.#_createColGroup(columns);
-        this.currentColGroup = colgroup;
+        this.colGroup1 = colgroup;
 
         headerTable.appendChild(colgroup);
         headerTable.appendChild(this.#_createHeader(columns, isGroupedData, colgroup));
 
-        const scrollContainer = document.createElement('div');
-        scrollContainer.className = 'scroll-container';
-        scrollContainer.style.overflowY = 'auto';
-        scrollContainer.style.maxHeight = '500px';
-        scrollContainer.style.position = 'relative';
-
+        //BODY
         const bodyTable = document.createElement('table');
         bodyTable.className = 'dynamic-grid-table-body';
-        bodyTable.style.position = 'absolute';
-        bodyTable.style.top = '0';
-        bodyTable.style.left = '0';
-        bodyTable.style.right = '0';
 
-        scrollContainer.appendChild(bodyTable);
+        const colgroup2 = this.#_createColGroup(columns);
+        this.colGroup2 = colgroup2;
 
-        this.scrollContainer = scrollContainer;
-        this.body = bodyTable;
+        bodyTable.appendChild(colgroup2);
+        bodyTable.appendChild(this.#_createBody(data, columns, isGroupedData));
 
-        this.container.appendChild(table);
         table.appendChild(headerTable);
-        this.container.appendChild(scrollContainer);
-
-        this.#_setupVirtualScroll(data, columns, isGroupedData);
+        table.appendChild(bodyTable);
+        this.container.appendChild(table);
     }
-
-    #_setupVirtualScroll(data, columns, isGroupedData) {
-        const rowHeight = this.config.rowHeight;
-        const bufferedRows = this.config.bufferedRows;
-        const totalRows = data.length;
-        const totalHeight = totalRows * rowHeight;
-
-        const spacer = document.createElement('div');
-        spacer.style.height = `${totalHeight}px`;
-        spacer.style.position = 'absolute';
-        spacer.style.top = '0';
-        spacer.style.left = '0';
-        spacer.style.right = '0';
-        this.scrollContainer.appendChild(spacer);
-
-        const visibleTable = this.body;
-
-        const renderRows = (startIndex) => {
-            const endIndex = Math.min(totalRows, startIndex + bufferedRows);
-            visibleTable.innerHTML = '';
-
-            for (let i = startIndex; i < endIndex; i++) {
-                const row = data[i];
-                const tr = document.createElement('tr');
-
-                Object.entries(row).forEach(([key, value]) => {
-                    if (key === 'internal_id') return;
-
-                    const plugin = this.engine.getPlugin(key);
-                    const td = plugin.renderCell(value);
-
-                    if (!(td instanceof HTMLTableCellElement)) {
-                        console.warn('Invalid TD', td);
-                        return;
-                    }
-
-                    td.className = 'body-cell';
-                    td.style.height = `${rowHeight}px`;
-
-                    tr.appendChild(td);
-                });
-
-                visibleTable.appendChild(tr);
-            }
-
-            visibleTable.style.transform = `translateY(${startIndex * rowHeight}px)`;
-        };
-
-        renderRows(0);
-
-        let lastStartIndex = -1;
-
-        this.scrollContainer.addEventListener('scroll', () => {
-            const scrollTop = this.scrollContainer.scrollTop;
-            const firstVisibleRow = Math.floor(scrollTop / rowHeight);
-
-            if (firstVisibleRow !== lastStartIndex) {
-                renderRows(firstVisibleRow);
-                lastStartIndex = firstVisibleRow;
-            }
-        });
-    }
-
 
     #_createColGroup(headers) {
         const colgroup = document.createElement('colgroup');
+        const topLeftCorner = document.createElement('col');
+        topLeftCorner.style.width = `30px`;
+        colgroup.appendChild(topLeftCorner);
+
         var width = 0;
         for (const key in headers) {
             if (typeof headers[key] !== 'string') continue;
             const col = document.createElement('col');
             width += headers[key].width ?? 100;
             col.style.width = `${headers[key].width ?? 100}px`;
+            col.style.minWidth = `${this.config.minColumnWidth}px`;
             colgroup.appendChild(col);
         }
         colgroup.style.width = `${width}px`;
         return colgroup;
     }
 
-    #_createHeader(columns, isGroupedData, colgroup) {
+    #_createHeader(columns, isGroupedData) {
 
         console.log(columns)
 
@@ -242,7 +174,13 @@ class DynamicGridUI {
         const tr = document.createElement('tr');
         tr.className = 'header-row';
 
+        const thTopLeftCorner = document.createElement('th');
+        thTopLeftCorner.className = 'header-cell top-left-corner';
+        tr.appendChild(thTopLeftCorner);
+
         columns.forEach((columnName, colIndex) => {
+            colIndex++;
+
             const th = document.createElement('th');
             th.className = 'header-cell';
             th.style.height = `${this.config.rowHeight}px`;
@@ -270,7 +208,8 @@ class DynamicGridUI {
             let isDragging = false;
             let startX = 0;
             let startWidth = 0;
-            const colElement = colgroup?.children[colIndex];
+            const colElement = this.colGroup1?.children[colIndex];
+            let newWidth = 0;
 
             resizeHandle.addEventListener('mouseenter', () => {
                 resizeHandle.classList.add('hover');
@@ -287,13 +226,15 @@ class DynamicGridUI {
                 const onMouseMove = (e) => {
                     if (!isDragging || !colElement) return;
                     const delta = e.clientX - startX;
-                    const newWidth = Math.max(this.config.minColumnWidth, startWidth + delta);
+                    newWidth = Math.max(this.config.minColumnWidth, startWidth + delta);
+                    newWidth = Math.max(newWidth, this.config.minColumnWidth);
                     colElement.style.width = `${newWidth}px`;
                 };
 
                 const onMouseUp = () => {
                     isDragging = false;
                     resizeHandle.classList.remove('hover');
+                    this.colGroup2.children[colIndex].style.width = `${newWidth}px`;
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
                 };
@@ -335,7 +276,7 @@ class DynamicGridUI {
             //loop trough all the key-values of the row
             Object.entries(row).forEach(([key, value]) => {
 
-                if (key === "internal_id") return;
+                //if (key === "internal_id") return;
 
                 const plugin = this.engine.getPlugin(key);
 
