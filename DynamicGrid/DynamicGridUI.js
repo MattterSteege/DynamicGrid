@@ -3,7 +3,7 @@ class DynamicGridUI {
      * @param {string} ui_config.containerId - The ID of the container for the grid. (required)
      * @param {number} ui_config.minColumnWidth - Minimum width for columns. (default: 5%)
      * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
-     * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
+     * @param {number} ui_config.bufferedRows - Number of buffered rows added to the top AND bottom (default: 5)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
      * @param {SJQLEngine} dynamicGrid.engine - The query engine for the grid.
@@ -26,10 +26,21 @@ class DynamicGridUI {
         this.config = {
             minColumnWidth: ui_config.minColumnWidth ?? 50,
             rowHeight: ui_config.rowHeight ?? 40,
-            bufferedRows: ui_config.bufferedRows ?? 10,
+            bufferedRows: ui_config.bufferedRows ?? 5,
             autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header',
 
             allowFieldEditing: ui_config.allowFieldEditing ?? false,
+        };
+
+        // Virtual scrolling properties
+        this.virtualScrolling = {
+            scrollTop: 0,
+            visibleRowsCount: 0,
+            startIndex: 0,
+            endIndex: 0,
+            totalHeight: 0,
+            topSpacer: null,
+            bottomSpacer: null
         };
 
         this.#_init(this.containerId);
@@ -38,8 +49,9 @@ class DynamicGridUI {
         this.UICacheRefresh = false;
         this.sortDirection = 'asc';
 
+        this.showData = [];
 
-        //set up context menu
+        // Set up context menu
         this.contextMenu = new ContextMenu({
             width: 250,
             style: {
@@ -54,25 +66,19 @@ class DynamicGridUI {
     }
 
     render(data) {
-
-        if (this.body && this.scrollContainer) {
-            this.body.innerHTML = '';
-            this.scrollContainer.innerHTML = '';
-            this.body?.remove();
-            this.scrollContainer?.remove();
-        }
-
         if (!data || data.length === 0) {
             return;
         }
 
-        const isGrouped = (data) => Array.isArray(firstItem(data));
-        const isGroupedData = isGrouped(data);
-        const columns = isGroupedData ? Object.keys(firstItem(data)[0]) : Object.keys(data[0]);
-        const firstDataItem = isGroupedData ? firstItem(data)[0] : data[0];
+        this.showData = data;
 
-        //check if the data has changed in its structure (can I keep the headers etc.)
-        const cacheHash = FastHash(columns)
+        const isGrouped = (data) => Array.isArray(firstItem(data));
+        const isGroupedData = isGrouped(this.showData);
+        const columns = isGroupedData ? Object.keys(firstItem(this.showData)[0]) : Object.keys(this.showData[0]);
+        const firstDataItem = isGroupedData ? firstItem(this.showData)[0] : this.showData[0];
+
+        // Check if the data has changed in its structure (can I keep the headers etc.)
+        const cacheHash = FastHash(columns);
         this.UICacheRefresh = this.UIChache !== cacheHash;
         this.UIChache = cacheHash;
 
@@ -80,8 +86,12 @@ class DynamicGridUI {
             this.table = this.#_createResizableTable(columns.slice(1), firstDataItem, isGroupedData);
         }
 
-        this.#_renderTable(data, columns.slice(1), isGroupedData);
-        this.eventEmitter.emit('ui-rendered', { data });
+        this.#_renderTable(this.showData, columns.slice(1), isGroupedData);
+
+        // Set up virtual scrolling after rendering the table
+        this.#_setupVirtualScrolling();
+
+        this.eventEmitter.emit('ui-rendered', { ...this.showData });
     }
 
     // ======================================== PRIVATE METHODS ========================================
@@ -109,31 +119,66 @@ class DynamicGridUI {
     }
 
     #_renderTable(data, columns, isGroupedData) {
-        const table = document.createElement('div');
-        table.className = 'dynamic-grid-table';
+        const tableExists = this.table && this.table.parentNode;
+        const tableHeaderExists = this.headerTable && this.headerTable.parentNode;
+        const bodyTableExists = this.bodyTable && this.bodyTable.parentNode;
 
-        const headerTable = document.createElement('table');
-        headerTable.className = 'dynamic-grid-table-header';
+        if (!tableExists) {
+            this.table = document.createElement('div');
+            this.table.className = 'dynamic-grid-table';
+        }
 
-        const colgroup = this.#_createColGroup(columns);
-        this.colGroup1 = colgroup;
+        if (!tableHeaderExists) {
+            this.headerTable = document.createElement('table');
+            this.headerTable.className = 'dynamic-grid-table-header';
 
-        headerTable.appendChild(colgroup);
-        headerTable.appendChild(this.#_createHeader(columns, isGroupedData, colgroup));
+            const colgroup = this.#_createColGroup(columns);
+            this.colGroup1 = colgroup;
 
-        //BODY
-        const bodyTable = document.createElement('table');
-        bodyTable.className = 'dynamic-grid-table-body';
+            this.headerTable.appendChild(colgroup);
+            this.headerTable.appendChild(this.#_createHeader(columns, isGroupedData, colgroup));
 
-        const colgroup2 = this.#_createColGroup(columns);
-        this.colGroup2 = colgroup2;
+            this.table.appendChild(this.headerTable);
+        }
 
-        bodyTable.appendChild(colgroup2);
-        bodyTable.appendChild(this.#_createBody(data, columns, isGroupedData));
+        if (!bodyTableExists) {
+            // Create scroll container for the body
+            this.scrollContainer = document.createElement('div');
+            this.scrollContainer.className = 'dynamic-grid-scroll-container';
+            this.scrollContainer.style.position = 'relative';
+            this.scrollContainer.style.width = '100%';
 
-        table.appendChild(headerTable);
-        table.appendChild(bodyTable);
-        this.container.appendChild(table);
+            // BODY
+            this.bodyTable = document.createElement('table');
+            this.bodyTable.className = 'dynamic-grid-table-body';
+
+            const colgroup2 = this.#_createColGroup(columns);
+            this.colGroup2 = colgroup2;
+
+            this.bodyTable.appendChild(colgroup2);
+
+            // Create spacers for virtual scrolling
+            this.virtualScrolling.topSpacer = document.createElement('tr');
+            this.virtualScrolling.topSpacer.style.height = '0px';
+            this.virtualScrolling.topSpacer.className = 'virtual-scroll-spacer top-spacer';
+
+            this.virtualScrolling.bottomSpacer = document.createElement('tr');
+            this.virtualScrolling.bottomSpacer.style.height = '0px';
+            this.virtualScrolling.bottomSpacer.className = 'virtual-scroll-spacer bottom-spacer';
+
+            this.scrollContainer.appendChild(this.bodyTable);
+            this.table.appendChild(this.scrollContainer);
+        }
+        else {
+            this.bodyTable.innerHTML = '';
+            this.bodyTable.appendChild(this.colGroup2);
+        }
+
+        // Create the body with virtual scrolling
+        this.body = this.#_createVirtualBody();
+
+        this.bodyTable.appendChild(this.body);
+        this.container.appendChild(this.table);
     }
 
     #_createColGroup(headers) {
@@ -155,21 +200,7 @@ class DynamicGridUI {
         return colgroup;
     }
 
-    #_createHeader(columns, isGroupedData) {
-
-        console.log(columns)
-
-        /*
-        <thead>
-            <tr>
-                <th>
-                    <div><button></button><span>Brand</span></div>
-                </th>
-                ...
-            </tr>
-        </thead>
-        */
-
+    #_createHeader(columns) {
         const thead = document.createElement('thead');
         const tr = document.createElement('tr');
         tr.className = 'header-row';
@@ -251,40 +282,110 @@ class DynamicGridUI {
         return thead;
     }
 
-    #_createBody(data, columns, isGroupedData) {
-        /*
-        <tbody>
-            <tr>
-                <td>Jetpulse</td>
-                <td>Racing Socks</td>
-                <td>$ 30.00</td>
-                <td>
-                    <div>▼</div>Oct 11, 2023
-                </td>
-                <td>01:23 AM</td>
-                <td><input></td>
-            </tr>
-        </tbody>
-         */
-
+    #_createVirtualBody() {
         const tbody = document.createElement('tbody');
 
-        data.forEach((row, index) => {
+        // Add top spacer for virtual scrolling
+        tbody.appendChild(this.virtualScrolling.topSpacer);
 
-            const tr = document.createElement('tr');
+        // Initial render of visible rows (empty until scroll handler calculates what's needed)
 
-            //loop trough all the key-values of the row
-            Object.entries(row).forEach(([key, value]) => {
+        // Add bottom spacer for virtual scrolling
+        tbody.appendChild(this.virtualScrolling.bottomSpacer);
 
-                //if (key === "internal_id") return;
+        this.body = tbody;
+        return tbody;
+    }
 
+    #_setupVirtualScrolling() {
+        if (!this.table || !this.showData.length) return;
+
+        // Calculate total height of all rows
+        const totalRows = this.showData.length;
+        this.virtualScrolling.totalHeight = totalRows * this.config.rowHeight;
+
+        // Calculate how many rows can be visible at once
+        const visibleHeight = this.table.clientHeight || 400; // Default height if not set
+        this.virtualScrolling.visibleRowsCount = Math.ceil(visibleHeight / this.config.rowHeight);
+
+        // Add buffer rows above and below
+        const totalVisibleRows = this.virtualScrolling.visibleRowsCount + (this.config.bufferedRows * 2);
+
+        // Set initial range
+        this.virtualScrolling.startIndex = 0;
+        this.virtualScrolling.endIndex = Math.min(totalVisibleRows, totalRows);
+
+        // Attach scroll event listener to the correct element
+        this.table.addEventListener('scroll', this.#_handleScroll.bind(this));
+
+        // Initial render of visible rows
+        this._updateVisibleRows();
+
+        // Set initial scroll position (if needed)
+        if (this.virtualScrolling.scrollTop > 0) {
+            this.table.scrollTop = this.virtualScrolling.scrollTop;
+        }
+    }
+
+    #_handleScroll(event) {
+        const scrollTop = event.target.scrollTop;
+        console.log('ScrollTop:', scrollTop); // Debug log
+
+        const rowIndex = Math.floor(scrollTop / this.config.rowHeight);
+        const startIndex = Math.max(0, rowIndex - this.config.bufferedRows);
+        const endIndex = Math.min(
+            this.showData.length,
+            rowIndex + this.virtualScrolling.visibleRowsCount + this.config.bufferedRows
+        );
+
+        if (startIndex !== this.virtualScrolling.startIndex || endIndex !== this.virtualScrolling.endIndex) {
+            this.virtualScrolling.startIndex = startIndex;
+            this.virtualScrolling.endIndex = endIndex;
+            this._updateVisibleRows();
+        }
+    }
+
+    _updateVisibleRows() {
+        console.log('Updating rows:', this.virtualScrolling.startIndex, this.virtualScrolling.endIndex); // Debug log
+
+        const currentRows = Array.from(this.body.querySelectorAll('tr:not(.virtual-scroll-spacer)'));
+        currentRows.forEach(row => row.remove());
+
+        const fragment = document.createDocumentFragment();
+        for (let i = this.virtualScrolling.startIndex; i < this.virtualScrolling.endIndex; i++) {
+            const row = this.#_createRow(i);
+            fragment.appendChild(row);
+        }
+
+        this.virtualScrolling.topSpacer.after(fragment);
+
+        this.virtualScrolling.topSpacer.style.height = `${this.virtualScrolling.startIndex * this.config.rowHeight}px`;
+        const bottomSpacerHeight = Math.max(
+            0,
+            (this.showData.length - this.virtualScrolling.endIndex) * this.config.rowHeight
+        );
+        this.virtualScrolling.bottomSpacer.style.height = `${bottomSpacerHeight}px`;
+    }
+
+    #_createRow(index) {
+        const tr = document.createElement('tr');
+        tr.dataset.index = index;
+
+        this.getData(index).then((data) => {
+            const numberCell = document.createElement('td');
+            numberCell.className = 'body-cell';
+            numberCell.style.height = `${this.config.rowHeight}px`;
+            numberCell.innerText = index + 1;
+
+            tr.appendChild(numberCell);
+
+            Object.entries(data).forEach(([key, value]) => {
                 const plugin = this.engine.getPlugin(key);
-
                 const td = plugin.renderCell(value);
 
-                //if td is not an td html element, log it, the value and the key and the plugin
+                // If td is not a td html element, log it, the value and the key and the plugin
                 if (!(td instanceof HTMLTableCellElement)) {
-                    console.log(td, value, key, plugin);
+                    console.error('[plugin].renderCell() did not return a td element', { td, value, key, plugin });
                     return;
                 }
 
@@ -293,58 +394,57 @@ class DynamicGridUI {
 
                 tr.appendChild(td);
             });
-
-            //add the row to the body
-            tbody.appendChild(tr);
         });
 
-        this.body = tbody;
+        return tr;
+    }
 
-        return tbody;
+    /**
+     * Retrieves the data at the specified index.
+     * @param index {number} - The index of the data to retrieve.
+     * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
+     */
+    getData(index) {
+        const isValidIndex = this.showData && this.showData.length > 0 && index < this.showData.length;
+        index = (index < 0 ? this.showData.length + index : index);
+
+        return new Promise((resolve, reject) => {
+            if (!isValidIndex) return reject(new Error('No data to return (data is empty, or index is out of bounds)'));
+            const { internal_id, ...data } = this.showData[index];
+            resolve(data);
+        });
+    }
+
+    #_approximateColumnWidth() {
+        function approximateWidth(sampleData) {
+            const maxLength = Math.max(...sampleData.map((item) => String(item).length));
+            return Math.max(50, maxLength * 8.75); // 8 pixels per character, minimum width of 50px
+        }
+
+        const columns = this.engine.getColumns();
+        const columnWidths = {};
+
+        columns.forEach((column) => {
+            const plugin = this.engine.getPlugin(column);
+            const sampleData = this.showData.map((item) => item[column]);
+            columnWidths[column] = approximateWidth(sampleData);
+        });
+
+        return columnWidths;
+    }
+
+    #_setWidths(widths) {
+        for (let i = 0; i < widths.length; i++) {
+            this.setWidth(i, widths[i]);
+        }
+    }
+
+    autoFitCellWidth() {
+        this.#_setWidths(Object.values(this.#_approximateColumnWidth()))
+    }
+
+    setWidth(column, width) {
+        this.colGroup1.children[column + 1].style.width = `${width}px`;
+        this.colGroup2.children[column + 1].style.width = `${width}px`;
     }
 }
-
-/*
-optimizations:
-[ ] virtual scrolling
-[ ] add one event listener to the table and use event delegation (use e.target to get the clicked element)
-
-
-
-*/
-
-/*
-
-<div> <- container
-    <table> <- table
-        <colgroup> <- colgroup (for column widths)
-            <col>
-            <col>
-            <col>
-            <col>
-            <col>
-            <col>
-        </colgroup>
-        <thead> <- header
-            <tr>
-                <th>
-                    <div><button></button><span>Brand</span></div> <!-- header cell (with button and span) -->
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr> <- row (data row)
-                <td>Jetpulse</td>
-                <td>Racing Socks</td>
-                <td>$ 30.00</td>
-                <td>
-                    <div>▼</div>Oct 11, 2023
-                </td>
-                <td>01:23 AM</td>
-                <td><input></td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
- */

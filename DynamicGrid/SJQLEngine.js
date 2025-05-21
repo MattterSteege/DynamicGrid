@@ -59,6 +59,41 @@ class SJQLEngine {
         }
     }
 
+    /**
+     * Retrieves the data at the specified index.
+     * @param index {number} - The index of the data to retrieve.
+     * @returns {Promise<Object> | Object} - The data at the specified index, or a promise that resolves to the data.
+     */
+    getData(index, noPromise = false) {
+        const isValidIndex = this.data && this.data.length > 0 && index < this.data.length;
+        index = (index < 0 ? this.data.length + index : index);
+
+        if (noPromise) {
+            if (!isValidIndex) throw new Error('No data to return (data is empty, or index is out of bounds)');
+            const { internal_id, ...data } = this.data[index];
+            return data;
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!isValidIndex) return reject(new Error('No data to return (data is empty, or index is out of bounds)'));
+            const { internal_id, ...data } = this.data[index];
+            resolve(data);
+        });
+    }
+
+    /**
+     * Retrieves all the columns from the data.
+     * @returns {string[]|*[]}
+     */
+    getColumns() {
+        if (!this.data || this.data.length === 0) {
+            console.warn('No data provided, returning empty array');
+            return [];
+        }
+
+        return Object.keys(this.data[0]).filter(key => key !== 'internal_id');
+    }
+
     query(query = '') {
         if (!this.data || this.data.length === 0) {
             console.warn('No data provided, returning empty array');
@@ -73,6 +108,7 @@ class SJQLEngine {
 
         return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
+
 
     #_query(query) {
         // Early exit if no queries
