@@ -17,7 +17,6 @@
     border-collapse: collapse;
     background: #f9f9f9;
     font-family: Arial, sans-serif;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     overflow-x: auto;
     border-radius: 4px;
     width: fit-content;
@@ -40,6 +39,7 @@ table.dynamic-grid-table-header {
     text-transform: capitalize;
     height: 30px;
     position: relative;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 /* Header cells */
@@ -189,7 +189,6 @@ td.body-cell:first-child {
 
 .dynamic-grid-table {
     border-radius: 10px;
-    overflow: hidden;
     border: 1px solid #e7e7e9;
     overflow: scroll;
     height: 90vh;
