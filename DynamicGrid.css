@@ -23,6 +23,13 @@
     width: fit-content;
     table-layout: fixed;
     overflow: hidden;
+    overflow-x: scroll;
+}
+
+table.dynamic-grid-table-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 /* Header row */
@@ -32,6 +39,7 @@
     font-size: 12px;
     text-transform: capitalize;
     height: 30px;
+    position: relative;
 }
 
 /* Header cells */
@@ -44,6 +52,15 @@
 
 .dynamic-grid-table-header .header-cell:last-child {
     border-right: none;
+}
+
+.dynamic-grid-table-header .header-cell:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 100;
+    background: #f7f7f9;
+    outline: 1px solid #d7d7d9;
+    width: 100%;
 }
 
 .header-cell-content {
@@ -155,6 +172,9 @@
 td.body-cell {
     background: #ffffff;
     border: 1px solid #e7e7e9;
+    text-wrap-mode: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 td.body-cell:first-child {
@@ -163,6 +183,8 @@ td.body-cell:first-child {
     text-align: center;
     color: #222222;
     font-size: 12px;
+    position: sticky;
+    left: 0;
 }
 
 .dynamic-grid-table {
