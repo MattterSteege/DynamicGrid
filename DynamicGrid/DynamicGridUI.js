@@ -47,9 +47,12 @@ class DynamicGridUI {
 
         this.UIChache = 0;
         this.UICacheRefresh = false;
-        this.sortDirection = 'asc';
 
         this.showData = [];
+
+        this.hiddenColumns = new Set(); // Track hidden columns
+        this.undoStack = []; // Stack for undo actions
+        this.redoStack = []; // Stack for redo actions
 
         // Set up context menu
         this.contextMenu = new ContextMenu({
@@ -92,6 +95,39 @@ class DynamicGridUI {
         this.#_setupVirtualScrolling();
 
         this.eventEmitter.emit('ui-rendered', { ...this.showData });
+    }
+
+    toggleColumn(IndexOrIndex) {
+        const Index = typeof IndexOrIndex === 'number' ? IndexOrIndex : this.engine.getColumns().indexOf(IndexOrIndex.toLowerCase());
+        this.colGroup1.children[Index + 1].style.visibility === 'collapse' ? this.#_showColumn(Index) : this.#_hideColumn(Index);
+    }
+
+    #_hideColumn(Index) {
+        const column = this.colGroup1.children[Index + 1];
+        const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);
+        if (column) {
+            column.style.visibility = 'collapse';
+            headerCell.style.pointerEvents = 'none';
+        }
+
+        const column2 = this.colGroup2.children[Index + 1];
+        if (column2) {
+            column2.style.visibility = 'collapse';
+        }
+    }
+
+    #_showColumn(Index) {
+        const column = this.colGroup1.children[Index + 1];
+        const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);
+        if (column) {
+            column.style.visibility = 'visible';
+            headerCell.style.pointerEvents = 'auto';
+        }
+
+        const column2 = this.colGroup2.children[Index + 1];
+        if (column2) {
+            column2.style.visibility = 'visible';
+        }
     }
 
     // ======================================== PRIVATE METHODS ========================================
@@ -215,6 +251,32 @@ class DynamicGridUI {
         const thTopLeftCorner = document.createElement('th');
         thTopLeftCorner.className = 'header-cell top-left-corner';
         tr.appendChild(thTopLeftCorner);
+
+        thTopLeftCorner.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.contextMenu.clear();
+            this.contextMenu
+                .searchSelect('Columns to show/hide', this.engine.getColumns().map((column) => {return {label: column,value: column,checked: true};}), {
+                    onChange: (value) => {
+                        //diff between this.engine.getColumns() and value
+                        const columns = this.engine.getColumns();
+                        const diff = columns.filter((column) => !value.includes(column));
+                        columns.forEach((column) => {
+                            if (!diff.includes(column)) {
+                                this.#_showColumn(columns.indexOf(column));
+                            }
+                            else {
+                                this.#_hideColumn(columns.indexOf(column));
+                            }
+                        });
+                    }
+                });
+
+            // Display the context menu at the specified coordinates
+            return this.contextMenu.showAt(100, 100);
+        });
 
         columns.forEach((columnName, colIndex) => {
             colIndex++;
