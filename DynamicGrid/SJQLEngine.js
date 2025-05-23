@@ -111,6 +111,7 @@ class SJQLEngine {
 
 
     #_query(query) {
+
         // Early exit if no queries
         if (!query || query.length === 0) {
             this.currentQueryStr = '';
@@ -120,7 +121,7 @@ class SJQLEngine {
 
         // Separate queries by type
         const selectQueries = [];
-        let sortQuery = null, rangeQuery = null, groupQuery = null;
+        let sortQuery = null, rangeQuery = null, groupQuery = null, fuzzyQuery = null;;
 
         // Pre-process queries
         for (const q of query) {
@@ -129,6 +130,7 @@ class SJQLEngine {
                 case 'SORT': sortQuery = q; break;
                 case 'RANGE': rangeQuery = q; break;
                 case 'GROUP': groupQuery = q; break;
+                case 'FUZZY': fuzzyQuery = q; break;
             }
         }
 
@@ -138,14 +140,15 @@ class SJQLEngine {
         if (sortQuery) this.currentQueryStr += 'sort ' + sortQuery.field + ' ' + sortQuery.value + ' and ';
         if (rangeQuery) this.currentQueryStr += 'range ' + rangeQuery.lower + ' ' + rangeQuery.upper + ' and ';
         if (groupQuery) this.currentQueryStr += 'group ' + groupQuery.field + ' and ';
+        if (fuzzyQuery) this.currentQueryStr += 'search ' + fuzzyQuery.value + ' and ';
         this.currentQueryStr = this.currentQueryStr.slice(0, -5);
 
-        let log = "";
-        if (selectQueries.length > 0) log += 'SELECT queries: ' + selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(', ') + '\n';
-        if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
-        if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
-        if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
-        log += this.currentQueryStr;
+        // let log = "";
+        // if (selectQueries.length > 0) log += 'SELECT queries: ' + selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(', ') + '\n';
+        // if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
+        // if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
+        // if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
+        // log += this.currentQueryStr;
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -153,7 +156,7 @@ class SJQLEngine {
 
         // Process SELECT queries
         for (const q of selectQueries) {
-            q.field = MeantIndexKey(Object.keys(this.data[0]), q.field, this.config);
+            q.field = findMatchingIndexKey(Object.keys(this.data[0]), q.field, this.config);
             const plugin = this.getPlugin(q.type);
             if (!plugin) throw new GridError(`No plugin found for header (${q.type}) for key (${q.field})`);
             validIndices = plugin.evaluate(q, this.dataIndexes[q.field], this.data, validIndices);
@@ -169,7 +172,7 @@ class SJQLEngine {
 
         // Process GROUP query
         if (groupQuery) {
-            const groupField = MeantIndexKey(Object.keys(this.data[0]), groupQuery.field, this.config);
+            const groupField = findMatchingIndexKey(Object.keys(this.data[0]), groupQuery.field, this.config);
             groupedData = {};
 
             // Group rows by the specified field
@@ -192,6 +195,20 @@ class SJQLEngine {
             const sortedData = this.data.filter((_, i) => validIndices.has(i));
             return this.getPlugin(sortQuery.type).sort(sortQuery, sortedData);
         }
+
+        // Process Fuzzy search
+        if (fuzzyQuery) {
+            const lowerSearch = fuzzyQuery.value;
+            const allKeys = Object.keys(this.data[0]).filter(k => k !== 'internal_id');
+            validIndices = new Set([...validIndices].filter(index => {
+                const row = this.data[index];
+                return allKeys.some(key =>
+                    String(row[key]).toLowerCase().includes(lowerSearch)
+                );
+            }));
+        }
+
+        console.log(validIndices);
 
         // Return filtered data
         return this.data.filter((_, i) => validIndices.has(i));
@@ -410,6 +427,18 @@ class SJQLEngine {
     alterData(datum, column, value) {
         if (this.data && this.data.length > 0) {
             this.data[datum][column] = value;
+        }
+
+        //recalculate the data index for the altered row
+        if (this.config.UseDataIndexing && this.dataIndexes && this.dataIndexes[column]) {
+            const oldValue = this.data[datum][column];
+            if (this.dataIndexes[column].has(oldValue)) {
+                this.dataIndexes[column].get(oldValue).delete(datum);
+            }
+            if (!this.dataIndexes[column].has(value)) {
+                this.dataIndexes[column].set(value, new Set());
+            }
+            this.dataIndexes[column].get(value).add(datum);
         }
     }
 

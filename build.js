@@ -45,7 +45,7 @@ const separateFiles = [
 const eventRegex = /eventEmitter\.emit\('([^']*)',/g;
 const events = [];
 
-const shortcutRegex = /\.addShortcut\('([^']*)',/g;
+const shortcutRegex = /\.addShortcut\('([^']*)',.*?'([^']*)'/g;
 const shortcuts = [];
 
 // Helper function to add delay
@@ -83,14 +83,23 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 console.log(`  ↳ Found event: ${eventName} in ${file} at line ${lineNumber}`);
             }
 
+            if (file === "./DynamicGrid/libs/KeyboardShortcuts.js") continue;
             // Extract shortcuts from the current file
             while ((match = shortcutRegex.exec(currFile)) !== null) {
                 //add event to list:
-                // {eventName: 'eventName', file: 'fileName', line: lineNumber}
+                // {keybind: 'eventName', description: 'description', file: 'fileName', line: lineNumber}
                 const eventName = match[1];
+                const description = match[2] || '';
                 const lineNumber = currFile.substring(0, match.index).split('\n').length;
-                shortcuts.push({ eventName, file: file.split('/').pop(), line: lineNumber });
                 console.log(`  ↳ Found shortcut: ${eventName} in ${file} at line ${lineNumber}`);
+
+                if (!description || description.trim() === '') {
+                    console.log(`\x1b[33m    ↳ No description found for shortcut: ${eventName} in ${file} at line ${lineNumber} (SKIPPING IT)\x1b[0m`);
+                    continue; // Skip if no description is found
+                }
+
+                // Add the shortcut to the list
+                shortcuts.push({ keybind: eventName, description: description, file: file.split('/').pop(), line: lineNumber });
             }
 
             await delay(100); // Small delay for each file

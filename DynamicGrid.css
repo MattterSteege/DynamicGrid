@@ -1,73 +1,189 @@
+/* === CSS Custom Properties (Variables) === */
+/* === CSS Custom Properties (Variables) === */
+.dynamic-grid-table {
+    /* Default (Light) Theme */
+    --bg-primary: #f9f9f9;
+    --bg-secondary: #f7f7f9;
+    --bg-body: #ffffff;
+    --bg-hover: #f1f1f1;
+    --bg-button-hover: #e7e7e8;
+    --text-primary: #222222;
+    --text-secondary: #333333;
+    --text-muted: #999999;
+    --border-color: #e7e7e9;
+    --border-accent: #e7e7e8;
+    --outline-color: #000000;
+    --resize-handle-color: gray;
+    --resize-handle-active: green;
+    --scrollbar-thumb: #aaa;
+    --scrollbar-thumb-focus: #888;
+    --border-radius: 10px;
+    --cell-border-radius: 4px;
+}
+
+/* === Theme Variations === */
+.dynamic-grid-table[data-theme="dark"] {
+    --bg-primary: #2d2d2d;
+    --bg-secondary: #353535;
+    --bg-body: #1a1a1a;
+    --bg-hover: #404040;
+    --bg-button-hover: #4a4a4a;
+    --text-primary: #c7c7c7;
+    --text-secondary: #c7c7c7;
+    --text-muted: #888888;
+    --border-color: #555555;
+    --border-accent: #666666;
+    --outline-color: #ffffff;
+    --resize-handle-color: #cccccc;
+    --resize-handle-active: #4ade80;
+    --scrollbar-thumb: #555;
+    --scrollbar-thumb-focus: #777;
+}
+
+.dynamic-grid-table[data-theme="square"] {
+    --border-radius: 0px;
+    --cell-border-radius: 0px;
+}
+
+.dynamic-grid-table[data-theme="blue"] {
+    --bg-primary: #eff6ff;
+    --bg-secondary: #dbeafe;
+    --bg-body: #ffffff;
+    --bg-hover: #e0f2fe;
+    --bg-button-hover: #bae6fd;
+    --text-primary: #1e40af;
+    --text-secondary: #1f2937;
+    --text-muted: #6b7280;
+    --border-color: #93c5fd;
+    --border-accent: #60a5fa;
+    --outline-color: #2563eb;
+    --resize-handle-color: #3b82f6;
+    --resize-handle-active: #1d4ed8;
+}
+
+.dynamic-grid-table[data-theme="minimal"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #ffffff;
+    --bg-body: #ffffff;
+    --bg-hover: #f8fafc;
+    --bg-button-hover: #f1f5f9;
+    --text-primary: #374151;
+    --text-secondary: #374151;
+    --text-muted: #9ca3af;
+    --border-color: #e5e7eb;
+    --border-accent: #d1d5db;
+    --outline-color: #6b7280;
+    --resize-handle-color: #9ca3af;
+    --resize-handle-active: #374151;
+    --border-radius: 6px;
+    --cell-border-radius: 2px;
+}
+
+/* === Scrollbar Styling === */
 .table *::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
 .table *::-webkit-scrollbar-thumb {
-    background: #aaa;
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
 }
 
 .table *:focus::-webkit-scrollbar-thumb {
-    background: #888;
+    background: var(--scrollbar-thumb-focus);
 }
 
-/* === DynamicGrid Specific Overrides === */
-.dynamic-grid-table-header, .dynamic-grid-table-body {
-    border-collapse: collapse;
-    background: #f9f9f9;
+/* === Main Grid Container === */
+.dynamic-grid-table {
+    overflow: scroll;
+    height: 100%;
+    width: 100%;
+    scroll-behavior: smooth;
+    border-radius: var(--border-radius);
+}
+
+.scroll-container {
+    overflow-y: auto;
+    max-height: 500px;
+    position: relative;
+}
+
+/* === Common Table Styles === */
+.dynamic-grid-table-header,
+.dynamic-grid-table-body {
+    background: var(--bg-primary);
     font-family: Arial, sans-serif;
     overflow-x: auto;
-    border-radius: 4px;
+    border-radius: var(--cell-border-radius);
     width: fit-content;
     table-layout: fixed;
-    overflow: hidden;
-    overflow-x: scroll;
+    border-bottom: 1px solid var(--border-color);
 }
 
+.dynamic-grid-table-header *,
+.dynamic-grid-table-body * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+.dynamic-grid-table-header table,
+.dynamic-grid-table-body table {
+    border: none;
+}
+
+/* === Header Styles === */
 table.dynamic-grid-table-header {
     position: sticky;
     top: 0;
     z-index: 1000;
 }
 
-/* Header row */
 .dynamic-grid-table-header .header-row {
-    background: #f7f7f9;
-    color: #222222;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
     font-size: 12px;
     text-transform: capitalize;
     height: 30px;
-    position: relative;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Header cells */
 .dynamic-grid-table-header .header-cell {
     max-height: 30px;
     vertical-align: middle;
-    border-right: 1px solid #e7e7e9;
-    border-bottom: none;
-}
-
-.dynamic-grid-table-header .header-cell:last-child {
-    border-right: none;
+    border-right: 1px solid var(--border-color);
 }
 
 .dynamic-grid-table-header .header-cell:first-child {
     position: sticky;
     left: 0;
     z-index: 100;
-    background: #f7f7f9;
-    outline: 1px solid #d7d7d9;
+    background: var(--bg-secondary);
     width: 100%;
 }
 
+.dynamic-grid-table-header .header-cell:first-child::after {
+    width: 1px;
+    position: absolute;
+    height: 100%;
+    background: var(--border-accent);
+    top: 0;
+    left: -1px;
+}
+
+/* === Header Cell Content === */
 .header-cell-content {
     display: flex;
     flex-direction: row-reverse;
     margin: 4px;
     align-items: center;
+}
+
+.header-cell-content .header-cell-text {
+    width: min-content;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .dynamic-grid-table-header .header-cell-button {
@@ -83,40 +199,16 @@ table.dynamic-grid-table-header {
     scale: 1 0.5;
     width: 16px;
     margin-left: auto;
-    color: #999999;
+    color: var(--text-muted);
     background-color: transparent;
 }
 
 .dynamic-grid-table-header .header-cell-button:hover {
-    background-color: #e7e7e8;
-    border-radius: 4px;
+    background-color: var(--bg-button-hover);
+    border-radius: var(--cell-border-radius);
 }
 
-/* Data rows */
-.dynamic-grid-table-header .data-row {
-    height: 30px;
-    background: white;
-}
-
-.dynamic-grid-table-header .data-row:hover {
-    background-color: #f1f1f1;
-}
-
-/* Data cells */
-.dynamic-grid-table-header .data-cell {
-    border-right: 1px solid #eee;
-    border-bottom: 1px solid #eee;
-    padding: 8px;
-    white-space: nowrap;
-    font-size: 13px;
-    color: #333;
-    text-align: left;
-}
-
-.dynamic-grid-table-header .data-cell:last-child {
-    border-right: none;
-}
-
+/* === Header Resize Handle === */
 .header-resize-handle {
     position: absolute;
     right: 0;
@@ -136,10 +228,11 @@ table.dynamic-grid-table-header {
     flex-direction: row;
 }
 
-.header-resize-handle.hover::after, .header-resize-handle.hover::before {
+.header-resize-handle.hover::after,
+.header-resize-handle.hover::before {
     content: '';
     height: 50%;
-    background: gray;
+    background: var(--resize-handle-color);
     width: 3px;
     position: absolute;
     translate: -3px 0;
@@ -152,7 +245,7 @@ table.dynamic-grid-table-header {
 .header-resize-handle.hover:active::after {
     content: '';
     height: 100%;
-    background: green;
+    background: var(--resize-handle-active);
     width: 2px;
     position: absolute;
     translate: 2px 0;
@@ -163,45 +256,58 @@ table.dynamic-grid-table-header {
     background: transparent;
 }
 
-.scroll-container {
-    overflow-y: auto;
-    max-height: 500px;
-    position: relative;
+/* === Data Row Styles === */
+.dynamic-grid-table-header .data-row {
+    height: 30px;
+    background: var(--bg-body);
 }
 
+.dynamic-grid-table-header .data-row:hover {
+    background-color: var(--bg-hover);
+}
+
+/* === Body Cell Styles === */
 td.body-cell {
-    background: #ffffff;
-    border: 1px solid #e7e7e9;
-    text-wrap-mode: nowrap;
-    text-overflow: ellipsis;
+    color: var(--text-secondary);
+    background: var(--bg-body);
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+td.body-cell:not(:first-child) {
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
+    outline: var(--bg-body);
 }
 
 td.body-cell:first-child {
-    border-left: none;
-    background: #f7f7f9;
+    background: var(--bg-secondary);
     text-align: center;
-    color: #222222;
+    color: var(--text-primary);
     font-size: 12px;
     position: sticky;
     left: 0;
 }
 
-.dynamic-grid-table {
-    border-radius: 10px;
-    border: 1px solid #e7e7e9;
-    overflow: scroll;
-    height: 90vh;
-    scroll-behavior: smooth;
+td.body-cell:first-child::after {
+    width: 1px;
+    position: absolute;
+    height: 100%;
+    background: var(--border-accent);
+    top: 0;
+    left: -1px;
 }
 
-.dynamic-grid-table-header * {
-    box-sizing: border-box;
-    user-select: none;
+td.body-cell:focus {
+    outline: 1px solid var(--outline-color);
 }
 
-.header-cell-content .header-cell-text {
-    width: min-content;
-    text-overflow: ellipsis;
-    overflow: hidden;
+/* === Data Cell Styles === */
+.dynamic-grid-table-header .data-cell {
+    padding: 8px;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: left;
 }

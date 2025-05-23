@@ -27,9 +27,8 @@ class DynamicGridUI {
             minColumnWidth: ui_config.minColumnWidth ?? 50,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 5,
-            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header',
-
             allowFieldEditing: ui_config.allowFieldEditing ?? false,
+            colorScheme: ui_config.colorScheme ?? 'light',
         };
 
         // Virtual scrolling properties
@@ -47,9 +46,12 @@ class DynamicGridUI {
 
         this.UIChache = 0;
         this.UICacheRefresh = false;
-        this.sortDirection = 'asc';
 
         this.showData = [];
+
+        this.hiddenColumns = new Set(); // Track hidden columns
+        this.undoStack = []; // Stack for undo actions
+        this.redoStack = []; // Stack for redo actions
 
         // Set up context menu
         this.contextMenu = new ContextMenu({
@@ -66,7 +68,9 @@ class DynamicGridUI {
     }
 
     render(data) {
-        if (!data || data.length === 0) {
+        if (!data) return;
+        if (data.length === 0) {
+            this.clearContent();
             return;
         }
 
@@ -94,6 +98,49 @@ class DynamicGridUI {
         this.eventEmitter.emit('ui-rendered', { ...this.showData });
     }
 
+    toggleColumn(IndexOrIndex) {
+        const Index = typeof IndexOrIndex === 'number' ? IndexOrIndex : this.engine.getColumns().indexOf(IndexOrIndex.toLowerCase());
+        this.colGroup1.children[Index + 1].style.visibility === 'collapse' ? this.#_showColumn(Index) : this.#_hideColumn(Index);
+    }
+
+    clearContent() {
+        if (this.table) {
+            //remove the data part, not the header
+            this.bodyTable?.remove();
+            this.scrollContainer?.remove();
+        }
+        this.showData = [];
+        this.eventEmitter.emit('ui-content-cleared');
+    }
+
+    #_hideColumn(Index) {
+        const column = this.colGroup1.children[Index + 1];
+        const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);
+        if (column) {
+            column.style.visibility = 'collapse';
+            headerCell.style.pointerEvents = 'none';
+        }
+
+        const column2 = this.colGroup2.children[Index + 1];
+        if (column2) {
+            column2.style.visibility = 'collapse';
+        }
+    }
+
+    #_showColumn(Index) {
+        const column = this.colGroup1.children[Index + 1];
+        const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);
+        if (column) {
+            column.style.visibility = 'visible';
+            headerCell.style.pointerEvents = 'auto';
+        }
+
+        const column2 = this.colGroup2.children[Index + 1];
+        if (column2) {
+            column2.style.visibility = 'visible';
+        }
+    }
+
     // ======================================== PRIVATE METHODS ========================================
 
     #_init(containerId) {
@@ -102,10 +149,7 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
-        //ADD KEYBOARD SHORTCUTS
-
-        //autoFitCellWidth
-        this.keyboardShortcuts.addShortcut('ctrl+shift+a', () => {
+        this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to toggle column visibility', () => {
             this.autoFitCellWidth();
         });
 
@@ -133,11 +177,14 @@ class DynamicGridUI {
         if (!tableExists) {
             this.table = document.createElement('div');
             this.table.className = 'dynamic-grid-table';
+            this.table.dataset.theme = this.config.colorScheme;
         }
 
         if (!tableHeaderExists) {
             this.headerTable = document.createElement('table');
             this.headerTable.className = 'dynamic-grid-table-header';
+            this.headerTable.setAttribute('cellspacing', '0');
+            this.headerTable.setAttribute('cellpadding', '0');
 
             const colgroup = this.#_createColGroup(columns);
             this.colGroup1 = colgroup;
@@ -158,6 +205,8 @@ class DynamicGridUI {
             // BODY
             this.bodyTable = document.createElement('table');
             this.bodyTable.className = 'dynamic-grid-table-body';
+            this.bodyTable.setAttribute('cellspacing', '0');
+            this.bodyTable.setAttribute('cellpadding', '0');
 
             const colgroup2 = this.#_createColGroup(columns);
             this.colGroup2 = colgroup2;
@@ -215,6 +264,32 @@ class DynamicGridUI {
         const thTopLeftCorner = document.createElement('th');
         thTopLeftCorner.className = 'header-cell top-left-corner';
         tr.appendChild(thTopLeftCorner);
+
+        thTopLeftCorner.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.contextMenu.clear();
+            this.contextMenu
+                .searchSelect('Columns to show/hide', this.engine.getColumns().map((column) => {return {label: column,value: column,checked: true};}), {
+                    onChange: (value) => {
+                        //diff between this.engine.getColumns() and value
+                        const columns = this.engine.getColumns();
+                        const diff = columns.filter((column) => !value.includes(column));
+                        columns.forEach((column) => {
+                            if (!diff.includes(column)) {
+                                this.#_showColumn(columns.indexOf(column));
+                            }
+                            else {
+                                this.#_hideColumn(columns.indexOf(column));
+                            }
+                        });
+                    }
+                });
+
+            // Display the context menu at the specified coordinates
+            return this.contextMenu.showAt(100, 100);
+        });
 
         columns.forEach((columnName, colIndex) => {
             colIndex++;

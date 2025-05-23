@@ -25,28 +25,18 @@ function FastHash(object) {
 * @param {Object} config
 * @returns {string}
 */
-function MeantIndexKey(dataIndexesKeys, field, config) {
-    // I'm SO sorry for this code (•́︵•̀)
-    return dataIndexesKeys.find(key => {
-        let normalizedKey = '';
-        let normalizedField = '';
-        if (config.SymbolsToIgnore.length){
-
-            normalizedKey = key.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
-            normalizedField = field.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
+function findMatchingIndexKey(dataIndexesKeys, field, config) {
+    const normalize = str => {
+        let result = str;
+        if (config.SymbolsToIgnore?.length) {
+            const regex = new RegExp(`[${config.SymbolsToIgnore.join('').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`, 'g');
+            result = result.replace(regex, '');
         }
-        else{
-            normalizedKey = key;
-            normalizedField = field;
-        }
+        return config.useStrictCase ? result : result.toLowerCase();
+    };
 
-        if (!config.useStrictCase) {
-            normalizedKey = normalizedKey.toLowerCase();
-            normalizedField = normalizedField.toLowerCase();
-        }
-
-        return normalizedKey === normalizedField
-    });
+    const normalizedField = normalize(field);
+    return dataIndexesKeys.find(key => normalize(key) === normalizedField);
 }
 
 /**

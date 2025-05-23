@@ -66,21 +66,21 @@ class ContextMenu {
             closeOnOutsideClick: options.closeOnOutsideClick,
         };
         this.items = [];
-        this.id = this._generateId();
+        this.id = this.#_generateId();
         this.installStyles();
     }
 
     // Simplified API for adding menu items
     addItem(type, config) {
         const item = {
-            id: (config?.id ?? this._generateId()) + '',
+            id: (config?.id ?? this.#_generateId()) + '',
             type,
             position: this.items.length,
             ...config
         };
 
         if (item.id === undefined) {
-            item.id = this._generateId();
+            item.id = this.#_generateId();
         }
 
         if (item.type === ContextMenu.ITEM_TYPES.SUBMENU) {
@@ -88,7 +88,7 @@ class ContextMenu {
         }
 
         // Validate based on type
-        this._validateItem(item);
+        this.#_validateItem(item);
         this.items.push(item);
         return this;
     }
@@ -197,16 +197,16 @@ class ContextMenu {
 
     // Show methods
     showAt(x, y, autoAdd = true) {
-        const menu = this._render();
+        const menu = this.#_render();
 
         if (document.getElementById(this.id)) {
             document.getElementById(this.id).remove();
         }
 
         autoAdd ? document.body.appendChild(menu) : null;
-        this._setupEventHandlers(menu);
-        this._positionMenu(menu, {x, y, position: 'fixed'});
-        this._animateIn(menu);
+        this.#_setupEventHandlers(menu);
+        this.#_positionMenu(menu, {x, y, position: 'fixed'});
+        this.#_animateIn(menu);
 
         console.log(menu);
 
@@ -240,7 +240,7 @@ class ContextMenu {
 //    |                                                  PRIVATE METHODS                                                  |
 //    \___________________________________________________________________________________________________________________/
 
-    _setupEventHandlers(menu) {
+    #_setupEventHandlers(menu) {
         const handleClick = (e) => {
             if (e.target.classList.contains(ContextMenu.CLASSNAMES.DROPDOWN) ||
                 e.target.classList.contains(ContextMenu.CLASSNAMES.INPUT) ||
@@ -272,9 +272,9 @@ class ContextMenu {
                     const existingSubmenu = e.target.parentElement.querySelector('#' + submenu.submenu.id);
                     if (existingSubmenu) return;
 
-                    const htmlElement = submenu.submenu._render();
-                    submenu.submenu._setupEventHandlers(htmlElement);
-                    submenu.submenu._positionMenu(htmlElement, {
+                    const htmlElement = submenu.submenu.#_render();
+                    submenu.submenu.#_setupEventHandlers(htmlElement);
+                    submenu.submenu.#_positionMenu(htmlElement, {
                         x: e.target.getBoundingClientRect().right,
                         y: e.target.getBoundingClientRect().top
                     });
@@ -322,7 +322,7 @@ class ContextMenu {
     }
 
     //sorry for the bad looking code :(
-    _validateItem(item) {
+    #_validateItem(item) {
         const validTypes = Object.values(ContextMenu.ITEM_TYPES);
 
         if (!item.type || !validTypes.includes(item.type)) throw new Error(`Invalid item type: ${item.type}. Allowed types are: ${validTypes.join(', ')}`);
@@ -361,11 +361,11 @@ class ContextMenu {
         }
     }
 
-    _generateId() {
+    #_generateId() {
         return '_' + Math.random().toString(36).substring(2, 9);
     }
 
-    _render() {
+    #_render() {
 
         console.log(this.items);
 
@@ -384,28 +384,28 @@ class ContextMenu {
 
             switch (item.type) {
                 case ContextMenu.ITEM_TYPES.BUTTON:
-                    element = this._createButton(item);
+                    element = this.#_createButton(item);
                     break;
                 case ContextMenu.ITEM_TYPES.SEPARATOR:
-                    element = this._createSeparator();
+                    element = this.#_createSeparator();
                     break;
                 case ContextMenu.ITEM_TYPES.SUBMENU:
-                    element = this._createSubmenu(item);
+                    element = this.#_createSubmenu(item);
                     break;
                 case ContextMenu.ITEM_TYPES.INPUT:
-                    element = this._createInput(item);
+                    element = this.#_createInput(item);
                     break;
                 case ContextMenu.ITEM_TYPES.DROPDOWN:
-                    element = this._createDropdown(item);
+                    element = this.#_createDropdown(item);
                     break;
                 case ContextMenu.ITEM_TYPES.CHECKBOX:
-                    element = this._createCheckbox(item);
+                    element = this.#_createCheckbox(item);
                     break;
                 case ContextMenu.ITEM_TYPES.RADIO:
-                    element = this._createRadio(item);
+                    element = this.#_createRadio(item);
                     break;
                 case ContextMenu.ITEM_TYPES.SEARCH_SELECT:
-                    element = this._createSearchSelect(item);
+                    element = this.#_createSearchSelect(item);
                     break;
                 default:
                     console.warn(`Unknown item type: ${item.type}`);
@@ -442,7 +442,7 @@ class ContextMenu {
         return menuContainer;
     }
 
-    _createButton(item) {
+    #_createButton(item) {
         const button = document.createElement('button');
         button.classList.add(ContextMenu.CLASSNAMES.BUTTON);
         button.id = item.id;
@@ -466,13 +466,13 @@ class ContextMenu {
         return button;
     }
 
-    _createSeparator() {
+    #_createSeparator() {
         const separator = document.createElement('div');
         separator.classList.add(ContextMenu.CLASSNAMES.SEPARATOR);
         return separator;
     }
 
-    _createSubmenu(item) {
+    #_createSubmenu(item) {
         const submenuButton = document.createElement('button');
         submenuButton.classList.add(ContextMenu.CLASSNAMES.SUBMENU);
         submenuButton.innerText = item.text;
@@ -499,7 +499,7 @@ class ContextMenu {
         return submenuButton;
     }
 
-    _createInput(item) {
+    #_createInput(item) {
         const inputContainer = document.createElement('div');
         inputContainer.classList.add(ContextMenu.CLASSNAMES.INPUT);
 
@@ -514,7 +514,7 @@ class ContextMenu {
         return inputContainer;
     }
 
-    _createDropdown(item) {
+    #_createDropdown(item) {
         const select = document.createElement('select');
         select.classList.add(ContextMenu.CLASSNAMES.DROPDOWN);
         select.id = item.id;
@@ -533,7 +533,7 @@ class ContextMenu {
         return select;
     }
 
-    _createCheckbox(item) {
+    #_createCheckbox(item) {
         const label = document.createElement('label');
         label.classList.add(ContextMenu.CLASSNAMES.CHECKBOX);
 
@@ -551,7 +551,7 @@ class ContextMenu {
         return label;
     }
 
-    _createRadio(item) {
+    #_createRadio(item) {
         const label = document.createElement('label');
         label.classList.add(ContextMenu.CLASSNAMES.RADIO);
 
@@ -571,7 +571,7 @@ class ContextMenu {
         return label;
     }
 
-    _createSearchSelect(item) {
+    #_createSearchSelect(item) {
         //this is a scrollable list with selectable items (checkboxes)
         //at the top there is a search input that filters the items (if the search input is not empty, then show everything)
         const container = document.createElement('div');
@@ -586,26 +586,44 @@ class ContextMenu {
         list.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT + '-list');
 
         //add select all option
-        const selectAll = document.createElement('label');
-        selectAll.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT + '-select-all');
-        const selectAllCheckbox = document.createElement('input');
-        selectAllCheckbox.type = 'checkbox';
-        selectAllCheckbox.onchange = (e) => {
+        // const selectAll = document.createElement('label');
+        // selectAll.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT + '-select-all');
+        // const selectAllCheckbox = document.createElement('input');
+        // selectAllCheckbox.type = 'checkbox';
+        // selectAllCheckbox.onchange = (e) => {
+        //     const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+        //     checkboxes.forEach(checkbox => {
+        //         checkbox.checked = e.target.checked;
+        //     });
+        //
+        //     //return an array of selected values
+        //     const selectedValues = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value).slice(1);
+        //
+        //     item.onChange?.(selectedValues);
+        //     container.value = selectedValues;
+        // }
+        // const selectAllLabel = document.createElement('span');
+        // selectAllLabel.textContent = 'Select All';
+        // selectAll.appendChild(selectAllCheckbox);
+        // selectAll.appendChild(selectAllLabel);
+        // list.appendChild(selectAll);
+
+        const toggleAll = document.createElement('button');
+        toggleAll.textContent = 'Toggle All';
+        toggleAll.onclick = (e) => {
             const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
             checkboxes.forEach(checkbox => {
-                checkbox.checked = e.target.checked;
+                checkbox.checked = !allChecked;
             });
 
             //return an array of selected values
             const selectedValues = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+
             item.onChange?.(selectedValues);
             container.value = selectedValues;
         }
-        const selectAllLabel = document.createElement('span');
-        selectAllLabel.textContent = 'Select All';
-        selectAll.appendChild(selectAllCheckbox);
-        selectAll.appendChild(selectAllLabel);
-        list.appendChild(selectAll);
+        list.appendChild(toggleAll);
 
         item.options.forEach(option => {
             const checkbox = document.createElement('input');
@@ -638,7 +656,7 @@ class ContextMenu {
         return container;
     }
 
-    _positionMenu(menu, position) {
+    #_positionMenu(menu, position) {
         const {x, y} = position;
         const {xOffset, yOffset} = this.options.position;
 
@@ -649,7 +667,7 @@ class ContextMenu {
     }
 
 
-    _animateIn(menu) {
+    #_animateIn(menu) {
         if (!this.options.animation.enabled) return;
 
         // Apply initial styles for animation
@@ -861,6 +879,17 @@ class ContextMenu {
   max-height: 200px;
   overflow-y: auto;
   margin-top: var(--padding);
+}
+
+.context-menu-search-select-list button {
+    width: 100%;
+    padding: var(--padding);
+    background: #007BFF;
+    font-size: var(--font-size);
+    text-align: left;
+    cursor: pointer;
+    color: #ffffff;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .context-menu-search-select-list label {

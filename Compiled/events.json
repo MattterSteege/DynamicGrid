@@ -27,26 +27,26 @@
   {
     "eventName": "ui-rendered",
     "file": "DynamicGridUI.js",
-    "line": 94
+    "line": 96
   },
   {
     "eventName": "ui-container-initialized",
     "file": "DynamicGridUI.js",
-    "line": 112
+    "line": 144
   },
   {
     "eventName": "ui-cell-edit",
     "file": "DynamicGridUI.js",
-    "line": 403
+    "line": 466
   },
   {
     "eventName": "ui-cell-edit",
     "file": "DynamicGridUI.js",
-    "line": 412
+    "line": 475
   },
   {
     "eventName": "engine-query-update",
     "file": "SJQLEngine.js",
-    "line": 301
+    "line": 315
   }
 ]

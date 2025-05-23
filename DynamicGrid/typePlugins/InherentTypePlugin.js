@@ -86,26 +86,43 @@ class numberTypePlugin extends TypePlugin {
         // Check if the value is a number or can be converted to a number
         if (value === null || value === undefined) return false;
 
-        return !isNaN(Number(value)) ||
-               (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
+        if (typeof value === 'number') return !isNaN(value);
+
+        const valueStr = String(value).replace(',', '.'); // Replace comma with dot for decimal numbers
+
+        return !isNaN(Number(valueStr)) ||
+               (value.split('-').length === 2 && !isNaN(Number(valueStr.split('-')[0])) && !isNaN(Number(valueStr.split('-')[1])));
     }
 
     parseValue(value) {
         if (value === null || value === undefined) return null;
+
+        if (typeof value === 'number') return value;
+
+        value = value.replace(',', '.'); // Replace comma with dot for decimal numbers
         return Number(value);
     }
 
     //indices is a set of indices that match the query
     evaluate(query, dataIndexes, data, indices) {
 
+        console.log(query, dataIndexes, data, indices);
+
         //loop over the indices and remove the ones that do not match the query
         //.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
         if (dataIndexes && indices && dataIndexes.size <= indices.size) {
             for (const index of dataIndexes.keys()) {
                 if (!this.evaluateCondition(index, query.operator, query.value)) {
+                    console.log('removing index', index, 'from indices');
                     dataIndexes.get(index).forEach(idx => indices.delete(idx));
+                    console.log(indices); //TODO: sorting on numbers | age == 71 when field is just set to 71 doesn't work
+                }
+                else {
+                    console.log('keeping index', index, 'in indices');
                 }
             }
+
+            console.log('after filtering dataIndexes', dataIndexes, 'indices', indices);
         }
         else {
             for (const index of indices) {
@@ -142,8 +159,8 @@ class numberTypePlugin extends TypePlugin {
 
 
 
-        dataValue = Number(dataValue);
-        value = Number(value);
+        dataValue = this.parseValue(dataValue);
+        value = this.parseValue(value);
 
         switch (operator) {
             case '>':

@@ -8,6 +8,7 @@ class QueryParser {
 
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
+        FUZZY: /^search\s+"([^"]+)"$/i,   //'search "value"', search for a value in all fields
         GROUP: /group\s+(.+)/i,      //'group [key]', group by key
         RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
@@ -59,7 +60,7 @@ class QueryParser {
         //console.log(match, type);
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
-            key = MeantIndexKey(Object.keys(headers), key, this.config);
+            key = findMatchingIndexKey(Object.keys(headers), key, this.config);
             const pluginType = headers[key].type;
             const plugin = plugins[pluginType];
             if (!plugin) {
@@ -75,6 +76,8 @@ class QueryParser {
 
             if (!plugin.validate(value)) return;
 
+            value = plugin.parseValue(value);
+
             return {type: pluginType, field, operator: operatorObj, value, queryType: 'SELECT'};
         }
         else if (type === 'SORT') {
@@ -84,6 +87,10 @@ class QueryParser {
             if (!plugin) {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
+
+            if (!plugin.validate(value)) return;
+            value = plugin.parseValue(value);
+
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
         }
         else if (type === 'RANGE') {
@@ -99,6 +106,10 @@ class QueryParser {
         else if (type === 'GROUP') {
             let [_, key] = match;
             return {type: 'group', field: key, queryType: 'GROUP'};
+        }
+        else if (type === 'FUZZY') {
+            const [_, searchText] = match;
+            return { type: 'fuzzy', value: searchText.toLowerCase(), queryType: 'FUZZY' };
         }
         else {
             console.warn('Invalid query: ' + match + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());

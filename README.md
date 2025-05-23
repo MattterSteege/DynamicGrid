@@ -105,6 +105,14 @@ This groups data by the `category` field.
    - `==` → Equals (`status == true`).
    - `!=` → Not equals (`status != true`).
 
+### **5. FUZZY Queries**
+- **Purpose**: Filters data based on a fuzzy match condition.
+- **Syntax**: `search "[value]"` (must be enclosed in quotes, either single or double).
+- **Example**:
+```text
+search "John"
+```
+
 ---
 
 ## Combining Queries

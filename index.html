@@ -85,7 +85,7 @@
         input[type="file"], input[type="text"] {
             padding: 10px;
             margin: 10px 10px 10px 0;
-            border: 1px solid #ccc;
+            /*border: 1px solid #ccc;*/
             border-radius: 5px;
             font-size: 16px;
             width: 100%;
@@ -148,11 +148,9 @@
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,
-            visibleRows: 20,
-            overscan: 5,
+            bufferedRows: 0,
             minColumnWidth: 50,
-            autoFitCellWidth: 'header',
-
+            colorScheme: 'blue',
             allowFieldEditing: true,
         },
         engine: {

@@ -49,9 +49,10 @@ class KeyboardShortcuts {
     /**
      * Adds a new keyboard shortcut.
      * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
+     * @param {string} description - A description of the shortcut (optional, for documentation purposes).
      * @param {Function} callback - The function to execute when the shortcut is triggered.
      */
-    addShortcut(keys, callback) {
+    addShortcut(keys, description, callback) {
         const normalizedKeys = this.#_normalizeKey(keys);
         if (this.shortcuts.has(normalizedKeys)) {
             console.warn(`Shortcut '${keys}' is already assigned.`);

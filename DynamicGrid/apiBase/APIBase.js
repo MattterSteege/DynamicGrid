@@ -30,7 +30,7 @@ class APIBase {
         this.apiVersion = config.apiVersion;
         this.abortControllers = new Map();
 
-        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
+        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', 'The keybind that tells the APIBase to force-send an update request', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
     }
 
     /**

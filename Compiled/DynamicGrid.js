@@ -216,9 +216,8 @@ class DynamicGridUI {
             minColumnWidth: ui_config.minColumnWidth ?? 50,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 5,
-            autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header',
-
             allowFieldEditing: ui_config.allowFieldEditing ?? false,
+            colorScheme: ui_config.colorScheme ?? 'light',
         };
 
         // Virtual scrolling properties
@@ -236,9 +235,12 @@ class DynamicGridUI {
 
         this.UIChache = 0;
         this.UICacheRefresh = false;
-        this.sortDirection = 'asc';
 
         this.showData = [];
+
+        this.hiddenColumns = new Set(); // Track hidden columns
+        this.undoStack = []; // Stack for undo actions
+        this.redoStack = []; // Stack for redo actions
 
         // Set up context menu
         this.contextMenu = new ContextMenu({
@@ -283,6 +285,39 @@ class DynamicGridUI {
         this.eventEmitter.emit('ui-rendered', { ...this.showData });
     }
 
+    toggleColumn(IndexOrIndex) {
+        const Index = typeof IndexOrIndex === 'number' ? IndexOrIndex : this.engine.getColumns().indexOf(IndexOrIndex.toLowerCase());
+        this.colGroup1.children[Index + 1].style.visibility === 'collapse' ? this.#_showColumn(Index) : this.#_hideColumn(Index);
+    }
+
+    #_hideColumn(Index) {
+        const column = this.colGroup1.children[Index + 1];
+        const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);
+        if (column) {
+            column.style.visibility = 'collapse';
+            headerCell.style.pointerEvents = 'none';
+        }
+
+        const column2 = this.colGroup2.children[Index + 1];
+        if (column2) {
+            column2.style.visibility = 'collapse';
+        }
+    }
+
+    #_showColumn(Index) {
+        const column = this.colGroup1.children[Index + 1];
+        const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);
+        if (column) {
+            column.style.visibility = 'visible';
+            headerCell.style.pointerEvents = 'auto';
+        }
+
+        const column2 = this.colGroup2.children[Index + 1];
+        if (column2) {
+            column2.style.visibility = 'visible';
+        }
+    }
+
     // ======================================== PRIVATE METHODS ========================================
 
     #_init(containerId) {
@@ -291,10 +326,7 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
-        //ADD KEYBOARD SHORTCUTS
-
-        //autoFitCellWidth
-        this.keyboardShortcuts.addShortcut('ctrl+shift+a', () => {
+        this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to toggle column visibility', () => {
             this.autoFitCellWidth();
         });
 
@@ -322,11 +354,14 @@ class DynamicGridUI {
         if (!tableExists) {
             this.table = document.createElement('div');
             this.table.className = 'dynamic-grid-table';
+            this.table.dataset.theme = this.config.colorScheme;
         }
 
         if (!tableHeaderExists) {
             this.headerTable = document.createElement('table');
             this.headerTable.className = 'dynamic-grid-table-header';
+            this.headerTable.setAttribute('cellspacing', '0');
+            this.headerTable.setAttribute('cellpadding', '0');
 
             const colgroup = this.#_createColGroup(columns);
             this.colGroup1 = colgroup;
@@ -347,6 +382,8 @@ class DynamicGridUI {
             // BODY
             this.bodyTable = document.createElement('table');
             this.bodyTable.className = 'dynamic-grid-table-body';
+            this.bodyTable.setAttribute('cellspacing', '0');
+            this.bodyTable.setAttribute('cellpadding', '0');
 
             const colgroup2 = this.#_createColGroup(columns);
             this.colGroup2 = colgroup2;
@@ -404,6 +441,32 @@ class DynamicGridUI {
         const thTopLeftCorner = document.createElement('th');
         thTopLeftCorner.className = 'header-cell top-left-corner';
         tr.appendChild(thTopLeftCorner);
+
+        thTopLeftCorner.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.contextMenu.clear();
+            this.contextMenu
+                .searchSelect('Columns to show/hide', this.engine.getColumns().map((column) => {return {label: column,value: column,checked: true};}), {
+                    onChange: (value) => {
+                        //diff between this.engine.getColumns() and value
+                        const columns = this.engine.getColumns();
+                        const diff = columns.filter((column) => !value.includes(column));
+                        columns.forEach((column) => {
+                            if (!diff.includes(column)) {
+                                this.#_showColumn(columns.indexOf(column));
+                            }
+                            else {
+                                this.#_hideColumn(columns.indexOf(column));
+                            }
+                        });
+                    }
+                });
+
+            // Display the context menu at the specified coordinates
+            return this.contextMenu.showAt(100, 100);
+        });
 
         columns.forEach((columnName, colIndex) => {
             colIndex++;
@@ -701,7 +764,7 @@ class APIBase {
         this.apiVersion = config.apiVersion;
         this.abortControllers = new Map();
 
-        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
+        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', 'the keybind that tells the APIBase to force-send an update request', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
     }
 
     /**
@@ -2065,6 +2128,7 @@ class QueryParser {
 
     // Constants for special query types, make sure that the order is from most specific to least specific
     static QUERIES = {
+        FUZZY: /^search\s+"([^"]+)"$/i,   //'search "value"', search for a value in all fields
         GROUP: /group\s+(.+)/i,      //'group [key]', group by key
         RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
@@ -2156,6 +2220,10 @@ class QueryParser {
         else if (type === 'GROUP') {
             let [_, key] = match;
             return {type: 'group', field: key, queryType: 'GROUP'};
+        }
+        else if (type === 'FUZZY') {
+            const [_, searchText] = match;
+            return { type: 'fuzzy', value: searchText.toLowerCase(), queryType: 'FUZZY' };
         }
         else {
             console.warn('Invalid query: ' + match + '\n' + 'Valid queries are: ' + Object.keys(QueryParser.QUERIES).join(', ').toLowerCase());
@@ -2289,6 +2357,7 @@ class SJQLEngine {
 
 
     #_query(query) {
+
         // Early exit if no queries
         if (!query || query.length === 0) {
             this.currentQueryStr = '';
@@ -2298,7 +2367,7 @@ class SJQLEngine {
 
         // Separate queries by type
         const selectQueries = [];
-        let sortQuery = null, rangeQuery = null, groupQuery = null;
+        let sortQuery = null, rangeQuery = null, groupQuery = null, fuzzyQuery = null;;
 
         // Pre-process queries
         for (const q of query) {
@@ -2307,6 +2376,7 @@ class SJQLEngine {
                 case 'SORT': sortQuery = q; break;
                 case 'RANGE': rangeQuery = q; break;
                 case 'GROUP': groupQuery = q; break;
+                case 'FUZZY': fuzzyQuery = q; break;
             }
         }
 
@@ -2316,6 +2386,7 @@ class SJQLEngine {
         if (sortQuery) this.currentQueryStr += 'sort ' + sortQuery.field + ' ' + sortQuery.value + ' and ';
         if (rangeQuery) this.currentQueryStr += 'range ' + rangeQuery.lower + ' ' + rangeQuery.upper + ' and ';
         if (groupQuery) this.currentQueryStr += 'group ' + groupQuery.field + ' and ';
+        if (fuzzyQuery) this.currentQueryStr += 'search ' + fuzzyQuery.value + ' and ';
         this.currentQueryStr = this.currentQueryStr.slice(0, -5);
 
         let log = "";
@@ -2369,6 +2440,18 @@ class SJQLEngine {
         if (sortQuery) {
             const sortedData = this.data.filter((_, i) => validIndices.has(i));
             return this.getPlugin(sortQuery.type).sort(sortQuery, sortedData);
+        }
+
+        // Process Fuzzy search
+        if (fuzzyQuery) {
+            const lowerSearch = fuzzyQuery.value;
+            const allKeys = Object.keys(this.data[0]).filter(k => k !== 'internal_id');
+            validIndices = new Set([...validIndices].filter(index => {
+                const row = this.data[index];
+                return allKeys.some(key =>
+                    String(row[key]).toLowerCase().includes(lowerSearch)
+                );
+            }));
         }
 
         // Return filtered data
@@ -3006,9 +3089,10 @@ class KeyboardShortcuts {
     /**
      * Adds a new keyboard shortcut.
      * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
+     * @param {string} description - A description of the shortcut (for documentation purposes, not used in functionality).
      * @param {Function} callback - The function to execute when the shortcut is triggered.
      */
-    addShortcut(keys, callback) {
+    addShortcut(keys, description, callback) {
         const normalizedKeys = this.#_normalizeKey(keys);
         if (this.shortcuts.has(normalizedKeys)) {
             console.warn(`Shortcut '${keys}' is already assigned.`);
@@ -3123,21 +3207,21 @@ class ContextMenu {
             closeOnOutsideClick: options.closeOnOutsideClick,
         };
         this.items = [];
-        this.id = this._generateId();
+        this.id = this.#_generateId();
         this.installStyles();
     }
 
     // Simplified API for adding menu items
     addItem(type, config) {
         const item = {
-            id: (config?.id ?? this._generateId()) + '',
+            id: (config?.id ?? this.#_generateId()) + '',
             type,
             position: this.items.length,
             ...config
         };
 
         if (item.id === undefined) {
-            item.id = this._generateId();
+            item.id = this.#_generateId();
         }
 
         if (item.type === ContextMenu.ITEM_TYPES.SUBMENU) {
@@ -3145,7 +3229,7 @@ class ContextMenu {
         }
 
         // Validate based on type
-        this._validateItem(item);
+        this.#_validateItem(item);
         this.items.push(item);
         return this;
     }
@@ -3254,16 +3338,16 @@ class ContextMenu {
 
     // Show methods
     showAt(x, y, autoAdd = true) {
-        const menu = this._render();
+        const menu = this.#_render();
 
         if (document.getElementById(this.id)) {
             document.getElementById(this.id).remove();
         }
 
         autoAdd ? document.body.appendChild(menu) : null;
-        this._setupEventHandlers(menu);
-        this._positionMenu(menu, {x, y, position: 'fixed'});
-        this._animateIn(menu);
+        this.#_setupEventHandlers(menu);
+        this.#_positionMenu(menu, {x, y, position: 'fixed'});
+        this.#_animateIn(menu);
 
         console.log(menu);
 
@@ -3297,7 +3381,7 @@ class ContextMenu {
 //    |                                                  PRIVATE METHODS                                                  |
 //    \___________________________________________________________________________________________________________________/
 
-    _setupEventHandlers(menu) {
+    #_setupEventHandlers(menu) {
         const handleClick = (e) => {
             if (e.target.classList.contains(ContextMenu.CLASSNAMES.DROPDOWN) ||
                 e.target.classList.contains(ContextMenu.CLASSNAMES.INPUT) ||
@@ -3329,9 +3413,9 @@ class ContextMenu {
                     const existingSubmenu = e.target.parentElement.querySelector('#' + submenu.submenu.id);
                     if (existingSubmenu) return;
 
-                    const htmlElement = submenu.submenu._render();
-                    submenu.submenu._setupEventHandlers(htmlElement);
-                    submenu.submenu._positionMenu(htmlElement, {
+                    const htmlElement = submenu.submenu.#_render();
+                    submenu.submenu.#_setupEventHandlers(htmlElement);
+                    submenu.submenu.#_positionMenu(htmlElement, {
                         x: e.target.getBoundingClientRect().right,
                         y: e.target.getBoundingClientRect().top
                     });
@@ -3379,7 +3463,7 @@ class ContextMenu {
     }
 
     //sorry for the bad looking code :(
-    _validateItem(item) {
+    #_validateItem(item) {
         const validTypes = Object.values(ContextMenu.ITEM_TYPES);
 
         if (!item.type || !validTypes.includes(item.type)) throw new Error(`Invalid item type: ${item.type}. Allowed types are: ${validTypes.join(', ')}`);
@@ -3418,11 +3502,11 @@ class ContextMenu {
         }
     }
 
-    _generateId() {
+    #_generateId() {
         return '_' + Math.random().toString(36).substring(2, 9);
     }
 
-    _render() {
+    #_render() {
 
         console.log(this.items);
 
@@ -3441,28 +3525,28 @@ class ContextMenu {
 
             switch (item.type) {
                 case ContextMenu.ITEM_TYPES.BUTTON:
-                    element = this._createButton(item);
+                    element = this.#_createButton(item);
                     break;
                 case ContextMenu.ITEM_TYPES.SEPARATOR:
-                    element = this._createSeparator();
+                    element = this.#_createSeparator();
                     break;
                 case ContextMenu.ITEM_TYPES.SUBMENU:
-                    element = this._createSubmenu(item);
+                    element = this.#_createSubmenu(item);
                     break;
                 case ContextMenu.ITEM_TYPES.INPUT:
-                    element = this._createInput(item);
+                    element = this.#_createInput(item);
                     break;
                 case ContextMenu.ITEM_TYPES.DROPDOWN:
-                    element = this._createDropdown(item);
+                    element = this.#_createDropdown(item);
                     break;
                 case ContextMenu.ITEM_TYPES.CHECKBOX:
-                    element = this._createCheckbox(item);
+                    element = this.#_createCheckbox(item);
                     break;
                 case ContextMenu.ITEM_TYPES.RADIO:
-                    element = this._createRadio(item);
+                    element = this.#_createRadio(item);
                     break;
                 case ContextMenu.ITEM_TYPES.SEARCH_SELECT:
-                    element = this._createSearchSelect(item);
+                    element = this.#_createSearchSelect(item);
                     break;
                 default:
                     console.warn(`Unknown item type: ${item.type}`);
@@ -3499,7 +3583,7 @@ class ContextMenu {
         return menuContainer;
     }
 
-    _createButton(item) {
+    #_createButton(item) {
         const button = document.createElement('button');
         button.classList.add(ContextMenu.CLASSNAMES.BUTTON);
         button.id = item.id;
@@ -3523,13 +3607,13 @@ class ContextMenu {
         return button;
     }
 
-    _createSeparator() {
+    #_createSeparator() {
         const separator = document.createElement('div');
         separator.classList.add(ContextMenu.CLASSNAMES.SEPARATOR);
         return separator;
     }
 
-    _createSubmenu(item) {
+    #_createSubmenu(item) {
         const submenuButton = document.createElement('button');
         submenuButton.classList.add(ContextMenu.CLASSNAMES.SUBMENU);
         submenuButton.innerText = item.text;
@@ -3556,7 +3640,7 @@ class ContextMenu {
         return submenuButton;
     }
 
-    _createInput(item) {
+    #_createInput(item) {
         const inputContainer = document.createElement('div');
         inputContainer.classList.add(ContextMenu.CLASSNAMES.INPUT);
 
@@ -3571,7 +3655,7 @@ class ContextMenu {
         return inputContainer;
     }
 
-    _createDropdown(item) {
+    #_createDropdown(item) {
         const select = document.createElement('select');
         select.classList.add(ContextMenu.CLASSNAMES.DROPDOWN);
         select.id = item.id;
@@ -3590,7 +3674,7 @@ class ContextMenu {
         return select;
     }
 
-    _createCheckbox(item) {
+    #_createCheckbox(item) {
         const label = document.createElement('label');
         label.classList.add(ContextMenu.CLASSNAMES.CHECKBOX);
 
@@ -3608,7 +3692,7 @@ class ContextMenu {
         return label;
     }
 
-    _createRadio(item) {
+    #_createRadio(item) {
         const label = document.createElement('label');
         label.classList.add(ContextMenu.CLASSNAMES.RADIO);
 
@@ -3628,7 +3712,7 @@ class ContextMenu {
         return label;
     }
 
-    _createSearchSelect(item) {
+    #_createSearchSelect(item) {
         //this is a scrollable list with selectable items (checkboxes)
         //at the top there is a search input that filters the items (if the search input is not empty, then show everything)
         const container = document.createElement('div');
@@ -3643,26 +3727,44 @@ class ContextMenu {
         list.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT + '-list');
 
         //add select all option
-        const selectAll = document.createElement('label');
-        selectAll.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT + '-select-all');
-        const selectAllCheckbox = document.createElement('input');
-        selectAllCheckbox.type = 'checkbox';
-        selectAllCheckbox.onchange = (e) => {
+        // const selectAll = document.createElement('label');
+        // selectAll.classList.add(ContextMenu.CLASSNAMES.SEARCH_SELECT + '-select-all');
+        // const selectAllCheckbox = document.createElement('input');
+        // selectAllCheckbox.type = 'checkbox';
+        // selectAllCheckbox.onchange = (e) => {
+        //     const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+        //     checkboxes.forEach(checkbox => {
+        //         checkbox.checked = e.target.checked;
+        //     });
+        //
+        //     //return an array of selected values
+        //     const selectedValues = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value).slice(1);
+        //
+        //     item.onChange?.(selectedValues);
+        //     container.value = selectedValues;
+        // }
+        // const selectAllLabel = document.createElement('span');
+        // selectAllLabel.textContent = 'Select All';
+        // selectAll.appendChild(selectAllCheckbox);
+        // selectAll.appendChild(selectAllLabel);
+        // list.appendChild(selectAll);
+
+        const toggleAll = document.createElement('button');
+        toggleAll.textContent = 'Toggle All';
+        toggleAll.onclick = (e) => {
             const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
             checkboxes.forEach(checkbox => {
-                checkbox.checked = e.target.checked;
+                checkbox.checked = !allChecked;
             });
 
             //return an array of selected values
             const selectedValues = Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+
             item.onChange?.(selectedValues);
             container.value = selectedValues;
         }
-        const selectAllLabel = document.createElement('span');
-        selectAllLabel.textContent = 'Select All';
-        selectAll.appendChild(selectAllCheckbox);
-        selectAll.appendChild(selectAllLabel);
-        list.appendChild(selectAll);
+        list.appendChild(toggleAll);
 
         item.options.forEach(option => {
             const checkbox = document.createElement('input');
@@ -3695,7 +3797,7 @@ class ContextMenu {
         return container;
     }
 
-    _positionMenu(menu, position) {
+    #_positionMenu(menu, position) {
         const {x, y} = position;
         const {xOffset, yOffset} = this.options.position;
 
@@ -3706,7 +3808,7 @@ class ContextMenu {
     }
 
 
-    _animateIn(menu) {
+    #_animateIn(menu) {
         if (!this.options.animation.enabled) return;
 
         // Apply initial styles for animation
@@ -3918,6 +4020,17 @@ class ContextMenu {
   max-height: 200px;
   overflow-y: auto;
   margin-top: var(--padding);
+}
+
+.context-menu-search-select-list button {
+    width: 100%;
+    padding: var(--padding);
+    background: #007BFF;
+    font-size: var(--font-size);
+    text-align: left;
+    cursor: pointer;
+    color: #ffffff;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .context-menu-search-select-list label {

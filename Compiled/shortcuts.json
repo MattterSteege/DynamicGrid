@@ -1,27 +1,14 @@
 [
   {
-    "eventName": "ctrl+shift+a",
+    "keybind": "ctrl+shift+a",
+    "description": "Shortcut to toggle column visibility",
     "file": "DynamicGridUI.js",
-    "line": 108
+    "line": 140
   },
   {
-    "eventName": "ctrl+s",
+    "keybind": "ctrl+s",
+    "description": "the keybind that tells the APIBase to force-send an update request",
     "file": "APIBase.js",
     "line": 33
-  },
-  {
-    "eventName": "ctrl+s",
-    "file": "KeyboardShortcuts.js",
-    "line": 7
-  },
-  {
-    "eventName": "ctrl+z",
-    "file": "KeyboardShortcuts.js",
-    "line": 8
-  },
-  {
-    "eventName": "ctrl+y",
-    "file": "KeyboardShortcuts.js",
-    "line": 9
   }
 ]
