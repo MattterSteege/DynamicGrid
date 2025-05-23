@@ -128,8 +128,20 @@ class TypePlugin {
         cell.contentEditable = true;
         cell.spellcheck = false;
 
+        cell.addEventListener('focus', (e) => {
+            cell.classList.add('editing');
+            cell.setAttribute('data-editing', 'true');
+            cell.setAttribute('start-value', cell.innerText);
+        });
+
         cell.addEventListener('focusout', (e) => {
-            onEdit(cell.innerText);
+            cell.classList.remove('editing');
+            cell.removeAttribute('data-editing');
+            if (cell.getAttribute('start-value') !== cell.innerText) {
+                // Call the onEdit function with the new value
+                onEdit(cell.innerText);
+            }
+            cell.removeAttribute('start-value');
         });
 
         cell.addEventListener('keydown', (e) => {
@@ -148,13 +160,14 @@ class TypePlugin {
      * @param {HTMLElement} element Clicked element
      * @param {SJQLEngine} engine Query engine instance
      * @param {DynamicGridUI} UI User interface instance
+     * @returns {HTMLDivElement} Context menu element
      * @virtual (should be overridden, not required)
      */
     showMore(key, element, engine, UI) {
         const {x, y, width, height} = element.getBoundingClientRect();
         const typeOptions = engine.headers[key];
 
-        console.log(typeOptions);
+        console.log(typeOptions, key, x, y);
 
         UI.contextMenu.clear();
         UI.contextMenu
@@ -185,6 +198,6 @@ class TypePlugin {
         }
 
         // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
+        return UI.contextMenu.showAt(x, y + height);
     }
 }

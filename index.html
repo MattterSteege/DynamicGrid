@@ -16,8 +16,9 @@
     <script src="DynamicGrid/exportConnectors/InherentExportConnector.js"></script>
     <script src="DynamicGrid/libs/EventEmitter.js"></script>
     <script src="DynamicGrid/libs/KeyboardShortcuts.js"></script>
-    <script src="DynamicGrid/DynamicGridUtils.js"></script>
     <script src="DynamicGrid/libs/ContextMenu.js"></script>
+    <script src="DynamicGrid/DynamicGridUtils.js"></script>
+<!--    <script src="Compiled/DynamicGrid.min.js"></script>-->
 
     <style>
         /* General body styling */
@@ -130,18 +131,6 @@
     <input type="text" id="search" placeholder="Search... (e.g. isactive == true and id > 50)">
     <button onclick="grid.render(document.getElementById('search').value)">Search</button>
 </div>
-<!--<div class="bottom">-->
-<!--    <input type="file" id="file" accept=".csv, .json" onchange="handleFile(this.files[0])">-->
-<!--    or-->
-<!--    <button onclick="fetchPresetData()" style="margin-left: 10px;">use preset</button>-->
-
-<!--</div>-->
-
-<!--<span class="bottom-er">-->
-<!--    To use this grid, either use the preset data or upload a CSV or JSON file. You can use the grid by writing a query in the bar above using, or using right-click on the header and using the context menu. You can also consult the readme on github for more information.-->
-<!--    <a href="https://grid.kronk.tech/testData/generated_100.json" target="_blank" class="bottom-er" style="bottom: 10vh;">Click here to view the preset data</a>-->
-<!--    <a href="https://github.com/MattterSteege/DynamicGrid" target="_blank" class="bottom-er" style="bottom: 15vh;">Click here to view the readme/github repo</a>-->
-<!--</span>-->
 
 <div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: calc(50% + 2vh); left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
 
@@ -187,6 +176,10 @@
     const input = document.getElementById('search');
     grid.eventEmitter.subscribe('engine-query-update', function (query) {
         input.value = query;
+    });
+
+    grid.eventEmitter.on('ui-cell-edit', function (edit) {
+        console.log('cell-edit', edit);
     });
 
 

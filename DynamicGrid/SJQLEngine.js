@@ -206,7 +206,7 @@ class SJQLEngine {
         if (this.currentQueryStr.length === 0)
             this.currentQueryStr = newClause;
         else
-            this.currentQueryStr += `and ${newClause}`;
+            this.currentQueryStr += ` and ${newClause}`;
     }
 
     setSelect(key, operator, value) {

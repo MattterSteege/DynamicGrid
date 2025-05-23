@@ -1,0 +1,27 @@
+[
+  {
+    "eventName": "ctrl+shift+a",
+    "file": "DynamicGridUI.js",
+    "line": 108
+  },
+  {
+    "eventName": "ctrl+s",
+    "file": "APIBase.js",
+    "line": 33
+  },
+  {
+    "eventName": "ctrl+s",
+    "file": "KeyboardShortcuts.js",
+    "line": 7
+  },
+  {
+    "eventName": "ctrl+z",
+    "file": "KeyboardShortcuts.js",
+    "line": 8
+  },
+  {
+    "eventName": "ctrl+y",
+    "file": "KeyboardShortcuts.js",
+    "line": 9
+  }
+]

@@ -282,7 +282,7 @@ class numberTypePlugin extends TypePlugin {
         }
 
         // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
+        return UI.contextMenu.showAt(x, y + height);
     }
 }
 
@@ -405,7 +405,7 @@ class booleanTypePlugin extends TypePlugin {
                 UI.render(engine.runCurrentQuery());
             });
         // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
+        return UI.contextMenu.showAt(x, y + height);
     }
 }
 

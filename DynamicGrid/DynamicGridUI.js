@@ -102,6 +102,13 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
+        //ADD KEYBOARD SHORTCUTS
+
+        //autoFitCellWidth
+        this.keyboardShortcuts.addShortcut('ctrl+shift+a', () => {
+            this.autoFitCellWidth();
+        });
+
         this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 
@@ -212,6 +219,8 @@ class DynamicGridUI {
         columns.forEach((columnName, colIndex) => {
             colIndex++;
 
+            const plugin = this.engine.getPlugin(columnName);
+
             const th = document.createElement('th');
             th.className = 'header-cell';
             th.style.height = `${this.config.rowHeight}px`;
@@ -274,6 +283,12 @@ class DynamicGridUI {
                 document.addEventListener('mouseup', onMouseUp);
             });
 
+            th.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                plugin.showMore(columnName, th, this.engine, this);
+            });
+
             th.appendChild(resizeHandle);
             tr.appendChild(th);
         });
@@ -329,7 +344,8 @@ class DynamicGridUI {
 
     #_handleScroll(event) {
         const scrollTop = event.target.scrollTop;
-        console.log('ScrollTop:', scrollTop); // Debug log
+
+        if (this.virtualScrolling.scrollTop === scrollTop && scrollTop !== 0) return;
 
         const rowIndex = Math.floor(scrollTop / this.config.rowHeight);
         const startIndex = Math.max(0, rowIndex - this.config.bufferedRows);
@@ -346,7 +362,6 @@ class DynamicGridUI {
     }
 
     _updateVisibleRows() {
-        console.log('Updating rows:', this.virtualScrolling.startIndex, this.virtualScrolling.endIndex); // Debug log
 
         const currentRows = Array.from(this.body.querySelectorAll('tr:not(.virtual-scroll-spacer)'));
         currentRows.forEach(row => row.remove());
@@ -371,7 +386,7 @@ class DynamicGridUI {
         const tr = document.createElement('tr');
         tr.dataset.index = index;
 
-        this.getData(index).then((data) => {
+        this.getData(index, false).then((data) => {
             const numberCell = document.createElement('td');
             numberCell.className = 'body-cell';
             numberCell.style.height = `${this.config.rowHeight}px`;
@@ -380,8 +395,24 @@ class DynamicGridUI {
             tr.appendChild(numberCell);
 
             Object.entries(data).forEach(([key, value]) => {
+                if (key === 'internal_id') return;
                 const plugin = this.engine.getPlugin(key);
-                const td = plugin.renderCell(value);
+
+                // const td = this.engine.headers[key].isEditable ?
+                //     plugin.renderEditableCell(value, (value) => {
+                //         this.eventEmitter.emit('ui-cell-edit', { index, key, value });
+                //         this.engine.updateTracker.addEdit({ index, key, value });
+                //     }) :
+                //     plugin.renderCell(value);
+
+                const onEdit = (callback) => {
+                    callback = plugin.parseValue(callback);
+                    this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
+                    this.engine.alterData(data['internal_id'], key, callback);
+                    this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
+                }
+
+                const td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
 
                 // If td is not a td html element, log it, the value and the key and the plugin
                 if (!(td instanceof HTMLTableCellElement)) {
@@ -404,15 +435,14 @@ class DynamicGridUI {
      * @param index {number} - The index of the data to retrieve.
      * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
      */
-    getData(index) {
-        const isValidIndex = this.showData && this.showData.length > 0 && index < this.showData.length;
-        index = (index < 0 ? this.showData.length + index : index);
+    getData(index, removeInternalId = true) {
+        if (!this.showData || index >= this.showData.length) {
+            return Promise.reject(new Error('No data to return (data is empty, or index is out of bounds)'));
+        }
 
-        return new Promise((resolve, reject) => {
-            if (!isValidIndex) return reject(new Error('No data to return (data is empty, or index is out of bounds)'));
-            const { internal_id, ...data } = this.showData[index];
-            resolve(data);
-        });
+        index = index < 0 ? this.showData.length + index : index;
+        const { internal_id, ...data } = this.showData[index];
+        return Promise.resolve(removeInternalId ? data : this.showData[index]);
     }
 
     #_approximateColumnWidth() {

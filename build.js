@@ -22,12 +22,14 @@ const config = {
 const files = [
     "./DynamicGrid/DynamicGrid.js",
     "./DynamicGrid/DynamicGridUI.js",
-    "./DynamicGrid/typePlugins/TypePlugin.js",
-    "./DynamicGrid/typePlugins/InherentTypePlugin.js",
+    "./DynamicGrid/apiBase/APIBase.js",
     "./DynamicGrid/exportConnectors/ExportConnector.js",
     "./DynamicGrid/exportConnectors/InherentExportConnector.js",
+    "./DynamicGrid/typePlugins/TypePlugin.js",
+    "./DynamicGrid/typePlugins/InherentTypePlugin.js",
     "./DynamicGrid/QueryParser.js",
     "./DynamicGrid/SJQLEngine.js",
+    "./DynamicGrid/EditTracker.js",
     "./DynamicGrid/DynamicGridUtils.js",
     "./DynamicGrid/libs/EventEmitter.js",
     "./DynamicGrid/libs/KeyboardShortcuts.js",
@@ -35,13 +37,16 @@ const files = [
 ];
 
 const separateFiles = [
-    "./DynamicGrid/APIConnector.js",
     "./DynamicGrid/libs/ContextMenu.js",
+    "./DynamicGrid/libs/EventEmitter.js",
     "./DynamicGrid/libs/KeyboardShortcuts.js",
 ];
 
 const eventRegex = /eventEmitter\.emit\('([^']*)',/g;
 const events = [];
+
+const shortcutRegex = /\.addShortcut\('([^']*)',/g;
+const shortcuts = [];
 
 // Helper function to add delay
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -78,6 +83,16 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 console.log(`  ↳ Found event: ${eventName} in ${file} at line ${lineNumber}`);
             }
 
+            // Extract shortcuts from the current file
+            while ((match = shortcutRegex.exec(currFile)) !== null) {
+                //add event to list:
+                // {eventName: 'eventName', file: 'fileName', line: lineNumber}
+                const eventName = match[1];
+                const lineNumber = currFile.substring(0, match.index).split('\n').length;
+                shortcuts.push({ eventName, file: file.split('/').pop(), line: lineNumber });
+                console.log(`  ↳ Found shortcut: ${eventName} in ${file} at line ${lineNumber}`);
+            }
+
             await delay(100); // Small delay for each file
         }
 
@@ -91,6 +106,11 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const eventsFilePath = outputDir + 'events.json';
         fs.writeFileSync(eventsFilePath, JSON.stringify(events, null, 2));
         console.log(`↳  Events saved: ${eventsFilePath} (${events.length})`);
+
+        //save shortcuts to a file
+        const shortcutsFilePath = outputDir + 'shortcuts.json';
+        fs.writeFileSync(shortcutsFilePath, JSON.stringify(shortcuts, null, 2));
+        console.log(`↳  Shortcuts saved: ${shortcutsFilePath} (${shortcuts.length})`);
         await delay(300);
 
         console.log('\nMinifying combined file...');
@@ -147,3 +167,5 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         console.error('Error during minification:', error);
     }
 })();
+
+//MAKE A FILE THAT FINDS ALL SHORTCUTS IN THE FILES AND TAKES THE COMMENT RIGHT ABOVE IT TO GET THE DESCRIPTION

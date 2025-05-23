@@ -192,7 +192,7 @@ class DynamicGridUI {
      * @param {string} ui_config.containerId - The ID of the container for the grid. (required)
      * @param {number} ui_config.minColumnWidth - Minimum width for columns. (default: 5%)
      * @param {number} ui_config.rowHeight - Height of each row. (default: 40px)
-     * @param {number} ui_config.bufferedRows - Number of buffered rows. (default: 10)
+     * @param {number} ui_config.bufferedRows - Number of buffered rows added to the top AND bottom (default: 5)
      * @param {'header'|'content'|'both'|'none'} ui_config.autoFitCellWidth - Determines how cell widths are auto-fitted. (default: 'header', options: 'header', 'content', 'both', 'none')
      * @param {KeyboardShortcuts} dynamicGrid.keyboardShortcuts - Keyboard shortcuts for the grid.
      * @param {SJQLEngine} dynamicGrid.engine - The query engine for the grid.
@@ -213,12 +213,23 @@ class DynamicGridUI {
         this.scrollContainer = null;
 
         this.config = {
-            minColumnWidth: ui_config.minColumnWidth ?? 5,
+            minColumnWidth: ui_config.minColumnWidth ?? 50,
             rowHeight: ui_config.rowHeight ?? 40,
-            bufferedRows: ui_config.bufferedRows ?? 10,
+            bufferedRows: ui_config.bufferedRows ?? 5,
             autoFitCellWidth: ui_config.autoFitCellWidth ?? 'header',
 
             allowFieldEditing: ui_config.allowFieldEditing ?? false,
+        };
+
+        // Virtual scrolling properties
+        this.virtualScrolling = {
+            scrollTop: 0,
+            visibleRowsCount: 0,
+            startIndex: 0,
+            endIndex: 0,
+            totalHeight: 0,
+            topSpacer: null,
+            bottomSpacer: null
         };
 
         this.#_init(this.containerId);
@@ -227,8 +238,9 @@ class DynamicGridUI {
         this.UICacheRefresh = false;
         this.sortDirection = 'asc';
 
+        this.showData = [];
 
-        //set up context menu
+        // Set up context menu
         this.contextMenu = new ContextMenu({
             width: 250,
             style: {
@@ -243,44 +255,32 @@ class DynamicGridUI {
     }
 
     render(data) {
-
-        if (this.body && this.scrollContainer) {
-            this.body.innerHTML = '';
-            this.scrollContainer.innerHTML = '';
-            this.body?.remove();
-            this.scrollContainer?.remove();
-        }
-
         if (!data || data.length === 0) {
             return;
         }
 
-        const isGrouped = (data) => Array.isArray(firstItem(data));
-        const isGroupedData = isGrouped(data);
-        const columns = isGroupedData ? Object.keys(firstItem(data)[0]) : Object.keys(data[0]);
-        const firstDataItem = isGroupedData ? firstItem(data)[0] : data[0];
+        this.showData = data;
 
-        //check if the data has changed in its structure (can I keep the headers etc.)
-        const cacheHash = FastHash(columns)
+        const isGrouped = (data) => Array.isArray(firstItem(data));
+        const isGroupedData = isGrouped(this.showData);
+        const columns = isGroupedData ? Object.keys(firstItem(this.showData)[0]) : Object.keys(this.showData[0]);
+        const firstDataItem = isGroupedData ? firstItem(this.showData)[0] : this.showData[0];
+
+        // Check if the data has changed in its structure (can I keep the headers etc.)
+        const cacheHash = FastHash(columns);
         this.UICacheRefresh = this.UIChache !== cacheHash;
         this.UIChache = cacheHash;
 
         if (this.UICacheRefresh) {
-            this.table = this.#_createResizableTable(columns, firstDataItem, isGroupedData);
-            this.#_initResizerDelegation();
+            this.table = this.#_createResizableTable(columns.slice(1), firstDataItem, isGroupedData);
         }
 
-        this.#_renderTable(data, isGroupedData);
-        this.eventEmitter.emit('ui-rendered', { data });
-    }
+        this.#_renderTable(this.showData, columns.slice(1), isGroupedData);
 
-    toggleColumn(index) {
-        const columnWidth = this.columnWidths[index];
-        this.columnWidths[index] = columnWidth === 0 ? 100 : 0;
-        const showingColumns = this.columnWidths.filter(width => width > 0).length;
-        this.columnWidths = this.columnWidths.map(width => width === 0 ? 0 : 100 / showingColumns);
-        this.#_updateColumnWidths(this.table);
-        this.eventEmitter.emit('ui-column-toggled', { index, columnWidths: this.columnWidths });
+        // Set up virtual scrolling after rendering the table
+        this.#_setupVirtualScrolling();
+
+        this.eventEmitter.emit('ui-rendered', { ...this.showData });
     }
 
     // ======================================== PRIVATE METHODS ========================================
@@ -291,1184 +291,715 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
+        //ADD KEYBOARD SHORTCUTS
+
+        //autoFitCellWidth
+        this.keyboardShortcuts.addShortcut('ctrl+shift+a', () => {
+            this.autoFitCellWidth();
+        });
+
         this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 
-
-    #_initResizerDelegation() {
-        this.table.addEventListener('mousedown', (e) => {
-            const isMiddleButton = e.button === 1;
-
-            const resizer = e.target.closest('.resizer');
-            if (!resizer) return;
-
-            const index = parseInt(resizer.getAttribute('data-index'), 10);
-            let startX, startWidth, startNextWidth;
-
-            const table = this.table;
-            startX = e.clientX;
-            startWidth = this.columnWidths[index];
-            startNextWidth = this.columnWidths[index + 1];
-
-            const onMouseMove = (e) => {
-                const diff = e.clientX - startX;
-                const widthChange = (diff / table.offsetWidth) * 100;
-
-                const newWidth = startWidth + widthChange;
-                const newNextWidth = startNextWidth - widthChange;
-
-                if (newWidth >= this.config.minColumnWidth && newNextWidth >= this.config.minColumnWidth) {
-                    this.columnWidths[index] = Number(newWidth.toFixed(2));
-                    this.columnWidths[index + 1] = Number(newNextWidth.toFixed(2));
-                    this.#_updateColumnWidths(table);
-                }
-            };
-
-            const onMouseUp = () => {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            };
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        });
-    }
-
-
-    #_renderTable(data, isGrouped) {
-        const headers = isGrouped ? Object.keys(firstItem(data)[0]) : Object.keys(data[0]);
-        headers.remove('internal_id');
-
-        if (this.UICacheRefresh) {
-            console.log('re-rendering header');
-            // Generate header
-            this.header = this.#_createTableHeader(headers);
-            //this.table.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
-            this.table.style.display = 'grid';
-            this.table.style.gridTemplateRows = '40px 1fr';
-            this.table.style.width = '100%';
-            this.table.style.height = '100%';
-
-            this.#_updateColumnWidths(this.table);
-            this.table.appendChild(this.header);
-
-        }
-
-        // Virtual scrolling
-        this.scrollContainer?.remove();
-        this.scrollContainer = document.createElement('div');
-        this.scrollContainer.className = 'scroll-container';
-        this.scrollContainer.style.overflowY = 'auto';
-
-        if (this.UICacheRefresh) {
-            // Add a container for all rows
-            this.body = document.createElement('div');
-            this.body.className = 'body-container';
-        }
-
-        if (!isGrouped) {
-            this.scrollContainer.appendChild(this.body);
-            this.scrollContainer.addEventListener('scroll', () =>
-                this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer)
-            );
-
-            this.table.appendChild(this.scrollContainer);
-            this.container.appendChild(this.table);
-            this.#_updateVisibleRows(data, headers, this.body, this.scrollContainer);
-        }
-        else {
-
-            this.body = this.#_createGroupedTable(data, headers);
-
-            this.scrollContainer = document.createElement('div');
-            this.scrollContainer.className = 'scroll-container';
-            this.scrollContainer.style.overflowY = 'auto';
-
-            this.scrollContainer.appendChild(this.body);
-            this.table.appendChild(this.scrollContainer);
-            this.container.appendChild(this.table);
-        }
-    }
-
-    #_updateVisibleRows(data, headers, container, scrollContainer) {
-        const totalRows = data.length;
-        const totalHeight = totalRows * this.config.rowHeight;
-
-        container.style.position = 'relative';
-        container.style.height = `${totalHeight}px`;
-
-        const scrollTop = scrollContainer.scrollTop;
-        const containerHeight = scrollContainer.offsetHeight;
-
-        const startRow = Math.max(0, Math.floor(scrollTop / this.config.rowHeight) - this.config.bufferedRows);
-        const endRow = Math.min(totalRows, Math.ceil((scrollTop + containerHeight) / this.config.rowHeight) + this.config.bufferedRows);
-
-        const visibleRowsContainer = document.createElement('div');
-        visibleRowsContainer.style.position = 'absolute';
-        visibleRowsContainer.style.top = `${startRow * this.config.rowHeight}px`;
-        visibleRowsContainer.style.left = '0';
-        visibleRowsContainer.style.right = '0';
-        visibleRowsContainer.style.display = 'grid';
-        visibleRowsContainer.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
-
-        for (let i = startRow; i < endRow; i++) {
-            const tableRow = this.#_createTableRow();
-            tableRow.setAttribute('data-index', data[i]['internal_id']);
-            headers.forEach((header) => {
-                const cell = this.#_createTableCell(data[i], header);
-                tableRow.appendChild(cell);
-            });
-
-            visibleRowsContainer.appendChild(tableRow);
-        }
-
-        if (container.lastChild) {
-            container.removeChild(container.lastChild);
-        }
-        container.appendChild(visibleRowsContainer);
-        this.eventEmitter.emit('ui-visible-rows-updated', { startRow, endRow });
-    }
-
-
-    #_createGroupedTable(data, headers) {
-        this.body?.remove();
-
-        this.body = document.createElement('div');
-        this.body.className = 'body-container';
-
-        const keys = Object.keys(data);
-        for (const key of keys) {
-            const dataGroup = data[key];
-
-            const details = document.createElement('details');
-            details.open = false;
-            details.style.margin = '0';
-            details.style.padding = '0';
-            details.style.border = '0';
-            details.style.outline = '0';
-            details.style.fontSize = '100%';
-            details.style.verticalAlign = 'baseline';
-            details.style.backgroundColor = 'transparent';
-            details.style.display = 'block';
-
-            details.addEventListener('toggle', (e) => {
-                const isOpen = details.open;
-                if (isOpen) {
-                    this.#_updateVisibleRows(dataGroup, headers, viewer, scrollContainer);
-                }
-                else {
-                    viewer.innerHTML = '';
-                    viewer.removeAttribute('style');
-
-                }
-            })
-
-            const summary = document.createElement('summary');
-            summary.innerHTML = `<strong>${key}</strong>`;
-            details.appendChild(summary);
-
-            const scrollContainer = document.createElement('div');
-            scrollContainer.className = 'scroll-container';
-            scrollContainer.style.overflowY = 'auto';
-            scrollContainer.style.maxHeight = '700px'; // Example height, customize as needed
-
-            const viewer = document.createElement('div');
-            viewer.className = 'viewer';
-            scrollContainer.appendChild(viewer);
-
-            details.appendChild(scrollContainer);
-
-            // Populate rows inside viewer with virtual scrolling
-            scrollContainer.addEventListener('scroll', () => {
-                this.#_updateVisibleRows(dataGroup, headers, viewer, scrollContainer);
-            });
-
-            this.body.appendChild(details);
-        }
-
-        return this.body;
-    }
-
     //======================================== TABLE FACTORY ========================================
-    #_createResizableTable(columns, data, isgrouped) {
+    #_createResizableTable() {
         if (!this.UICacheRefresh)
             return this.table;
         else
             this.table?.remove();
 
-        if (isgrouped)
-        {
-            columns = Object.keys(data[0]);
-        }
-
-        this.columnWidths = this.#_calculateColumnWidths(data, columns);
-
         this.table = document.createElement('div');
         this.table.className = 'table';
 
-        // Apply initial column widths
-        this.#_updateColumnWidths(this.table);
         return this.table;
     }
 
-    // #_calculateColumnWidths(data, columns) {
-    //     columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
-    //
-    //     //base the width of the columns on the length of the header as a percentage of the total header length
-    //     if (this.config.autoFitCellWidth === 'header') {
-    //         const charCount = columns.reduce((acc, header) => acc + header.length, 0);
-    //         this.columnWidths = columns.map(header => (header.length / charCount) * 100);
-    //     }
-    //     //base the width of the columns on the length of the content as a percentage of the total content length
-    //     else if (this.config.autoFitCellWidth === 'content') {
-    //         const charCount = columns.reduce((acc, header) => acc + Math.max(data[header]?.toString().length ?? 1, 5), 0);
-    //         this.columnWidths = columns.map(header => (Math.max(data[header]?.toString().length ?? 1, 5) / charCount) * 100);
-    //     }
-    //     //base the width of the columns on the length of the header and content as a percentage of the total header and content length
-    //     else if (this.config.autoFitCellWidth === 'both') {
-    //         const charCount = columns.reduce((acc, header) => acc + Math.max(header.length, 5) + Math.max(data[header]?.toString().length ?? 1, 5), 0);
-    //         this.columnWidths = columns.map(header => ((Math.max(header.length, 5) + Math.max(data[header]?.toString().length ?? 1, 5)) / charCount) * 100);
-    //     }
-    //     //use 1/n*100% for each column where n is the number of columns
-    //     else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
-    //         this.columnWidths = Array(columns.length).fill(100 / columns.length);
-    //     }
-    //
-    //     return this.columnWidths;
-    // }
+    #_renderTable(data, columns, isGroupedData) {
+        const tableExists = this.table && this.table.parentNode;
+        const tableHeaderExists = this.headerTable && this.headerTable.parentNode;
+        const bodyTableExists = this.bodyTable && this.bodyTable.parentNode;
 
-    #_calculateColumnWidths(data, columns) {
-        columns = columns.filter(column => column !== 'internal_id'); // Remove 'internal_id'
-
-        if (this.config.autoFitCellWidth === 'header') {
-            //the widths are a list of the amount of characters in the header per cell
-            this.columnWidths = columns.map(header => header.length);
-        }
-        else if (this.config.autoFitCellWidth === 'content') {
-            //the widths are a list of the amount of characters in the content per cell
-            this.columnWidths = columns.map(header => Math.min(...data.map(item => item[header]?.toString().length ?? 0), 5));
-        }
-        else if (this.config.autoFitCellWidth === 'both') {
-            //the widths are a list of the amount of characters in the header and content per cell + the first row of data / 2
-            this.columnWidths = columns.map(header => Math.max(header.length, 5) + Math.min(...data.map(item => item[header]?.toString().length ?? 0), 5));
-        }
-        else if (this.config.autoFitCellWidth === 'none' || !this.config.autoFitCellWidth) {
-            this.columnWidths = columns.map(() => 5);
+        if (!tableExists) {
+            this.table = document.createElement('div');
+            this.table.className = 'dynamic-grid-table';
         }
 
-        return this.columnWidths;
-    }
+        if (!tableHeaderExists) {
+            this.headerTable = document.createElement('table');
+            this.headerTable.className = 'dynamic-grid-table-header';
 
-    #_createTableHeader(headers) {
+            const colgroup = this.#_createColGroup(columns);
+            this.colGroup1 = colgroup;
 
-        const createTableCell = (headers) => {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.textContent = headers;
+            this.headerTable.appendChild(colgroup);
+            this.headerTable.appendChild(this.#_createHeader(columns, isGroupedData, colgroup));
 
-            if (!this.engine.headers[headers].isEditable) {
-                //subtle styling for non-editable cells
-                cell.style.backgroundColor = '#fafafa';
-                cell.style.color = '#333';
-                cell.style.fontStyle = 'italic';
-                cell.style.cursor = 'default';
-            }
-
-            return cell;
+            this.table.appendChild(this.headerTable);
         }
 
-        const header = document.createElement('div');
-        header.className = 'row header';
-        header.style.display = 'grid';
-        header.style.gridTemplateColumns = headers.map((_, index) => `var(--column-width-${index + 1})`).join(' ');
+        if (!bodyTableExists) {
+            // Create scroll container for the body
+            this.scrollContainer = document.createElement('div');
+            this.scrollContainer.className = 'dynamic-grid-scroll-container';
+            this.scrollContainer.style.position = 'relative';
+            this.scrollContainer.style.width = '100%';
 
-        // Create header row
-        headers.forEach((_header, index) => {
-            const cell = createTableCell(_header);
-            cell.title = _header;
-            cell.setAttribute('value_type', this.engine.headers[_header].type);
-            cell.setAttribute('editable', this.engine.headers[_header].isEditable);
+            // BODY
+            this.bodyTable = document.createElement('table');
+            this.bodyTable.className = 'dynamic-grid-table-body';
 
-            cell.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.sortColumn !== _header) {
-                    this.sortColumn = _header;
-                    this.sortDirection = 'asc';
-                }
-                else {
-                    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-                }
-                this.engine.setSort(this.sortColumn, this.sortDirection);
-                this.render(this.engine.runCurrentQuery());
-            });
+            const colgroup2 = this.#_createColGroup(columns);
+            this.colGroup2 = colgroup2;
 
-            cell.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.engine.getPlugin(cell.getAttribute('value_type')).showMore(cell.title, cell, this.engine, this);
-            });
+            this.bodyTable.appendChild(colgroup2);
 
-            index < headers.length - 1 && cell.appendChild(this.#_createResizer(index));
+            // Create spacers for virtual scrolling
+            this.virtualScrolling.topSpacer = document.createElement('tr');
+            this.virtualScrolling.topSpacer.style.height = '0px';
+            this.virtualScrolling.topSpacer.className = 'virtual-scroll-spacer top-spacer';
 
-            header.appendChild(cell);
-        });
+            this.virtualScrolling.bottomSpacer = document.createElement('tr');
+            this.virtualScrolling.bottomSpacer.style.height = '0px';
+            this.virtualScrolling.bottomSpacer.className = 'virtual-scroll-spacer bottom-spacer';
 
-
-        return header;
-    }
-
-    #_createTableRow() {
-        const row = document.createElement('div');
-        row.className = 'row';
-        row.style.display = 'contents';
-        return row;
-    }
-
-    #_createTableCell(data, column) {
-        const content = data[column];
-        const headerData = this.engine.headers[column];
-        const plugin = this.engine.getPlugin(headerData.type);
-
-        if (!this.config.allowFieldEditing || !headerData.isEditable) {
-            const cell =  plugin.renderCell(content)
-
-            cell.classList.add('cell');
-
-            if (!headerData.isEditable) {
-                //subtle styling for non-editable cells
-                cell.style.backgroundColor = '#fafafa';
-                cell.style.color = '#333';
-                cell.style.fontStyle = 'italic';
-                cell.style.cursor = 'default';
-            }
-
-            return cell;
+            this.scrollContainer.appendChild(this.bodyTable);
+            this.table.appendChild(this.scrollContainer);
         }
         else {
-            const onEdit = (callback) => {
-                callback = plugin.parseValue(callback);
-                this.engine.updateTracker.addEdit({ column: column, row: data, previousValue: content, newValue: callback });
-                this.engine.alterData(data['internal_id'], column, callback);
-                this.eventEmitter.emit('ui-cell-edit', { column: column, row: data, previousValue: content, newValue: callback });
-            }
+            this.bodyTable.innerHTML = '';
+            this.bodyTable.appendChild(this.colGroup2);
+        }
 
-            const cell = plugin.renderEditableCell(content, onEdit);
-            cell.classList.add('cell');
-            return cell;
+        // Create the body with virtual scrolling
+        this.body = this.#_createVirtualBody();
+
+        this.bodyTable.appendChild(this.body);
+        this.container.appendChild(this.table);
+    }
+
+    #_createColGroup(headers) {
+        const colgroup = document.createElement('colgroup');
+        const topLeftCorner = document.createElement('col');
+        topLeftCorner.style.width = `30px`;
+        colgroup.appendChild(topLeftCorner);
+
+        var width = 0;
+        for (const key in headers) {
+            if (typeof headers[key] !== 'string') continue;
+            const col = document.createElement('col');
+            width += headers[key].width ?? 100;
+            col.style.width = `${headers[key].width ?? 100}px`;
+            col.style.minWidth = `${this.config.minColumnWidth}px`;
+            colgroup.appendChild(col);
+        }
+        colgroup.style.width = `${width}px`;
+        return colgroup;
+    }
+
+    #_createHeader(columns) {
+        const thead = document.createElement('thead');
+        const tr = document.createElement('tr');
+        tr.className = 'header-row';
+
+        const thTopLeftCorner = document.createElement('th');
+        thTopLeftCorner.className = 'header-cell top-left-corner';
+        tr.appendChild(thTopLeftCorner);
+
+        columns.forEach((columnName, colIndex) => {
+            colIndex++;
+
+            const plugin = this.engine.getPlugin(columnName);
+
+            const th = document.createElement('th');
+            th.className = 'header-cell';
+            th.style.height = `${this.config.rowHeight}px`;
+            th.style.position = 'relative';
+
+            const div = document.createElement('div');
+            div.className = 'header-cell-content';
+
+            const button = document.createElement('button');
+            button.className = 'header-cell-button';
+            button.innerText = '▼';
+
+            const span = document.createElement('span');
+            span.className = 'header-cell-text';
+            span.innerText = columnName;
+
+            div.appendChild(button);
+            div.appendChild(span);
+            th.appendChild(div);
+
+            // === ADD: RESIZE HANDLE ===
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'header-resize-handle';
+
+            let isDragging = false;
+            let startX = 0;
+            let startWidth = 0;
+            const colElement = this.colGroup1?.children[colIndex];
+            let newWidth = 0;
+
+            resizeHandle.addEventListener('mouseenter', () => {
+                resizeHandle.classList.add('hover');
+            });
+            resizeHandle.addEventListener('mouseleave', () => {
+                if (!isDragging) resizeHandle.classList.remove('hover');
+            });
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startWidth = colElement?.offsetWidth || 100;
+
+                const onMouseMove = (e) => {
+                    if (!isDragging || !colElement) return;
+                    const delta = e.clientX - startX;
+                    newWidth = Math.max(this.config.minColumnWidth, startWidth + delta);
+                    newWidth = Math.max(newWidth, this.config.minColumnWidth);
+                    colElement.style.width = `${newWidth}px`;
+                };
+
+                const onMouseUp = () => {
+                    isDragging = false;
+                    resizeHandle.classList.remove('hover');
+                    this.colGroup2.children[colIndex].style.width = `${newWidth}px`;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            th.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                plugin.showMore(columnName, th, this.engine, this);
+            });
+
+            th.appendChild(resizeHandle);
+            tr.appendChild(th);
+        });
+
+        thead.appendChild(tr);
+        return thead;
+    }
+
+    #_createVirtualBody() {
+        const tbody = document.createElement('tbody');
+
+        // Add top spacer for virtual scrolling
+        tbody.appendChild(this.virtualScrolling.topSpacer);
+
+        // Initial render of visible rows (empty until scroll handler calculates what's needed)
+
+        // Add bottom spacer for virtual scrolling
+        tbody.appendChild(this.virtualScrolling.bottomSpacer);
+
+        this.body = tbody;
+        return tbody;
+    }
+
+    #_setupVirtualScrolling() {
+        if (!this.table || !this.showData.length) return;
+
+        // Calculate total height of all rows
+        const totalRows = this.showData.length;
+        this.virtualScrolling.totalHeight = totalRows * this.config.rowHeight;
+
+        // Calculate how many rows can be visible at once
+        const visibleHeight = this.table.clientHeight || 400; // Default height if not set
+        this.virtualScrolling.visibleRowsCount = Math.ceil(visibleHeight / this.config.rowHeight);
+
+        // Add buffer rows above and below
+        const totalVisibleRows = this.virtualScrolling.visibleRowsCount + (this.config.bufferedRows * 2);
+
+        // Set initial range
+        this.virtualScrolling.startIndex = 0;
+        this.virtualScrolling.endIndex = Math.min(totalVisibleRows, totalRows);
+
+        // Attach scroll event listener to the correct element
+        this.table.addEventListener('scroll', this.#_handleScroll.bind(this));
+
+        // Initial render of visible rows
+        this._updateVisibleRows();
+
+        // Set initial scroll position (if needed)
+        if (this.virtualScrolling.scrollTop > 0) {
+            this.table.scrollTop = this.virtualScrolling.scrollTop;
         }
     }
 
-    #_createResizer(index) {
-        const resizer = document.createElement('div');
-        resizer.className = 'resizer';
-        resizer.setAttribute('data-index', index);
+    #_handleScroll(event) {
+        const scrollTop = event.target.scrollTop;
 
-        let startX, startWidth, startNextWidth;
+        if (this.virtualScrolling.scrollTop === scrollTop && scrollTop !== 0) return;
 
-        resizer.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            const table = resizer.closest('.table');
-            startX = e.clientX;
-            startWidth = this.columnWidths[index];
-            startNextWidth = this.columnWidths[index + 1];
+        const rowIndex = Math.floor(scrollTop / this.config.rowHeight);
+        const startIndex = Math.max(0, rowIndex - this.config.bufferedRows);
+        const endIndex = Math.min(
+            this.showData.length,
+            rowIndex + this.virtualScrolling.visibleRowsCount + this.config.bufferedRows
+        );
 
-            const onMouseMove = (e) => {
-                const diff = e.clientX - startX;
-                const widthChange = (diff / table.offsetWidth) * 100;
-
-                // Calculate new widths
-                const newWidth = startWidth + widthChange;
-                const newNextWidth = startNextWidth - widthChange;
-
-                // Apply changes only if both columns remain within min width
-                if (newWidth >= this.config.minColumnWidth && newNextWidth >= this.config.minColumnWidth) {
-                    this.columnWidths[index] = Number(newWidth.toFixed(2));
-                    this.columnWidths[index + 1] = Number(newNextWidth.toFixed(2));
-                    this.#_updateColumnWidths(table);
-                }
-            };
-
-            const onMouseUp = () => {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            };
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        });
-
-        return resizer;
+        if (startIndex !== this.virtualScrolling.startIndex || endIndex !== this.virtualScrolling.endIndex) {
+            this.virtualScrolling.startIndex = startIndex;
+            this.virtualScrolling.endIndex = endIndex;
+            this._updateVisibleRows();
+        }
     }
 
-    #_updateColumnWidths(table) {
-        // this.columnWidths.forEach((width, index) => {
-        //     table.style.setProperty(`--column-width-${index + 1}`, `${width}%`);
-        // });
-        this.columnWidths.forEach((width, index) => {
-            table.style.setProperty(`--column-width-${index + 1}`, `${width}ch`);
+    _updateVisibleRows() {
+
+        const currentRows = Array.from(this.body.querySelectorAll('tr:not(.virtual-scroll-spacer)'));
+        currentRows.forEach(row => row.remove());
+
+        const fragment = document.createDocumentFragment();
+        for (let i = this.virtualScrolling.startIndex; i < this.virtualScrolling.endIndex; i++) {
+            const row = this.#_createRow(i);
+            fragment.appendChild(row);
+        }
+
+        this.virtualScrolling.topSpacer.after(fragment);
+
+        this.virtualScrolling.topSpacer.style.height = `${this.virtualScrolling.startIndex * this.config.rowHeight}px`;
+        const bottomSpacerHeight = Math.max(
+            0,
+            (this.showData.length - this.virtualScrolling.endIndex) * this.config.rowHeight
+        );
+        this.virtualScrolling.bottomSpacer.style.height = `${bottomSpacerHeight}px`;
+    }
+
+    #_createRow(index) {
+        const tr = document.createElement('tr');
+        tr.dataset.index = index;
+
+        this.getData(index, false).then((data) => {
+            const numberCell = document.createElement('td');
+            numberCell.className = 'body-cell';
+            numberCell.style.height = `${this.config.rowHeight}px`;
+            numberCell.innerText = index + 1;
+
+            tr.appendChild(numberCell);
+
+            Object.entries(data).forEach(([key, value]) => {
+                if (key === 'internal_id') return;
+                const plugin = this.engine.getPlugin(key);
+
+                // const td = this.engine.headers[key].isEditable ?
+                //     plugin.renderEditableCell(value, (value) => {
+                //         this.eventEmitter.emit('ui-cell-edit', { index, key, value });
+                //         this.engine.updateTracker.addEdit({ index, key, value });
+                //     }) :
+                //     plugin.renderCell(value);
+
+                const onEdit = (callback) => {
+                    callback = plugin.parseValue(callback);
+                    this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
+                    this.engine.alterData(data['internal_id'], key, callback);
+                    this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
+                }
+
+                const td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
+
+                // If td is not a td html element, log it, the value and the key and the plugin
+                if (!(td instanceof HTMLTableCellElement)) {
+                    console.error('[plugin].renderCell() did not return a td element', { td, value, key, plugin });
+                    return;
+                }
+
+                td.className = 'body-cell';
+                td.style.height = `${this.config.rowHeight}px`;
+
+                tr.appendChild(td);
+            });
         });
 
+        return tr;
+    }
+
+    /**
+     * Retrieves the data at the specified index.
+     * @param index {number} - The index of the data to retrieve.
+     * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
+     */
+    getData(index, removeInternalId = true) {
+        if (!this.showData || index >= this.showData.length) {
+            return Promise.reject(new Error('No data to return (data is empty, or index is out of bounds)'));
+        }
+
+        index = index < 0 ? this.showData.length + index : index;
+        const { internal_id, ...data } = this.showData[index];
+        return Promise.resolve(removeInternalId ? data : this.showData[index]);
+    }
+
+    #_approximateColumnWidth() {
+        function approximateWidth(sampleData) {
+            const maxLength = Math.max(...sampleData.map((item) => String(item).length));
+            return Math.max(50, maxLength * 8.75); // 8 pixels per character, minimum width of 50px
+        }
+
+        const columns = this.engine.getColumns();
+        const columnWidths = {};
+
+        columns.forEach((column) => {
+            const plugin = this.engine.getPlugin(column);
+            const sampleData = this.showData.map((item) => item[column]);
+            columnWidths[column] = approximateWidth(sampleData);
+        });
+
+        return columnWidths;
+    }
+
+    #_setWidths(widths) {
+        for (let i = 0; i < widths.length; i++) {
+            this.setWidth(i, widths[i]);
+        }
+    }
+
+    autoFitCellWidth() {
+        this.#_setWidths(Object.values(this.#_approximateColumnWidth()))
+    }
+
+    setWidth(column, width) {
+        this.colGroup1.children[column + 1].style.width = `${width}px`;
+        this.colGroup2.children[column + 1].style.width = `${width}px`;
     }
 }
 
-/*
-optimizations:
-[ ] virtual scrolling
-[ ] add one event listener to the table and use event delegation (use e.target to get the clicked element)
-
-
-
-*/
-
-
-// ./DynamicGrid/typePlugins/TypePlugin.js
+// ./DynamicGrid/apiBase/APIBase.js
 /**
- * Abstract base class for type-specific plugins that handle data operations and rendering.
- * @abstract
+ * Base API client class for handling REST API operations.
+ * This class provides a foundation for API interactions with consistent error handling,
+ * request formatting, authentication, and other common API functionality.
  */
-class TypePlugin {
+class APIBase {
     /**
-     * Standard operators available to all type plugins
-     * @readonly
-     * @static
+     * Creates a new APIBase instance.
+     * @param {DynamicGrid} dynamicGrid - The DynamicGrid instance.
+     * @param {Object} config - Configuration options for the API.
+     * @param {string} [config.baseUrl='https://api.example.com'] - The base URL for the API.
+     * @param {Object} [config.headers={}] - Default headers to include with each request.
+     * @param {number} [config.timeout=30000] - Request timeout in milliseconds.
+     * @param {boolean} [config.useAuth=false] - Whether to use authentication.
+     * @param {string} [config.authToken=null] - Authentication token.
+     * @param {string} [config.apiVersion='v1'] - API version.
      */
-    static DEFAULT_OPERATORS = ['==', '!=', 'in'];
+    constructor(dynamicGrid, config = {}) {
+        this.dynamicGrid = dynamicGrid;
+
+        this.baseUrl = config.baseUrl || 'https://api.example.com';
+        this.headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...config.headers
+        };
+        this.timeout = config.timeout || 30000;
+        this.useAuth = config.useAuth || false;
+        this.authToken = config.authToken || null;
+        this.apiVersion = config.apiVersion;
+        this.abortControllers = new Map();
+
+        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
+    }
 
     /**
-     * Initialize the plugin
+     * Sets the authentication token.
+     * @param {string} token - The authentication token.
      */
-    constructor() {
-        if (this.constructor === TypePlugin) {
-            throw new Error('TypePlugin is abstract and cannot be instantiated directly');
+    setAuthToken(token) {
+        this.authToken = token;
+        this.useAuth = !!token;
+    }
+
+    /**
+     * Clears the authentication token.
+     */
+    clearAuthToken() {
+        this.authToken = null;
+        this.useAuth = false;
+    }
+
+    /**
+     * Constructs the complete URL for an endpoint.
+     * @param {string} endpoint - The API endpoint.
+     * @returns {string} The complete URL.
+     */
+    buildUrl(endpoint) {
+        // Remove leading slash if present
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
+        if (this.apiVersion)
+            return `${this.baseUrl}/${this.apiVersion}/${cleanEndpoint}`;
+        return `${this.baseUrl}/${cleanEndpoint}`;
+    }
+
+    /**
+     * Prepares headers for a request, including auth if enabled.
+     * @returns {Object} The prepared headers.
+     */
+    prepareHeaders() {
+        const headers = { ...this.headers };
+
+        if (this.useAuth && this.authToken) {
+            headers['Authorization'] = `Bearer ${this.authToken}`;
         }
 
-        this.name = this.constructor.name;
-        //if this.operators is set and the value it is set to is not equal to the default operators, then set the operators to those operators + the default operators
-        this.operators = ['==', '!=', 'in'];
+        return headers;
     }
 
     /**
-     * Validate if a value is acceptable for this type
-     * @param {*} value The value to validate
-     * @returns {boolean} True if valid
-     * @abstract
+     * Makes a request to the API.
+     * @param {string} method - The HTTP method (GET, POST, PUT, DELETE, etc.).
+     * @param {string} endpoint - The API endpoint.
+     * @param {Object} [options={}] - Request options.
+     * @param {Object} [options.data=null] - Data to send with the request.
+     * @param {Object} [options.params={}] - URL parameters.
+     * @param {Object} [options.headers={}] - Additional headers.
+     * @param {boolean} [options.skipAuth=false] - Whether to skip authentication.
+     * @param {number} [options.timeout] - Custom timeout for this request.
+     * @param {string} [options.requestId] - Unique identifier for the request (for cancellation).
+     * @returns {Promise<Object>} The response data.
+     * @throws {APIError} If the request fails.
      */
-    validate(value) {
-        throw new Error('validate must be implemented by subclass');
-    }
+    async request(method, endpoint, options = {}) {
+        const {
+            data = null,
+            params = {},
+            headers = {},
+            skipAuth = false,
+            timeout = this.timeout,
+            requestId = Date.now().toString()
+        } = options;
 
-    /**
-     * Parses the string representation of a value into the appropriate type
-     * @param {string} value The string value to parse
-     * @returns {*} Parsed value
-     * @abstract
-     */
-    parseValue(value) {
-        throw new Error('parseValue must be implemented by subclass');
-    }
-
-    /**
-     * Evaluate a query against data
-     * @param {Object} query Query to evaluate
-     * @param {Map<string, Set>} dataIndexes Map of column names to indices
-     * @param {Array<Array>} data Data rows to evaluate
-     * @param {Set<number>} indices Set of row indices to consider
-     * @returns {*} Query result
-     * @abstract
-     */
-    evaluate(query, dataIndexes, data, indices) {
-        throw new Error('evaluate must be implemented by subclass');
-    }
-
-    /**
-     * Evaluate a condition against a data value
-     * @param {*} dataValue Value from data
-     * @param {string} operator Comparison operator
-     * @param {*} compareValue Value to compare against
-     * @returns {boolean} Result of comparison
-     * @abstract
-     */
-    evaluateCondition(dataValue, operator, compareValue) {
-        throw new Error('evaluateCondition must be implemented by subclass');
-    }
-
-    /**
-     * Sort data based on query parameters
-     * @param {{field: string, value: 'asc'|'desc'}} query Sort parameters
-     * @param {Array<Object>} data Data to sort
-     * @returns {Array<Object>} Sorted data
-     */
-    sort(query, data) {
-        const { field, value: direction } = query;
-
-        return [...data].sort((a, b) => {
-            const comparison = String(a[field]).localeCompare(String(b[field]));
-            return direction === 'asc' ? comparison : -comparison;
-        });
-    }
-
-    /**
-     * Check if an operator is supported
-     * @param {string} operator Operator to check
-     * @returns {boolean} True if operator is supported
-     * @protected
-     */
-    checkOperator(operator) {
-        return this.operators.find(op => op === operator) || false;
-    }
-
-    /**
-     * Get all supported operator symbols
-     * @returns {string[]} Array of operator symbols
-     * @protected
-     */
-    getOperatorSymbols() {
-        return [...this.operators];
-    }
-
-
-    /**
-     * Create a table data cell
-     * @param {*} value Cell value (that can be .toString()ed)
-     * @return {HTMLElement} Data cell element (div)
-     * @virtual (should be overridden, not required)
-     */
-    renderCell(value) {
-        const cell = document.createElement('td');
-        cell.innerText = String(value);
-        return cell;
-    }
-
-    /**
-     * Create a table data cell for editing
-     * @param {*} value Cell value (that can be .toString()ed)
-     * @param {Function} onEdit Callback function for when cell is edited
-     * @returns {HTMLElement} Data cell element (div)
-     * @virtual (should be overridden, not required)
-     */
-    renderEditableCell(value, onEdit) {
-        const cell = document.createElement('td');
-        cell.innerHTML = String(value);
-        cell.contentEditable = true;
-        cell.spellcheck = false;
-
-        cell.addEventListener('focusout', (e) => {
-            onEdit(cell.innerText);
-        });
-
-        cell.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                cell.blur();
-                e.preventDefault();
+        // Create URL with query parameters
+        let url = this.buildUrl(endpoint);
+        if (Object.keys(params).length > 0) {
+            const queryParams = new URLSearchParams();
+            for (const [key, value] of Object.entries(params)) {
+                queryParams.append(key, value);
             }
-        });
+            url += `?${queryParams.toString()}`;
+        }
 
-        return cell;
+        // Prepare request headers
+        const requestHeaders = {
+            ...this.prepareHeaders(),
+            ...headers
+        };
+
+        if (skipAuth) {
+            delete requestHeaders['Authorization'];
+        }
+
+        // Prepare request options
+        const fetchOptions = {
+            method,
+            headers: requestHeaders,
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            redirect: 'follow',
+            referrerPolicy: 'no-referrer',
+        };
+
+        // Add body for methods that support it
+        if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) && data !== null) {
+            fetchOptions.body = JSON.stringify(data);
+        }
+
+        // Set up abort controller for timeout
+        const controller = new AbortController();
+        fetchOptions.signal = controller.signal;
+        this.abortControllers.set(requestId, controller);
+
+        // Set timeout
+        const timeoutId = setTimeout(() => {
+            if (this.abortControllers.has(requestId)) {
+                controller.abort();
+                this.abortControllers.delete(requestId);
+            }
+        }, timeout);
+
+        try {
+            const response = await fetch(url, fetchOptions);
+            clearTimeout(timeoutId);
+            this.abortControllers.delete(requestId);
+
+            // Handle response
+            return await this.handleResponse(response);
+        } catch (error) {
+            clearTimeout(timeoutId);
+            this.abortControllers.delete(requestId);
+
+            if (error.name === 'AbortError') {
+                throw new APIError('Request timeout', 'TIMEOUT', 408);
+            }
+
+            throw new APIError(
+                error.message || 'Network error',
+                'NETWORK_ERROR',
+                0,
+                error
+            );
+        }
     }
 
     /**
-     * Handle additional data loading
-     * @param {string} key Data key
-     * @param {HTMLElement} element Clicked element
-     * @param {SJQLEngine} engine Query engine instance
-     * @param {DynamicGridUI} UI User interface instance
-     * @virtual (should be overridden, not required)
+     * Handles API responses and error cases.
+     * @param {Response} response - The fetch Response object.
+     * @returns {Promise<Object>} The parsed response data.
+     * @throws {APIError} If the response indicates an error.
      */
-    showMore(key, element, engine, UI) {
-        const {x, y, width, height} = element.getBoundingClientRect();
-        const typeOptions = engine.headers[key];
+    async handleResponse(response) {
+        let data;
 
-        console.log(typeOptions);
-
-        UI.contextMenu.clear();
-        UI.contextMenu
-            .button('Sort ' + key + ' ascending', () => {
-                engine.setSort(key, 'asc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Sort ' + key + ' descending', () => {
-                engine.setSort(key, 'desc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Unsort ' + key, () => {
-                engine.setSort(key);
-                UI.render(engine.runCurrentQuery());
-            });
-
-        if (!typeOptions.isUnique && typeOptions.isGroupable) {
-            UI.contextMenu
-            .separator()
-            .button('Group by ' + key, () => {
-                engine.setGroup(key);
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Un-group', () => {
-                engine.setGroup();
-                UI.render(engine.runCurrentQuery());
-            })
-        }
-
-        // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
-    }
-}
-
-// ./DynamicGrid/typePlugins/InherentTypePlugin.js
-class stringTypePlugin extends TypePlugin {
-    constructor() {
-        super();
-        this.operators = ['%=', '=%', '*=', '!*=', '==', '!=', 'in'] //starts with, ends with, contains, does not contain, equals, not equals, in
-    }
-
-    validate(value) {
-        return typeof value === 'string';
-    }
-
-    parseValue(value) {
-        if (value === null || value === undefined) return null;
-        return String(value);
-    }
-
-    //query = {field: 'name', operator: 'eq', value: 'John'}
-    evaluate(query, dataIndexes, data, indices) {
-        //loop over the indices and remove the ones that do not match the query
-        //console.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for stringTypePlugin');
-        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
-            for (const index of dataIndexes.keys()) {
-                if (!this.evaluateCondition(index, query.operator, query.value)) {
-                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
-                }
+        // Try to parse the response body
+        try {
+            // Check content type to determine parsing method
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                data = await response.text();
             }
-        }
-        else {
-            for (const index of indices) {
-                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                    indices.delete(index);
-                }
-            }
+        } catch (error) {
+            throw new APIError(
+                'Failed to parse response',
+                'PARSE_ERROR',
+                response.status,
+                error
+            );
         }
 
-        return indices;
+        // Handle error responses
+        if (!response.ok) {
+            const errorCode = data.error?.code || 'API_ERROR';
+            const errorMessage = data.error?.message || 'Unknown API error';
+
+            throw new APIError(
+                errorMessage,
+                errorCode,
+                response.status,
+                null,
+                data
+            );
+        }
+
+        return data;
     }
 
-    //dataValue is the value of the field in the data, value is the value in the query
-    evaluateCondition(dataValue, operator, value) {
-        if (operator === 'in') {
-            value = JSON.parse(value);
+    /**
+     * Cancels an ongoing request.
+     * @param {string} requestId - The ID of the request to cancel.
+     * @returns {boolean} Whether a request was cancelled.
+     */
+    cancelRequest(requestId) {
+        if (this.abortControllers.has(requestId)) {
+            const controller = this.abortControllers.get(requestId);
+            controller.abort();
+            this.abortControllers.delete(requestId);
+            return true;
         }
-
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.includes(dataValue);
-        }
-
-        switch (operator) {
-            case '==':
-                return dataValue === value;
-            case '!=':
-                return dataValue !== value;
-            case '%=':
-                return dataValue.startsWith(value);
-            case '=%':
-                return dataValue.endsWith(value);
-            case '*=':
-                return dataValue.includes(value);
-            case '!*=':
-                return !dataValue.includes(value);
-        }
-
         return false;
     }
 
-    sort(query, data) {
-        const {field, value} = query;
-        return data.sort((a, b) => {
-            if (value === 'asc') {
-                return a[field].localeCompare(b[field]);
-            }
-            else if (value === 'desc') {
-                return b[field].localeCompare(a[field]);
-            }
-        });
-    }
-}
-
-class numberTypePlugin extends TypePlugin {
-    constructor() {
-        super();
-        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in', '><']; //greater than, less than, greater than or equal, less than or equal, equals, not equals, in, between
-    }
-
-    validate(value) {
-        // Check if the value is a number or can be converted to a number
-        if (value === null || value === undefined) return false;
-
-        return !isNaN(Number(value)) ||
-               (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
-    }
-
-    parseValue(value) {
-        if (value === null || value === undefined) return null;
-        return Number(value);
-    }
-
-    //indices is a set of indices that match the query
-    evaluate(query, dataIndexes, data, indices) {
-
-        //loop over the indices and remove the ones that do not match the query
-        //.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
-        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
-            for (const index of dataIndexes.keys()) {
-                if (!this.evaluateCondition(index, query.operator, query.value)) {
-                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
-                }
-            }
+    /**
+     * Cancels all ongoing requests.
+     */
+    cancelAllRequests() {
+        for (const controller of this.abortControllers.values()) {
+            controller.abort();
         }
-        else {
-            for (const index of indices) {
-                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                    indices.delete(index);
-                }
-            }
-        }
-
-        return indices;
+        this.abortControllers.clear();
     }
 
-    evaluateCondition(dataValue, operator, value) {
-
-        if (operator === 'in') {
-            value = JSON.parse(value);
-        }
-        else if (operator === '><') {
-            value = value.split("-");
-        }
-
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.includes(dataValue);
-        }
-
-        if (Array.isArray(value) && value.length > 0 && operator === '><') {
-            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
-            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
-
-            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
-
-            return dataValue >= value[0] && dataValue <= value[1];
-        }
-
-
-
-        dataValue = Number(dataValue);
-        value = Number(value);
-
-        switch (operator) {
-            case '>':
-                return dataValue > value;
-            case '<':
-                return dataValue < value;
-            case '>=':
-                return dataValue >= value;
-            case '<=':
-                return dataValue <= value;
-            case '==':
-                return dataValue === value;
-            case '!=':
-                return dataValue !== value;
-        }
+    /**
+     * Fetches data from the API.
+     * @abstract
+     * @param {Object} [params={}] - URL parameters.
+     * @param {Object} [options={}] - Additional request options.
+     * @returns {Promise<Object>} The response data.
+     * @throws {Error} If the method is not overridden in a subclass.
+     */
+    async fetchData(params = {}, options = {}) {
+        throw new Error('Method "fetchData" must be implemented in a subclass');
     }
 
-    renderCell(value) {
-        const cell = document.createElement('div');
-        if (isNaN(value)) {
-            cell.innerText = '';
-            return cell;
-        }
-
-        const parts = value.toString().split("."); // Ensure two decimal places
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
-        cell.textContent = parts.join(",");
-        return cell;
+    /**
+     * Posts data to the API.
+     * @abstract
+     * @param {Object} data - The data to be posted.
+     * @param {Object} [options={}] - Additional request options.
+     * @returns {Promise<Object>} The response data.
+     * @throws {Error} If the method is not overridden in a subclass.
+     */
+    async postData(data, options = {}) {
+        throw new Error('Method "postData" must be implemented in a subclass');
     }
 
-    sort(query, data) {
-        const {field, value} = query;
-        return data.sort((a, b) => {
-            if (value === 'asc') {
-                return a[field] - b[field];
-            }
-            else if (value === 'desc') {
-                return b[field] - a[field];
-            }
-        });
+    /**
+     * Updates data in the API.
+     * @abstract
+     * @param {Object} data - The data to be updated.
+     * @param {Object} [options={}] - Additional request options.
+     * @returns {Promise<Object>} The response data.
+     * @throws {Error} If the method is not overridden in a subclass.
+     */
+    async updateData(data, options = {}) {
+        throw new Error('Method "updateData" must be implemented in a subclass');
     }
 
-    showMore(key, element, engine, UI) {
-        const {x, y, width, height} = element.getBoundingClientRect();
-        const typeOptions = engine.headers[key];
-        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
-
-        UI.contextMenu.clear();
-        UI.contextMenu
-            .submenu('Filter ' + key, (submenu) => {
-                var operator = '==';
-                submenu
-                .dropdown('Filter ' + key, [
-                    { label: 'Gelijk aan', value: '==' },
-                    { label: 'Niet gelijk aan', value: '!=' },
-                    { label: 'Groter dan', value: '>' },
-                    { label: 'Groter dan of gelijk aan', value: '>=' },
-                    { label: 'Kleiner dan', value: '<' },
-                    { label: 'Kleiner dan of gelijk aan', value: '<=' },
-                    { label: 'tussen', value: '><' },
-                    { label: 'blank', value: '== null' },
-                    { label: 'niet blank', value: '!= null' },
-                ], {
-                    value: '==',
-                    onChange: (value) => {
-                        operator = value;
-                    },
-                    id: 'dropdown-id'
-                })
-                    .input('Filter', {
-                        placeholder: 'Filter',
-                        onChange: (value) => {
-                            engine.setSelect(key, operator, value);
-                            UI.render(engine.runCurrentQuery());
-                        },
-                        showWhen: {
-                            elementId: 'dropdown-id',
-                            value: ['==', '!=', '>', '<', '>=', '<='],
-                        }
-                    })
-                    .input('Filter', {
-                        placeholder: 'Van',
-                        onChange: (value) => {
-                            vanTot.van = value || Number.MIN_SAFE_INTEGER;
-                            if (vanTot.tot === Number.MAX_SAFE_INTEGER || vanTot.van > vanTot.tot) return;
-
-                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
-                            UI.render(engine.runCurrentQuery());
-                        },
-                        showWhen: {
-                            elementId: 'dropdown-id',
-                            value: ['><'],
-                        }
-                    })
-                    .input('Filter', {
-                        placeholder: 'Tot',
-                        onChange: (value) => {
-                            vanTot.tot = value || Number.MAX_SAFE_INTEGER;
-                            if (vanTot.van === Number.MIN_SAFE_INTEGER || vanTot.tot <= vanTot.van) return;
-                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
-                            UI.render(engine.runCurrentQuery());
-                        },
-                        showWhen: {
-                            elementId: 'dropdown-id',
-                            value: ['><'],
-                        }
-                    })
-            });
-
-
-        UI.contextMenu
-            .button('Sort ' + key + ' ascending', () => {
-                engine.setSort(key, 'asc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Sort ' + key + ' descending', () => {
-                engine.setSort(key, 'desc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Unsort ' + key, () => {
-                engine.setSort(key);
-                UI.render(engine.runCurrentQuery());
-            });
-
-        if (!typeOptions.isUnique && typeOptions.isGroupable) {
-            UI.contextMenu
-                .separator()
-                .button('Group by ' + key, () => {
-                    engine.setGroup(key);
-                    UI.render(engine.runCurrentQuery());
-                })
-                .button('Un-group', () => {
-                    engine.setGroup();
-                    UI.render(engine.runCurrentQuery());
-                })
-        }
-
-        // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
-    }
-}
-
-class booleanTypePlugin extends TypePlugin {
-    constructor() {
-        super();
-        this.operators = ['==', '!='];
+    /**
+     * Patches data in the API.
+     * @abstract
+     * @param {Object} data - The partial data to be patched.
+     * @param {Object} [options={}] - Additional request options.
+     * @returns {Promise<Object>} The response data.
+     * @throws {Error} If the method is not overridden in a subclass.
+     */
+    async patchData(data, options = {}) {
+        throw new Error('Method "patchData" must be implemented in a subclass');
     }
 
-    validate(value) {
-        value = Boolean(value);
-        return value === true || value === false;
-    }
-
-    parseValue(value) {
-        if (value === null || value === undefined) return null;
-        return Boolean(value);
-    }
-
-    evaluate(query, dataIndexes, data, indices) {
-        query.value = query.value === 'true';
-        if (dataIndexes){
-            //since we have already filtered the data based on the value,
-            //we can just return the set of indices (because there are only two possible values)
-            const allowedValues = dataIndexes.get(query.value);
-            return new Set([...indices].filter(idx => allowedValues.has(idx)));
-        }
-        else {
-            return new Set(data
-                .map((row, i) => row[query.field] === query.value ? i : null)
-                .filter(x => x !== null));
-        }
-    }
-
-    evaluateCondition(dataValue, operator, value) {
-        return Boolean(dataValue) === Boolean(value);
-    }
-
-    sort(query, data) {
-        const {field, value} = query;
-        return data.sort((a, b) => {
-            if (value === 'asc') {
-                return a[field] - b[field];
-            }
-            else if (value === 'desc') {
-                return b[field] - a[field];
-            }
-        });
-    }
-
-    renderCell(value) {
-        const cell = document.createElement('div');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.setAttributeNode(document.createAttribute('disabled'));
-        value ? checkbox.setAttributeNode(document.createAttribute('checked')) : null;
-        checkbox.style.width = '-webkit-fill-available';
-        cell.appendChild(checkbox);
-        return cell;
-    }
-
-    renderEditableCell(value, onEdit) {
-        const cell = document.createElement('div');
-
-        //render a checkbox that is checked if value is true
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        value ? checkbox.setAttributeNode(document.createAttribute('checked')) : null;
-        checkbox.style.width = '-webkit-fill-available';
-        checkbox.name = 'checkbox';
-
-        checkbox.addEventListener('change', (e) => {
-            onEdit(checkbox.checked);
-        });
-
-        cell.appendChild(checkbox);
-        return cell;
-    }
-
-    showMore(key, element, engine, UI) {
-
-        const {x, y, width, height} = element.getBoundingClientRect();
-        UI.contextMenu.clear();
-        UI.contextMenu
-            .button('Sort ' + key + ' ascending', () => {
-                engine.setSort(key, 'asc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Sort ' + key + ' descending', () => {
-                engine.setSort(key, 'desc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Unsort ' + key, () => {
-                engine.setSort(key);
-                UI.render(engine.runCurrentQuery());
-            })
-            .separator()
-            .button('Only show true', () => {
-                engine.addSelect(key, '==', 'true');
-                engine.removeSelect(key, '==', 'false');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Only show false', () => {
-                engine.addSelect(key, '==', 'false');
-                engine.removeSelect(key, '==', 'true');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Show all', () => {
-                engine.removeSelect(key, '==', 'true');
-                engine.removeSelect(key, '==', 'false');
-                UI.render(engine.runCurrentQuery());
-            })
-            .separator()
-            .button('Group by ' + key, () => {
-                engine.setGroup(key);
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Un-group', () => {
-                engine.setGroup();
-                UI.render(engine.runCurrentQuery());
-            });
-        // Display the context menu at the specified coordinates
-        UI.contextMenu.showAt(x, y + height);
+    /**
+     * Deletes data from the API.
+     * @abstract
+     * @param {Object} [options={}] - Additional request options.
+     * @returns {Promise<Object>} The response data.
+     * @throws {Error} If the method is not overridden in a subclass.
+     */
+    async deleteData(options = {}) {
+        throw new Error('Method "deleteData" must be implemented in a subclass');
     }
 }
 
 /**
- * Date type plugin for the DynamicGrid
- * @class dateTypePlugin
- * @extends numberTypePlugin
- * @description This plugin is used to handle date values in the DynamicGrid. It extends the numberTypePlugin and provides additional functionality for parsing, rendering, and editing date values.
- * @constructor
- * @param {boolean} [onlyDate=false] - If true, only the date part will be shown (no time)
- * @param {boolean} [writeMonthFully=false] - If true, the month will be written fully (e.g. January instead of 01)
+ * Custom error class for API-related errors.
  */
-class dateTypePlugin extends numberTypePlugin {
-    constructor(onlyDate = false, writeMonthAsText = true) {
-        super();
-
-        this.options = {
-            onlyDate: onlyDate, //only show date (no HH:mm:ss)
-            writeMonthAsText: writeMonthAsText, //write month short (e.g. Jan instead of 01)
-        }
-
-        this.monthsShort = [
-            'jan', 'feb', 'mar', 'apr', 'mei', 'jun',
-            'jul', 'aug', 'sep', 'okt', 'nov', 'dec'
-        ];
-
-        this.monthsShortEnglish = [
-            'jan', 'feb', 'mar', 'apr', 'may', 'jun',
-            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
-        ];
-    }
-
+class APIError extends Error {
     /**
-     * Parse the value to a date
-     * @param value
-     * @returns {number} - The date in milliseconds since 1970
-     * @example
-     * const allowedDatesFormats = [
-     *     '13-09-2024', // dd-MM-yyyy
-     *     '13-Sep-2024', // dd-MMM-yyyy
-     *     '13-September-2024', // dd-MMMM-yyyy
-     *     '13-09-24', // dd-MM-yy
-     *     '13-Sep-24', // dd-MMM-yy
-     *     '13-September-24', // dd-MMMM-yy
-     *     '13-09-2024 14:30:00', // dd-MM-yyyy HH:mm:ss
-     *     '13-Sep-2024 14:30:00', // dd-MMM-yyyy HH:mm:ss
-     *     '13-September-2024 14:30:00', // dd-MMMM-yyyy HH:mm:ss
-     *     '13-09-24 14:30:00', // dd-MM-yy HH:mm:ss
-     *     '13-Sep-24 14:30:00', // dd-MMM-yy HH:mm:ss
-     *     '13-September-24 14:30:00', // dd-MMMM-yy HH:mm:ss
-     *     1694591400000, // Timestamp in milliseconds
-     *     1694591400 // Timestamp in seconds
-     * ]
+     * Creates a new APIError.
+     * @param {string} message - The error message.
+     * @param {string} code - The error code.
+     * @param {number} status - The HTTP status code.
+     * @param {Error} [originalError=null] - The original error object.
+     * @param {Object} [responseData=null] - The response data.
      */
-    parseValue(value) {
-        //value is either a datestring or a timestamp in seconds or milliseconds
-        if (value === null || value === undefined) return null;
-        if (typeof value === 'string') {
+    constructor(message, code, status, originalError = null, responseData = null) {
+        super(message);
+        this.name = 'APIError';
+        this.code = code;
+        this.status = status;
+        this.originalError = originalError;
+        this.responseData = responseData;
+        this.timestamp = new Date();
 
-            //parse this date to UTC ms timestamp
-            //[d|dd]-[MM|MMM|MMMM]-[yy|yyyy] [HH:mm:ss]
-            const dateParts = value.split(' ');
-            const date = dateParts[0].split('-');
-            const time = dateParts[1] ? dateParts[1].split(':') : ['0', '0', '0'];
-            const day = parseInt(date[0]);
-            const month = isNaN(Number(date[1])) ? this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 === -1 ? this.monthsShortEnglish.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : parseInt(date[1]);
-            const year = parseInt(date[2]) < 1000 ? parseInt(date[2]) + 2000 : parseInt(date[2]);
-            const hours = parseInt(time[0] ?? '0');
-            const minutes = parseInt(time[1] ?? '0');
-            const seconds = parseInt(time[2] ?? '0');
-            const d = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
-            const utc = d.getTime();
-            //console.log('parsed date', d, utc);
-            //check if the date is in seconds or milliseconds
-            if (utc < 1e10) { //1e10
-                return utc * 1000;
-            }
-            else {
-                return utc;
-            }
+        // Maintain proper stack trace
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, APIError);
         }
-        else if (typeof value === 'number') {
-            //check if the value is in seconds or milliseconds
-            if (value < 1e10) { //1e10
-                value *= 1000;
-            }
-            return value;
-        }
-    }
-
-    dateToString(date) {
-        if (date === null || date === undefined) return null;
-        const d = new Date(0);
-
-        if (date < 1e10) { //1e10
-            date *= 1000;
-        }
-
-        d.setUTCMilliseconds(date);
-        
-        /*
-        when onlyDate is true, return the date in the format dd-MM-yyyy
-        when onlyDate is false, return the date in the format dd-MM-yyyy HH:mm:ss
-            if HH:mm:ss is 00:00:00, return the date in the format dd-MM-yyyy
-        when writeMonthAsText is true, return the date in the format dd-MMM-yyyy
-        when writeMonthAsText is false, return the date in the format dd-MM-yyyy
-         */
-
-        const day = d.getUTCDate().toString().padStart(2, '0');
-        const month = this.options.writeMonthAsText ? this.monthsShort[d.getUTCMonth()] : (d.getUTCMonth() + 1).toString().padStart(2, '0');
-        const year = d.getUTCFullYear().toString().padStart(4, '0');
-        const hours = d.getUTCHours().toString().padStart(2, '0');
-        const minutes = d.getUTCMinutes().toString().padStart(2, '0');
-        const dateString = this.options.onlyDate || (hours + minutes === "0000") ? `${day}-${month}-${year}` : `${day}-${month}-${year} ${hours}:${minutes}`;
-        return dateString;
-    }
-
-    renderCell(value) {
-        const cell = document.createElement('div');
-        cell.innerText = this.dateToString(value);
-        return cell;
-    }
-
-    renderEditableCell(value, onEdit) {
-        const cell = this.renderCell(value);
-        cell.contentEditable = true;
-
-        cell.addEventListener('focusout', (e) => {
-
-            console.log(cell.innerText, this.parseValue(cell.innerText));
-
-            const date = this.parseValue(cell.innerText);
-
-            onEdit(date);
-
-            cell.innerText = this.dateToString(date);
-        });
-
-        cell.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                cell.blur();
-                e.preventDefault();
-            }
-        });
-
-        return cell;
     }
 }
 
@@ -1760,6 +1291,769 @@ Diffrent filetypes exporting should suppert:
 - [ ] Markdown
  */
 
+// ./DynamicGrid/typePlugins/TypePlugin.js
+/**
+ * Abstract base class for type-specific plugins that handle data operations and rendering.
+ * @abstract
+ */
+class TypePlugin {
+    /**
+     * Standard operators available to all type plugins
+     * @readonly
+     * @static
+     */
+    static DEFAULT_OPERATORS = ['==', '!=', 'in'];
+
+    /**
+     * Initialize the plugin
+     */
+    constructor() {
+        if (this.constructor === TypePlugin) {
+            throw new Error('TypePlugin is abstract and cannot be instantiated directly');
+        }
+
+        this.name = this.constructor.name;
+        //if this.operators is set and the value it is set to is not equal to the default operators, then set the operators to those operators + the default operators
+        this.operators = ['==', '!=', 'in'];
+    }
+
+    /**
+     * Validate if a value is acceptable for this type
+     * @param {*} value The value to validate
+     * @returns {boolean} True if valid
+     * @abstract
+     */
+    validate(value) {
+        throw new Error('validate must be implemented by subclass');
+    }
+
+    /**
+     * Parses the string representation of a value into the appropriate type
+     * @param {string} value The string value to parse
+     * @returns {*} Parsed value
+     * @abstract
+     */
+    parseValue(value) {
+        throw new Error('parseValue must be implemented by subclass');
+    }
+
+    /**
+     * Evaluate a query against data
+     * @param {Object} query Query to evaluate
+     * @param {Map<string, Set>} dataIndexes Map of column names to indices
+     * @param {Array<Array>} data Data rows to evaluate
+     * @param {Set<number>} indices Set of row indices to consider
+     * @returns {*} Query result
+     * @abstract
+     */
+    evaluate(query, dataIndexes, data, indices) {
+        throw new Error('evaluate must be implemented by subclass');
+    }
+
+    /**
+     * Evaluate a condition against a data value
+     * @param {*} dataValue Value from data
+     * @param {string} operator Comparison operator
+     * @param {*} compareValue Value to compare against
+     * @returns {boolean} Result of comparison
+     * @abstract
+     */
+    evaluateCondition(dataValue, operator, compareValue) {
+        throw new Error('evaluateCondition must be implemented by subclass');
+    }
+
+    /**
+     * Sort data based on query parameters
+     * @param {{field: string, value: 'asc'|'desc'}} query Sort parameters
+     * @param {Array<Object>} data Data to sort
+     * @returns {Array<Object>} Sorted data
+     */
+    sort(query, data) {
+        const { field, value: direction } = query;
+
+        return [...data].sort((a, b) => {
+            const comparison = String(a[field]).localeCompare(String(b[field]));
+            return direction === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    /**
+     * Check if an operator is supported
+     * @param {string} operator Operator to check
+     * @returns {boolean} True if operator is supported
+     * @protected
+     */
+    checkOperator(operator) {
+        return this.operators.find(op => op === operator) || false;
+    }
+
+    /**
+     * Get all supported operator symbols
+     * @returns {string[]} Array of operator symbols
+     * @protected
+     */
+    getOperatorSymbols() {
+        return [...this.operators];
+    }
+
+
+    /**
+     * Create a table data cell
+     * @param {*} value Cell value (that can be .toString()ed)
+     * @return {HTMLElement} Data cell element (div)
+     * @virtual (should be overridden, not required)
+     */
+    renderCell(value) {
+        const cell = document.createElement('td');
+        cell.innerText = String(value);
+        return cell;
+    }
+
+    /**
+     * Create a table data cell for editing
+     * @param {*} value Cell value (that can be .toString()ed)
+     * @param {Function} onEdit Callback function for when cell is edited
+     * @returns {HTMLElement} Data cell element (div)
+     * @virtual (should be overridden, not required)
+     */
+    renderEditableCell(value, onEdit) {
+        const cell = document.createElement('td');
+        cell.innerHTML = String(value);
+        cell.contentEditable = true;
+        cell.spellcheck = false;
+
+        cell.addEventListener('focus', (e) => {
+            cell.classList.add('editing');
+            cell.setAttribute('data-editing', 'true');
+            cell.setAttribute('start-value', cell.innerText);
+        });
+
+        cell.addEventListener('focusout', (e) => {
+            cell.classList.remove('editing');
+            cell.removeAttribute('data-editing');
+            if (cell.getAttribute('start-value') !== cell.innerText) {
+                // Call the onEdit function with the new value
+                onEdit(cell.innerText);
+            }
+            cell.removeAttribute('start-value');
+        });
+
+        cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                cell.blur();
+                e.preventDefault();
+            }
+        });
+
+        return cell;
+    }
+
+    /**
+     * Handle additional data loading
+     * @param {string} key Data key
+     * @param {HTMLElement} element Clicked element
+     * @param {SJQLEngine} engine Query engine instance
+     * @param {DynamicGridUI} UI User interface instance
+     * @returns {HTMLDivElement} Context menu element
+     * @virtual (should be overridden, not required)
+     */
+    showMore(key, element, engine, UI) {
+        const {x, y, width, height} = element.getBoundingClientRect();
+        const typeOptions = engine.headers[key];
+
+        console.log(typeOptions, key, x, y);
+
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Sort ' + key + ' descending', () => {
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Unsort ' + key, () => {
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
+            });
+
+        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+            UI.contextMenu
+            .separator()
+            .button('Group by ' + key, () => {
+                engine.setGroup(key);
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Un-group', () => {
+                engine.setGroup();
+                UI.render(engine.runCurrentQuery());
+            })
+        }
+
+        // Display the context menu at the specified coordinates
+        return UI.contextMenu.showAt(x, y + height);
+    }
+}
+
+// ./DynamicGrid/typePlugins/InherentTypePlugin.js
+class stringTypePlugin extends TypePlugin {
+    constructor() {
+        super();
+        this.operators = ['%=', '=%', '*=', '!*=', '==', '!=', 'in'] //starts with, ends with, contains, does not contain, equals, not equals, in
+    }
+
+    validate(value) {
+        return typeof value === 'string';
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return String(value);
+    }
+
+    //query = {field: 'name', operator: 'eq', value: 'John'}
+    evaluate(query, dataIndexes, data, indices) {
+        //loop over the indices and remove the ones that do not match the query
+        //console.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for stringTypePlugin');
+        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
+            for (const index of dataIndexes.keys()) {
+                if (!this.evaluateCondition(index, query.operator, query.value)) {
+                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
+                }
+            }
+        }
+        else {
+            for (const index of indices) {
+                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+                    indices.delete(index);
+                }
+            }
+        }
+
+        return indices;
+    }
+
+    //dataValue is the value of the field in the data, value is the value in the query
+    evaluateCondition(dataValue, operator, value) {
+        if (operator === 'in') {
+            value = JSON.parse(value);
+        }
+
+        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
+            return value.includes(dataValue);
+        }
+
+        switch (operator) {
+            case '==':
+                return dataValue === value;
+            case '!=':
+                return dataValue !== value;
+            case '%=':
+                return dataValue.startsWith(value);
+            case '=%':
+                return dataValue.endsWith(value);
+            case '*=':
+                return dataValue.includes(value);
+            case '!*=':
+                return !dataValue.includes(value);
+        }
+
+        return false;
+    }
+
+    sort(query, data) {
+        const {field, value} = query;
+        return data.sort((a, b) => {
+            if (value === 'asc') {
+                return a[field].localeCompare(b[field]);
+            }
+            else if (value === 'desc') {
+                return b[field].localeCompare(a[field]);
+            }
+        });
+    }
+}
+
+class numberTypePlugin extends TypePlugin {
+    constructor() {
+        super();
+        this.operators = ['>', '<', '>=', '<=', '==', '!=', 'in', '><']; //greater than, less than, greater than or equal, less than or equal, equals, not equals, in, between
+    }
+
+    validate(value) {
+        // Check if the value is a number or can be converted to a number
+        if (value === null || value === undefined) return false;
+
+        return !isNaN(Number(value)) ||
+               (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return Number(value);
+    }
+
+    //indices is a set of indices that match the query
+    evaluate(query, dataIndexes, data, indices) {
+
+        //loop over the indices and remove the ones that do not match the query
+        //.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
+        if (dataIndexes && indices && dataIndexes.size <= indices.size) {
+            for (const index of dataIndexes.keys()) {
+                if (!this.evaluateCondition(index, query.operator, query.value)) {
+                    dataIndexes.get(index).forEach(idx => indices.delete(idx));
+                }
+            }
+        }
+        else {
+            for (const index of indices) {
+                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+                    indices.delete(index);
+                }
+            }
+        }
+
+        return indices;
+    }
+
+    evaluateCondition(dataValue, operator, value) {
+
+        if (operator === 'in') {
+            value = JSON.parse(value);
+        }
+        else if (operator === '><') {
+            value = value.split("-");
+        }
+
+        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
+            return value.includes(dataValue);
+        }
+
+        if (Array.isArray(value) && value.length > 0 && operator === '><') {
+            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
+            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
+
+            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
+
+            return dataValue >= value[0] && dataValue <= value[1];
+        }
+
+
+
+        dataValue = Number(dataValue);
+        value = Number(value);
+
+        switch (operator) {
+            case '>':
+                return dataValue > value;
+            case '<':
+                return dataValue < value;
+            case '>=':
+                return dataValue >= value;
+            case '<=':
+                return dataValue <= value;
+            case '==':
+                return dataValue === value;
+            case '!=':
+                return dataValue !== value;
+        }
+    }
+
+    renderCell(value) {
+        const cell = document.createElement('td');
+        if (isNaN(value)) {
+            cell.innerText = '';
+            return cell;
+        }
+
+        const parts = value.toString().split("."); // Ensure two decimal places
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "."); // Add dots for thousands
+        cell.textContent = parts.join(",");
+        return cell;
+    }
+
+    sort(query, data) {
+        const {field, value} = query;
+        return data.sort((a, b) => {
+            if (value === 'asc') {
+                return a[field] - b[field];
+            }
+            else if (value === 'desc') {
+                return b[field] - a[field];
+            }
+        });
+    }
+
+    showMore(key, element, engine, UI) {
+        const {x, y, width, height} = element.getBoundingClientRect();
+        const typeOptions = engine.headers[key];
+        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
+
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .submenu('Filter ' + key, (submenu) => {
+                var operator = '==';
+                submenu
+                .dropdown('Filter ' + key, [
+                    { label: 'Gelijk aan', value: '==' },
+                    { label: 'Niet gelijk aan', value: '!=' },
+                    { label: 'Groter dan', value: '>' },
+                    { label: 'Groter dan of gelijk aan', value: '>=' },
+                    { label: 'Kleiner dan', value: '<' },
+                    { label: 'Kleiner dan of gelijk aan', value: '<=' },
+                    { label: 'tussen', value: '><' },
+                    { label: 'blank', value: '== null' },
+                    { label: 'niet blank', value: '!= null' },
+                ], {
+                    value: '==',
+                    onChange: (value) => {
+                        operator = value;
+                    },
+                    id: 'dropdown-id'
+                })
+                    .input('Filter', {
+                        placeholder: 'Filter',
+                        onChange: (value) => {
+                            engine.setSelect(key, operator, value);
+                            UI.render(engine.runCurrentQuery());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['==', '!=', '>', '<', '>=', '<='],
+                        }
+                    })
+                    .input('Filter', {
+                        placeholder: 'Van',
+                        onChange: (value) => {
+                            vanTot.van = value || Number.MIN_SAFE_INTEGER;
+                            if (vanTot.tot === Number.MAX_SAFE_INTEGER || vanTot.van > vanTot.tot) return;
+
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['><'],
+                        }
+                    })
+                    .input('Filter', {
+                        placeholder: 'Tot',
+                        onChange: (value) => {
+                            vanTot.tot = value || Number.MAX_SAFE_INTEGER;
+                            if (vanTot.van === Number.MIN_SAFE_INTEGER || vanTot.tot <= vanTot.van) return;
+                            engine.setSelect(key, '><', vanTot.van + "-" + vanTot.tot);
+                            UI.render(engine.runCurrentQuery());
+                        },
+                        showWhen: {
+                            elementId: 'dropdown-id',
+                            value: ['><'],
+                        }
+                    })
+            });
+
+
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Sort ' + key + ' descending', () => {
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Unsort ' + key, () => {
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
+            });
+
+        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+            UI.contextMenu
+                .separator()
+                .button('Group by ' + key, () => {
+                    engine.setGroup(key);
+                    UI.render(engine.runCurrentQuery());
+                })
+                .button('Un-group', () => {
+                    engine.setGroup();
+                    UI.render(engine.runCurrentQuery());
+                })
+        }
+
+        // Display the context menu at the specified coordinates
+        return UI.contextMenu.showAt(x, y + height);
+    }
+}
+
+class booleanTypePlugin extends TypePlugin {
+    constructor() {
+        super();
+        this.operators = ['==', '!='];
+    }
+
+    validate(value) {
+        value = Boolean(value);
+        return value === true || value === false;
+    }
+
+    parseValue(value) {
+        if (value === null || value === undefined) return null;
+        return Boolean(value);
+    }
+
+    evaluate(query, dataIndexes, data, indices) {
+        query.value = query.value === 'true';
+        if (dataIndexes){
+            //since we have already filtered the data based on the value,
+            //we can just return the set of indices (because there are only two possible values)
+            const allowedValues = dataIndexes.get(query.value);
+            return new Set([...indices].filter(idx => allowedValues.has(idx)));
+        }
+        else {
+            return new Set(data
+                .map((row, i) => row[query.field] === query.value ? i : null)
+                .filter(x => x !== null));
+        }
+    }
+
+    evaluateCondition(dataValue, operator, value) {
+        return Boolean(dataValue) === Boolean(value);
+    }
+
+    sort(query, data) {
+        const {field, value} = query;
+        return data.sort((a, b) => {
+            if (value === 'asc') {
+                return a[field] - b[field];
+            }
+            else if (value === 'desc') {
+                return b[field] - a[field];
+            }
+        });
+    }
+
+    renderCell(value) {
+        const cell = document.createElement('td');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.setAttributeNode(document.createAttribute('disabled'));
+        value ? checkbox.setAttributeNode(document.createAttribute('checked')) : null;
+        checkbox.style.width = '-webkit-fill-available';
+        cell.appendChild(checkbox);
+        return cell;
+    }
+
+    renderEditableCell(value, onEdit) {
+        const cell = document.createElement('td');
+
+        //render a checkbox that is checked if value is true
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        value ? checkbox.setAttributeNode(document.createAttribute('checked')) : null;
+        checkbox.style.width = '-webkit-fill-available';
+        checkbox.name = 'checkbox';
+
+        checkbox.addEventListener('change', (e) => {
+            onEdit(checkbox.checked);
+        });
+
+        cell.appendChild(checkbox);
+        return cell;
+    }
+
+    showMore(key, element, engine, UI) {
+
+        const {x, y, width, height} = element.getBoundingClientRect();
+        UI.contextMenu.clear();
+        UI.contextMenu
+            .button('Sort ' + key + ' ascending', () => {
+                engine.setSort(key, 'asc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Sort ' + key + ' descending', () => {
+                engine.setSort(key, 'desc');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Unsort ' + key, () => {
+                engine.setSort(key);
+                UI.render(engine.runCurrentQuery());
+            })
+            .separator()
+            .button('Only show true', () => {
+                engine.addSelect(key, '==', 'true');
+                engine.removeSelect(key, '==', 'false');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Only show false', () => {
+                engine.addSelect(key, '==', 'false');
+                engine.removeSelect(key, '==', 'true');
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Show all', () => {
+                engine.removeSelect(key, '==', 'true');
+                engine.removeSelect(key, '==', 'false');
+                UI.render(engine.runCurrentQuery());
+            })
+            .separator()
+            .button('Group by ' + key, () => {
+                engine.setGroup(key);
+                UI.render(engine.runCurrentQuery());
+            })
+            .button('Un-group', () => {
+                engine.setGroup();
+                UI.render(engine.runCurrentQuery());
+            });
+        // Display the context menu at the specified coordinates
+        return UI.contextMenu.showAt(x, y + height);
+    }
+}
+
+/**
+ * Date type plugin for the DynamicGrid
+ * @class dateTypePlugin
+ * @extends numberTypePlugin
+ * @description This plugin is used to handle date values in the DynamicGrid. It extends the numberTypePlugin and provides additional functionality for parsing, rendering, and editing date values.
+ * @constructor
+ * @param {boolean} [onlyDate=false] - If true, only the date part will be shown (no time)
+ * @param {boolean} [writeMonthFully=false] - If true, the month will be written fully (e.g. January instead of 01)
+ */
+class dateTypePlugin extends numberTypePlugin {
+    constructor(onlyDate = false, writeMonthAsText = true) {
+        super();
+
+        this.options = {
+            onlyDate: onlyDate, //only show date (no HH:mm:ss)
+            writeMonthAsText: writeMonthAsText, //write month short (e.g. Jan instead of 01)
+        }
+
+        this.monthsShort = [
+            'jan', 'feb', 'mar', 'apr', 'mei', 'jun',
+            'jul', 'aug', 'sep', 'okt', 'nov', 'dec'
+        ];
+
+        this.monthsShortEnglish = [
+            'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+        ];
+    }
+
+    /**
+     * Parse the value to a date
+     * @param value
+     * @returns {number} - The date in milliseconds since 1970
+     * @example
+     * const allowedDatesFormats = [
+     *     '13-09-2024', // dd-MM-yyyy
+     *     '13-Sep-2024', // dd-MMM-yyyy
+     *     '13-September-2024', // dd-MMMM-yyyy
+     *     '13-09-24', // dd-MM-yy
+     *     '13-Sep-24', // dd-MMM-yy
+     *     '13-September-24', // dd-MMMM-yy
+     *     '13-09-2024 14:30:00', // dd-MM-yyyy HH:mm:ss
+     *     '13-Sep-2024 14:30:00', // dd-MMM-yyyy HH:mm:ss
+     *     '13-September-2024 14:30:00', // dd-MMMM-yyyy HH:mm:ss
+     *     '13-09-24 14:30:00', // dd-MM-yy HH:mm:ss
+     *     '13-Sep-24 14:30:00', // dd-MMM-yy HH:mm:ss
+     *     '13-September-24 14:30:00', // dd-MMMM-yy HH:mm:ss
+     *     1694591400000, // Timestamp in milliseconds
+     *     1694591400 // Timestamp in seconds
+     * ]
+     */
+    parseValue(value) {
+        //value is either a datestring or a timestamp in seconds or milliseconds
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'string') {
+
+            //parse this date to UTC ms timestamp
+            //[d|dd]-[MM|MMM|MMMM]-[yy|yyyy] [HH:mm:ss]
+            const dateParts = value.split(' ');
+            const date = dateParts[0].split('-');
+            const time = dateParts[1] ? dateParts[1].split(':') : ['0', '0', '0'];
+            const day = parseInt(date[0]);
+            const month = isNaN(Number(date[1])) ? this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 === -1 ? this.monthsShortEnglish.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : this.monthsShort.indexOf(date[1].substring(0,3).toLowerCase()) + 1 : parseInt(date[1]);
+            const year = parseInt(date[2]) < 1000 ? parseInt(date[2]) + 2000 : parseInt(date[2]);
+            const hours = parseInt(time[0] ?? '0');
+            const minutes = parseInt(time[1] ?? '0');
+            const seconds = parseInt(time[2] ?? '0');
+            const d = new Date(Date.UTC(year, month - 1, day, hours, minutes, seconds));
+            const utc = d.getTime();
+            //console.log('parsed date', d, utc);
+            //check if the date is in seconds or milliseconds
+            if (utc < 1e10) { //1e10
+                return utc * 1000;
+            }
+            else {
+                return utc;
+            }
+        }
+        else if (typeof value === 'number') {
+            //check if the value is in seconds or milliseconds
+            if (value < 1e10) { //1e10
+                value *= 1000;
+            }
+            return value;
+        }
+    }
+
+    dateToString(date) {
+        if (date === null || date === undefined) return null;
+        const d = new Date(0);
+
+        if (date < 1e10) { //1e10
+            date *= 1000;
+        }
+
+        d.setUTCMilliseconds(date);
+        
+        /*
+        when onlyDate is true, return the date in the format dd-MM-yyyy
+        when onlyDate is false, return the date in the format dd-MM-yyyy HH:mm:ss
+            if HH:mm:ss is 00:00:00, return the date in the format dd-MM-yyyy
+        when writeMonthAsText is true, return the date in the format dd-MMM-yyyy
+        when writeMonthAsText is false, return the date in the format dd-MM-yyyy
+         */
+
+        const day = d.getUTCDate().toString().padStart(2, '0');
+        const month = this.options.writeMonthAsText ? this.monthsShort[d.getUTCMonth()] : (d.getUTCMonth() + 1).toString().padStart(2, '0');
+        const year = d.getUTCFullYear().toString().padStart(4, '0');
+        const hours = d.getUTCHours().toString().padStart(2, '0');
+        const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+        const dateString = this.options.onlyDate || (hours + minutes === "0000") ? `${day}-${month}-${year}` : `${day}-${month}-${year} ${hours}:${minutes}`;
+        return dateString;
+    }
+
+    renderCell(value) {
+        const cell = document.createElement('td');
+        cell.innerText = this.dateToString(value);
+        return cell;
+    }
+
+    renderEditableCell(value, onEdit) {
+        const cell = this.renderCell(value);
+        cell.contentEditable = true;
+
+        cell.addEventListener('focusout', (e) => {
+
+            console.log(cell.innerText, this.parseValue(cell.innerText));
+
+            const date = this.parseValue(cell.innerText);
+
+            onEdit(date);
+
+            cell.innerText = this.dateToString(date);
+        });
+
+        cell.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                cell.blur();
+                e.preventDefault();
+            }
+        });
+
+        return cell;
+    }
+}
+
 // ./DynamicGrid/QueryParser.js
 class QueryParser {
     constructor(config) {
@@ -1943,6 +2237,41 @@ class SJQLEngine {
         }
     }
 
+    /**
+     * Retrieves the data at the specified index.
+     * @param index {number} - The index of the data to retrieve.
+     * @returns {Promise<Object> | Object} - The data at the specified index, or a promise that resolves to the data.
+     */
+    getData(index, noPromise = false) {
+        const isValidIndex = this.data && this.data.length > 0 && index < this.data.length;
+        index = (index < 0 ? this.data.length + index : index);
+
+        if (noPromise) {
+            if (!isValidIndex) throw new Error('No data to return (data is empty, or index is out of bounds)');
+            const { internal_id, ...data } = this.data[index];
+            return data;
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!isValidIndex) return reject(new Error('No data to return (data is empty, or index is out of bounds)'));
+            const { internal_id, ...data } = this.data[index];
+            resolve(data);
+        });
+    }
+
+    /**
+     * Retrieves all the columns from the data.
+     * @returns {string[]|*[]}
+     */
+    getColumns() {
+        if (!this.data || this.data.length === 0) {
+            console.warn('No data provided, returning empty array');
+            return [];
+        }
+
+        return Object.keys(this.data[0]).filter(key => key !== 'internal_id');
+    }
+
     query(query = '') {
         if (!this.data || this.data.length === 0) {
             console.warn('No data provided, returning empty array');
@@ -1957,6 +2286,7 @@ class SJQLEngine {
 
         return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
     }
+
 
     #_query(query) {
         // Early exit if no queries
@@ -2054,7 +2384,7 @@ class SJQLEngine {
         if (this.currentQueryStr.length === 0)
             this.currentQueryStr = newClause;
         else
-            this.currentQueryStr += `and ${newClause}`;
+            this.currentQueryStr += ` and ${newClause}`;
     }
 
     setSelect(key, operator, value) {
@@ -2368,6 +2698,52 @@ class SJQLEngine {
     getExportConnectors = () => Object.keys(this.connectors);
 }
 
+// ./DynamicGrid/EditTracker.js
+class EditTracker {
+    constructor() {
+        this.updates = [];
+    }
+
+
+    /**
+     * @example
+     * //data provided to the onEdit function
+     *[
+     *   {
+     *        "column": STRING,               // The column name that was edited
+     *        "row": {                        // the row that was edited in it's previous state
+     *            "internal_id": NUMBER,      // The internal ID used inside the grid
+     *            ...                         // Other row data (depends on the data source)
+     *        },
+     *        "previousValue": OBJECT,        // The previous value of the cell
+     *        "newValue": OBJECT              // The new value of the cell
+     *    },
+     *    ...
+     *];
+     */
+    addEdit(data) {
+        this.updates.push(data);
+        this.updates = this.cleanUpdates(this.updates);
+    }
+
+    cleanUpdates(updates) {
+        const latestUpdates = new Map();
+
+        // Group updates by row internal_id + column, and keep only the last one
+        updates.forEach((update) => {
+            const key = `${update.row.internal_id}_${update.column}`;
+            latestUpdates.set(key, {...update});
+        });
+
+        // Filter out any updates where previousValue === newValue
+        return Array.from(latestUpdates.values()).filter(update => update.previousValue !== update.newValue);
+    }
+
+    clear() {
+        this.updates = [];
+    }
+}
+
 // ./DynamicGrid/DynamicGridUtils.js
 //throw new GridError('Invalid grid data'); <-- (sends error to console without stack trace)
 class GridError extends Error {
@@ -2572,7 +2948,7 @@ class EventEmitter {
     emit(event, data) {
         if (!this.events[event.toLocaleLowerCase()]) return;
 
-        console.info(`Event emitted: ${event}`, data);
+        // console.info(`Event emitted: ${event}`, data);
 
         this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
     }
@@ -2888,6 +3264,9 @@ class ContextMenu {
         this._setupEventHandlers(menu);
         this._positionMenu(menu, {x, y, position: 'fixed'});
         this._animateIn(menu);
+
+        console.log(menu);
+
         return menu;
     }
 
@@ -3044,6 +3423,9 @@ class ContextMenu {
     }
 
     _render() {
+
+        console.log(this.items);
+
         const menuContainer = document.createElement('div');
         menuContainer.classList.add(ContextMenu.CLASSNAMES.MENU);
         menuContainer.id = this.id;
