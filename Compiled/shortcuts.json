@@ -3,11 +3,11 @@
     "keybind": "ctrl+shift+a",
     "description": "Shortcut to toggle column visibility",
     "file": "DynamicGridUI.js",
-    "line": 140
+    "line": 152
   },
   {
     "keybind": "ctrl+s",
-    "description": "the keybind that tells the APIBase to force-send an update request",
+    "description": "The keybind that tells the APIBase to force-send an update request",
     "file": "APIBase.js",
     "line": 33
   }

@@ -485,6 +485,8 @@ class DynamicGridUI {
                     this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
                     this.engine.alterData(data['internal_id'], key, callback);
                     this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
+                    td.innerText = callback; // Update the cell text immediately
+                    td.classList.add('edited'); // Add a class to indicate
                 }
 
                 const td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
@@ -508,6 +510,7 @@ class DynamicGridUI {
     /**
      * Retrieves the data at the specified index.
      * @param index {number} - The index of the data to retrieve.
+     * @param removeInternalId {boolean} - Whether to remove the internal_id field from the returned data. (default: true)
      * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
      */
     getData(index, removeInternalId = true) {

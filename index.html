@@ -156,7 +156,8 @@
         engine: {
             UseDataEnumeration: false,
             UseDataIndexing: true,
-            StrictCase: false,
+            useStrictCase: false,
+            SymbolsToIgnore: [' ', '_', '-']
         },
         plugins: {
             //string: new customStringTypePlugin(),

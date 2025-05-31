@@ -2,7 +2,7 @@ class QueryParser {
     constructor(config) {
         this.config = {
             useStrictCase: config.useStrictCase || false,
-            SymbolsToIgnore: config.SymbolsToIgnore || [' ', '_', '-']
+            SymbolsToIgnore: config.SymbolsToIgnore || ['_', '-']
         }
     }
 
@@ -10,9 +10,9 @@ class QueryParser {
     static QUERIES = {
         FUZZY: /^search\s+"([^"]+)"$/i,   //'search "value"', search for a value in all fields
         GROUP: /group\s+(.+)/i,      //'group [key]', group by key
-        RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
+        RANGE: /range\s+(?:(-?\d+)-(-?\d+)?|(-?\d+))/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
-        SELECT: /(.+)\s+(\S+)\s+(.+)/i    //'[key] [operator] [value]', select items where key is value
+        SELECT: /(\S+)\s(\S+)\s(.*)/i    //'[key] [operator] [value]', select items where key is value
     };
 
     //MAIN PARSING FUNCTION
@@ -88,21 +88,32 @@ class QueryParser {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
 
-            if (!plugin.validate(value)) return;
-            value = plugin.parseValue(value);
-
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
         }
         else if (type === 'RANGE') {
-            let [_, lower, upper] = match;
-            if (upper === undefined) {
-                upper = lower;
+            let [_, lower, upper, single] = match;
+
+            if (single !== undefined) {
+                // Handle: range 10 or range -5
                 lower = 0;
+                upper = parseInt(single);
+            } else {
+                // Handle: range A-B, range A-, etc.
+                lower = parseInt(lower);
+                if (upper === undefined)
+                    upper = Infinity;
+                else
+                    upper = parseInt(upper);
+
+                if (isNaN(lower)) lower = 0;
             }
-            lower = parseInt(lower);
-            upper = parseInt(upper);
+
+            // Convert to zero-based index
+            lower = Math.max(0, lower - 1);
+
             return {type: 'range', lower, upper, queryType: 'RANGE'};
         }
+
         else if (type === 'GROUP') {
             let [_, key] = match;
             return {type: 'group', field: key, queryType: 'GROUP'};

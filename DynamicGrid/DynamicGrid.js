@@ -86,8 +86,9 @@ class DynamicGrid {
      * @preserve
      */
     render(input) {
+        this.eventEmitter.emit('ui-render-start', { input });
         this.ui.render(this.engine.query(input));
-        this.eventEmitter.emit('ui-rendered', { input });
+        this.eventEmitter.emit('ui-render-end', { input });
     }
 
     /**

@@ -91,13 +91,19 @@ class numberTypePlugin extends TypePlugin {
         const valueStr = String(value).replace(',', '.'); // Replace comma with dot for decimal numbers
 
         return !isNaN(Number(valueStr)) ||
-               (value.split('-').length === 2 && !isNaN(Number(valueStr.split('-')[0])) && !isNaN(Number(valueStr.split('-')[1])));
+            (valueStr.includes('-') && valueStr.split('-').every(part => !isNaN(this.parseValue(part))));
     }
 
     parseValue(value) {
         if (value === null || value === undefined) return null;
 
         if (typeof value === 'number') return value;
+
+        if (value.toString().split('-').length > 1) {
+            // If the value is a range (e.g. "10-20"), split it and parse each part
+            const parts = value.toString().split('-');
+            return [this.parseValue(parts[0]), this.parseValue(parts[1])];
+        }
 
         value = value.replace(',', '.'); // Replace comma with dot for decimal numbers
         return Number(value);
@@ -106,30 +112,24 @@ class numberTypePlugin extends TypePlugin {
     //indices is a set of indices that match the query
     evaluate(query, dataIndexes, data, indices) {
 
-        console.log(query, dataIndexes, data, indices);
+        // console.log(query.field, query.operator, query.value);
 
         //loop over the indices and remove the ones that do not match the query
         //.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
         if (dataIndexes && indices && dataIndexes.size <= indices.size) {
             for (const index of dataIndexes.keys()) {
                 if (!this.evaluateCondition(index, query.operator, query.value)) {
-                    console.log('removing index', index, 'from indices');
                     dataIndexes.get(index).forEach(idx => indices.delete(idx));
-                    console.log(indices); //TODO: sorting on numbers | age == 71 when field is just set to 71 doesn't work
-                }
-                else {
-                    console.log('keeping index', index, 'in indices');
                 }
             }
-
-            console.log('after filtering dataIndexes', dataIndexes, 'indices', indices);
         }
         else {
-            for (const index of indices) {
-                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                    indices.delete(index);
-                }
-            }
+            // for (const index of indices) {
+            //     if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+            //         indices.delete(index);
+            //     }
+            // }
+            console.error('dataIndexes is not defined or indices is larger than dataIndexes, this is a big nono!');
         }
 
         return indices;
@@ -140,27 +140,17 @@ class numberTypePlugin extends TypePlugin {
         if (operator === 'in') {
             value = JSON.parse(value);
         }
-        else if (operator === '><') {
-            value = value.split("-");
-        }
 
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
+        if (operator === 'in' && Array.isArray(value) && value.length > 0) {
             return value.includes(dataValue);
         }
 
-        if (Array.isArray(value) && value.length > 0 && operator === '><') {
-            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
-            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
-
-            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
-
-            return dataValue >= value[0] && dataValue <= value[1];
+        if (operator === '><' && Array.isArray(value) && value.length > 0) {
+            let a = value[0], b = value[1];
+            if (isNaN(a) || isNaN(b)) throw new Error('between operator requires two numbers');
+            if (a > b) [a, b] = [b, a]; // Swap values if they are in the wrong order
+            return dataValue >= a && dataValue <= b;
         }
-
-
-
-        dataValue = this.parseValue(dataValue);
-        value = this.parseValue(value);
 
         switch (operator) {
             case '>':
@@ -315,12 +305,15 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     parseValue(value) {
-        if (value === null || value === undefined) return null;
-        return Boolean(value);
+        console.log('value', value);
+        if (value === true || value === 'true' || value === 1 || value === '1') return true;
+        if (value === false || value === 'false' || value === 0 || value === '0') return false;
+        throw new Error('Invalid boolean value: ' + value);
     }
 
     evaluate(query, dataIndexes, data, indices) {
-        query.value = query.value === 'true';
+        console.log(query.field, query.value);
+        query.value = query.value === true;
         if (dataIndexes){
             //since we have already filtered the data based on the value,
             //we can just return the set of indices (because there are only two possible values)
@@ -335,7 +328,7 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     evaluateCondition(dataValue, operator, value) {
-        return Boolean(dataValue) === Boolean(value);
+        return this.parseValue(dataValue) === this.parseValue(value);
     }
 
     sort(query, data) {

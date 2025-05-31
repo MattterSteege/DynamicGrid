@@ -87,8 +87,9 @@ class DynamicGrid {
      * @preserve
      */
     render(input) {
+        this.eventEmitter.emit('ui-render-start', { input });
         this.ui.render(this.engine.query(input));
-        this.eventEmitter.emit('ui-rendered', { input });
+        this.eventEmitter.emit('ui-render-end', { input });
     }
 
     /**
@@ -257,7 +258,9 @@ class DynamicGridUI {
     }
 
     render(data) {
-        if (!data || data.length === 0) {
+        if (!data) return;
+        if (data.length === 0) {
+            this.clearContent();
             return;
         }
 
@@ -288,6 +291,16 @@ class DynamicGridUI {
     toggleColumn(IndexOrIndex) {
         const Index = typeof IndexOrIndex === 'number' ? IndexOrIndex : this.engine.getColumns().indexOf(IndexOrIndex.toLowerCase());
         this.colGroup1.children[Index + 1].style.visibility === 'collapse' ? this.#_showColumn(Index) : this.#_hideColumn(Index);
+    }
+
+    clearContent() {
+        if (this.table) {
+            //remove the data part, not the header
+            this.bodyTable?.remove();
+            this.scrollContainer?.remove();
+        }
+        this.showData = [];
+        this.eventEmitter.emit('ui-content-cleared');
     }
 
     #_hideColumn(Index) {
@@ -662,6 +675,8 @@ class DynamicGridUI {
                     this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
                     this.engine.alterData(data['internal_id'], key, callback);
                     this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
+                    td.innerText = callback; // Update the cell text immediately
+                    td.classList.add('edited'); // Add a class to indicate
                 }
 
                 const td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
@@ -685,6 +700,7 @@ class DynamicGridUI {
     /**
      * Retrieves the data at the specified index.
      * @param index {number} - The index of the data to retrieve.
+     * @param removeInternalId {boolean} - Whether to remove the internal_id field from the returned data. (default: true)
      * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
      */
     getData(index, removeInternalId = true) {
@@ -764,7 +780,7 @@ class APIBase {
         this.apiVersion = config.apiVersion;
         this.abortControllers = new Map();
 
-        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', 'the keybind that tells the APIBase to force-send an update request', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
+        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', 'The keybind that tells the APIBase to force-send an update request', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
     }
 
     /**
@@ -1648,17 +1664,33 @@ class numberTypePlugin extends TypePlugin {
         // Check if the value is a number or can be converted to a number
         if (value === null || value === undefined) return false;
 
-        return !isNaN(Number(value)) ||
-               (value.split('-').length === 2 && !isNaN(Number(value.split('-')[0])) && !isNaN(Number(value.split('-')[1])));
+        if (typeof value === 'number') return !isNaN(value);
+
+        const valueStr = String(value).replace(',', '.'); // Replace comma with dot for decimal numbers
+
+        return !isNaN(Number(valueStr)) ||
+            (valueStr.includes('-') && valueStr.split('-').every(part => !isNaN(this.parseValue(part))));
     }
 
     parseValue(value) {
         if (value === null || value === undefined) return null;
+
+        if (typeof value === 'number') return value;
+
+        if (value.toString().split('-').length > 1) {
+            // If the value is a range (e.g. "10-20"), split it and parse each part
+            const parts = value.toString().split('-');
+            return [this.parseValue(parts[0]), this.parseValue(parts[1])];
+        }
+
+        value = value.replace(',', '.'); // Replace comma with dot for decimal numbers
         return Number(value);
     }
 
     //indices is a set of indices that match the query
     evaluate(query, dataIndexes, data, indices) {
+
+        // console.log(query.field, query.operator, query.value);
 
         //loop over the indices and remove the ones that do not match the query
         //.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for numberTypePlugin');
@@ -1670,11 +1702,12 @@ class numberTypePlugin extends TypePlugin {
             }
         }
         else {
-            for (const index of indices) {
-                if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                    indices.delete(index);
-                }
-            }
+            // for (const index of indices) {
+            //     if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
+            //         indices.delete(index);
+            //     }
+            // }
+            console.error('dataIndexes is not defined or indices is larger than dataIndexes, this is a big nono!');
         }
 
         return indices;
@@ -1685,27 +1718,17 @@ class numberTypePlugin extends TypePlugin {
         if (operator === 'in') {
             value = JSON.parse(value);
         }
-        else if (operator === '><') {
-            value = value.split("-");
-        }
 
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
+        if (operator === 'in' && Array.isArray(value) && value.length > 0) {
             return value.includes(dataValue);
         }
 
-        if (Array.isArray(value) && value.length > 0 && operator === '><') {
-            if (isNaN(value[0]) || isNaN(value[1])) throw new Error('between operator requires two numbers');
-            if (value[0] > value[1]) throw new Error('between operator requires first value to be less than second value');
-
-            console.log(value[0] + ' < ' + dataValue + ' < ' + value[1], dataValue >= value[0] && dataValue <= value[1]);
-
-            return dataValue >= value[0] && dataValue <= value[1];
+        if (operator === '><' && Array.isArray(value) && value.length > 0) {
+            let a = value[0], b = value[1];
+            if (isNaN(a) || isNaN(b)) throw new Error('between operator requires two numbers');
+            if (a > b) [a, b] = [b, a]; // Swap values if they are in the wrong order
+            return dataValue >= a && dataValue <= b;
         }
-
-
-
-        dataValue = Number(dataValue);
-        value = Number(value);
 
         switch (operator) {
             case '>':
@@ -1860,12 +1883,15 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     parseValue(value) {
-        if (value === null || value === undefined) return null;
-        return Boolean(value);
+        console.log('value', value);
+        if (value === true || value === 'true' || value === 1 || value === '1') return true;
+        if (value === false || value === 'false' || value === 0 || value === '0') return false;
+        throw new Error('Invalid boolean value: ' + value);
     }
 
     evaluate(query, dataIndexes, data, indices) {
-        query.value = query.value === 'true';
+        console.log(query.field, query.value);
+        query.value = query.value === true;
         if (dataIndexes){
             //since we have already filtered the data based on the value,
             //we can just return the set of indices (because there are only two possible values)
@@ -1880,7 +1906,7 @@ class booleanTypePlugin extends TypePlugin {
     }
 
     evaluateCondition(dataValue, operator, value) {
-        return Boolean(dataValue) === Boolean(value);
+        return this.parseValue(dataValue) === this.parseValue(value);
     }
 
     sort(query, data) {
@@ -2122,7 +2148,7 @@ class QueryParser {
     constructor(config) {
         this.config = {
             useStrictCase: config.useStrictCase || false,
-            SymbolsToIgnore: config.SymbolsToIgnore || [' ', '_', '-']
+            SymbolsToIgnore: config.SymbolsToIgnore || ['_', '-']
         }
     }
 
@@ -2130,9 +2156,9 @@ class QueryParser {
     static QUERIES = {
         FUZZY: /^search\s+"([^"]+)"$/i,   //'search "value"', search for a value in all fields
         GROUP: /group\s+(.+)/i,      //'group [key]', group by key
-        RANGE: /range\s+(-?\d+)-?(-?\d+)?/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
+        RANGE: /range\s+(?:(-?\d+)-(-?\d+)?|(-?\d+))/i,    //'range [value]', limit the number of results (value = 10, 20-30, -10)
         SORT: /sort\s+(.+)\s+(asc|desc)/i,//'sort [key] [value]', sort by key (sort name asc)
-        SELECT: /(.+)\s+(\S+)\s+(.+)/i    //'[key] [operator] [value]', select items where key is value
+        SELECT: /(\S+)\s(\S+)\s(.*)/i    //'[key] [operator] [value]', select items where key is value
     };
 
     //MAIN PARSING FUNCTION
@@ -2180,7 +2206,7 @@ class QueryParser {
         //console.log(match, type);
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
-            key = MeantIndexKey(Object.keys(headers), key, this.config);
+            key = findMatchingIndexKey(Object.keys(headers), key, this.config);
             const pluginType = headers[key].type;
             const plugin = plugins[pluginType];
             if (!plugin) {
@@ -2196,6 +2222,8 @@ class QueryParser {
 
             if (!plugin.validate(value)) return;
 
+            value = plugin.parseValue(value);
+
             return {type: pluginType, field, operator: operatorObj, value, queryType: 'SELECT'};
         }
         else if (type === 'SORT') {
@@ -2205,18 +2233,33 @@ class QueryParser {
             if (!plugin) {
                 throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')');
             }
+
             return {type: pluginType, field: key, operator: 'sort', value, queryType: 'SORT'};
         }
         else if (type === 'RANGE') {
-            let [_, lower, upper] = match;
-            if (upper === undefined) {
-                upper = lower;
+            let [_, lower, upper, single] = match;
+
+            if (single !== undefined) {
+                // Handle: range 10 or range -5
                 lower = 0;
+                upper = parseInt(single);
+            } else {
+                // Handle: range A-B, range A-, etc.
+                lower = parseInt(lower);
+                if (upper === undefined)
+                    upper = Infinity;
+                else
+                    upper = parseInt(upper);
+
+                if (isNaN(lower)) lower = 0;
             }
-            lower = parseInt(lower);
-            upper = parseInt(upper);
+
+            // Convert to zero-based index
+            lower = Math.max(0, lower - 1);
+
             return {type: 'range', lower, upper, queryType: 'RANGE'};
         }
+
         else if (type === 'GROUP') {
             let [_, key] = match;
             return {type: 'group', field: key, queryType: 'GROUP'};
@@ -2259,9 +2302,7 @@ class SJQLEngine {
         this.updateTracker = new EditTracker();
 
         this.config = {
-            UseDataIndexing: engine_config.UseDataIndexing || true,
-            useStrictCase: engine_config.useStrictCase || false,
-            SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
+            //UseDataIndexing: engine_config.UseDataIndexing || true,
         };
 
         this.APIConnector = engine_config.APIConnector || null;
@@ -2272,7 +2313,7 @@ class SJQLEngine {
     }
 
     createDataIndex() {
-        if (!this.config.UseDataIndexing) return;
+        //if (!this.config.UseDataIndexing) return;
 
         // Create indexes for faster querying
         this.dataIndexes = {};
@@ -2352,7 +2393,8 @@ class SJQLEngine {
             return this.data;
         }
 
-        return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
+        const parsedQuery = this.QueryParser.parseQuery(query, this.plugins, this.headers);
+        return this.#_query(parsedQuery);
     }
 
 
@@ -2389,12 +2431,12 @@ class SJQLEngine {
         if (fuzzyQuery) this.currentQueryStr += 'search ' + fuzzyQuery.value + ' and ';
         this.currentQueryStr = this.currentQueryStr.slice(0, -5);
 
-        let log = "";
-        if (selectQueries.length > 0) log += 'SELECT queries: ' + selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(', ') + '\n';
-        if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
-        if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
-        if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
-        log += this.currentQueryStr;
+        // let log = "";
+        // if (selectQueries.length > 0) log += 'SELECT queries: ' + selectQueries.map(q => q.field + ' ' + q.operator + ' ' + q.value).join(', ') + '\n';
+        // if (sortQuery) log += 'SORT query: ' + sortQuery.field + ' ' + sortQuery.value + '\n';
+        // if (rangeQuery) log += 'RANGE query: ' + rangeQuery.lower + ' ' + rangeQuery.upper + '\n';
+        // if (groupQuery) log += 'GROUP query: ' + groupQuery.field + '\n';
+        // log += this.currentQueryStr;
 
         // Initialize valid indices as all data indices
         let validIndices = new Set(this.data.keys());
@@ -2402,7 +2444,7 @@ class SJQLEngine {
 
         // Process SELECT queries
         for (const q of selectQueries) {
-            q.field = MeantIndexKey(Object.keys(this.data[0]), q.field, this.config);
+            q.field = findMatchingIndexKey(Object.keys(this.data[0]), q.field, this.config);
             const plugin = this.getPlugin(q.type);
             if (!plugin) throw new GridError(`No plugin found for header (${q.type}) for key (${q.field})`);
             validIndices = plugin.evaluate(q, this.dataIndexes[q.field], this.data, validIndices);
@@ -2411,14 +2453,14 @@ class SJQLEngine {
         // Process RANGE query
         if (rangeQuery) {
             const first = validIndices.values().next().value;
-            const lower = Math.max(0, first + rangeQuery.lower);
-            const upper = Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
+            const lower = rangeQuery.upper < 0 ? this.data.length + rangeQuery.upper : Math.max(0, first + rangeQuery.lower);
+            const upper = rangeQuery.upper < 0 ? this.data.length : Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
             validIndices = new Set(Array.from({ length: upper - lower + 1 }, (_, i) => i + lower));
         }
 
         // Process GROUP query
         if (groupQuery) {
-            const groupField = MeantIndexKey(Object.keys(this.data[0]), groupQuery.field, this.config);
+            const groupField = findMatchingIndexKey(Object.keys(this.data[0]), groupQuery.field, this.config);
             groupedData = {};
 
             // Group rows by the specified field
@@ -2453,6 +2495,8 @@ class SJQLEngine {
                 );
             }));
         }
+
+        // console.log(validIndices);
 
         // Return filtered data
         return this.data.filter((_, i) => validIndices.has(i));
@@ -2669,9 +2713,25 @@ class SJQLEngine {
     }
 
     alterData(datum, column, value) {
+        const oldValue = this.data[datum][column];
         if (this.data && this.data.length > 0) {
             this.data[datum][column] = value;
         }
+
+        //recalculate the data index for the altered row
+        if (this.dataIndexes && this.dataIndexes[column]) {
+
+            console.log(oldValue, datum, column, value);
+            if (this.dataIndexes[column].has(oldValue)) {
+                this.dataIndexes[column].get(oldValue).delete(datum);
+            }
+            if (!this.dataIndexes[column].has(value)) {
+                this.dataIndexes[column].set(value, new Set());
+            }
+            this.dataIndexes[column].get(value).add(datum);
+        }
+
+        //remove the previous data index for the altered row
     }
 
     #parseJsonData(data, config) {
@@ -2855,28 +2915,18 @@ function FastHash(object) {
 * @param {Object} config
 * @returns {string}
 */
-function MeantIndexKey(dataIndexesKeys, field, config) {
-    // I'm SO sorry for this code (•́︵•̀)
-    return dataIndexesKeys.find(key => {
-        let normalizedKey = '';
-        let normalizedField = '';
-        if (config.SymbolsToIgnore.length){
-
-            normalizedKey = key.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
-            normalizedField = field.replace(new RegExp(`[${config.SymbolsToIgnore.join('')}]`, 'g'), '');
+function findMatchingIndexKey(dataIndexesKeys, field, config) {
+    const normalize = str => {
+        let result = str;
+        if (config.SymbolsToIgnore?.length) {
+            const regex = new RegExp(`[${config.SymbolsToIgnore.join('').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`, 'g');
+            result = result.replace(regex, '');
         }
-        else{
-            normalizedKey = key;
-            normalizedField = field;
-        }
+        return config.useStrictCase ? result : result.toLowerCase();
+    };
 
-        if (!config.useStrictCase) {
-            normalizedKey = normalizedKey.toLowerCase();
-            normalizedField = normalizedField.toLowerCase();
-        }
-
-        return normalizedKey === normalizedField
-    });
+    const normalizedField = normalize(field);
+    return dataIndexesKeys.find(key => normalize(key) === normalizedField);
 }
 
 /**
@@ -3089,7 +3139,7 @@ class KeyboardShortcuts {
     /**
      * Adds a new keyboard shortcut.
      * @param {string} keys - The key combination for the shortcut (e.g., "ctrl+s").
-     * @param {string} description - A description of the shortcut (for documentation purposes, not used in functionality).
+     * @param {string} description - A description of the shortcut (optional, for documentation purposes).
      * @param {Function} callback - The function to execute when the shortcut is triggered.
      */
     addShortcut(keys, description, callback) {
@@ -3349,8 +3399,6 @@ class ContextMenu {
         this.#_positionMenu(menu, {x, y, position: 'fixed'});
         this.#_animateIn(menu);
 
-        console.log(menu);
-
         return menu;
     }
 
@@ -3507,9 +3555,6 @@ class ContextMenu {
     }
 
     #_render() {
-
-        console.log(this.items);
-
         const menuContainer = document.createElement('div');
         menuContainer.classList.add(ContextMenu.CLASSNAMES.MENU);
         menuContainer.id = this.id;

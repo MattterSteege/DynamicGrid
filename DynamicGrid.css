@@ -1,5 +1,4 @@
 /* === CSS Custom Properties (Variables) === */
-/* === CSS Custom Properties (Variables) === */
 .dynamic-grid-table {
     /* Default (Light) Theme */
     --bg-primary: #f9f9f9;
@@ -19,6 +18,8 @@
     --scrollbar-thumb-focus: #888;
     --border-radius: 10px;
     --cell-border-radius: 4px;
+    --scrollbar-width: 8px;
+    --scrollbar-height: 8px;
 }
 
 /* === Theme Variations === */
@@ -43,6 +44,8 @@
 .dynamic-grid-table[data-theme="square"] {
     --border-radius: 0px;
     --cell-border-radius: 0px;
+    --scrollbar-width: 6px;
+    --scrollbar-height: 6px;
 }
 
 .dynamic-grid-table[data-theme="blue"] {
@@ -77,20 +80,27 @@
     --resize-handle-active: #374151;
     --border-radius: 6px;
     --cell-border-radius: 2px;
+    --scrollbar-width: 6px;
+    --scrollbar-height: 6px;
 }
 
 /* === Scrollbar Styling === */
-.table *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+.dynamic-grid-table::-webkit-scrollbar {
+    width: var(--scrollbar-width, 8px);
+    height: var(--scrollbar-height, 8px);
 }
 
-.table *::-webkit-scrollbar-thumb {
+.dynamic-grid-table::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+}
+
+.dynamic-grid-table::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
     border-radius: 3px;
 }
 
-.table *:focus::-webkit-scrollbar-thumb {
+.dynamic-grid-table:focus::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb-focus);
 }
 
@@ -101,6 +111,7 @@
     width: 100%;
     scroll-behavior: smooth;
     border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
 }
 
 .scroll-container {
@@ -118,7 +129,6 @@
     border-radius: var(--cell-border-radius);
     width: fit-content;
     table-layout: fixed;
-    border-bottom: 1px solid var(--border-color);
 }
 
 .dynamic-grid-table-header *,
@@ -139,6 +149,7 @@ table.dynamic-grid-table-header {
     position: sticky;
     top: 0;
     z-index: 1000;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .dynamic-grid-table-header .header-row {
@@ -301,6 +312,11 @@ td.body-cell:first-child::after {
 
 td.body-cell:focus {
     outline: 1px solid var(--outline-color);
+}
+
+td.body-cell.edited {
+    background: var(--bg-hover);
+    color: var(--text-primary);
 }
 
 /* === Data Cell Styles === */

@@ -208,8 +208,6 @@ class ContextMenu {
         this.#_positionMenu(menu, {x, y, position: 'fixed'});
         this.#_animateIn(menu);
 
-        console.log(menu);
-
         return menu;
     }
 
@@ -366,9 +364,6 @@ class ContextMenu {
     }
 
     #_render() {
-
-        console.log(this.items);
-
         const menuContainer = document.createElement('div');
         menuContainer.classList.add(ContextMenu.CLASSNAMES.MENU);
         menuContainer.id = this.id;

@@ -13,9 +13,7 @@ class SJQLEngine {
         this.updateTracker = new EditTracker();
 
         this.config = {
-            UseDataIndexing: engine_config.UseDataIndexing || true,
-            useStrictCase: engine_config.useStrictCase || false,
-            SymbolsToIgnore: engine_config.SymbolsToIgnore || [' ', '_', '-']
+            //UseDataIndexing: engine_config.UseDataIndexing || true,
         };
 
         this.APIConnector = engine_config.APIConnector || null;
@@ -26,7 +24,7 @@ class SJQLEngine {
     }
 
     createDataIndex() {
-        if (!this.config.UseDataIndexing) return;
+        //if (!this.config.UseDataIndexing) return;
 
         // Create indexes for faster querying
         this.dataIndexes = {};
@@ -106,7 +104,8 @@ class SJQLEngine {
             return this.data;
         }
 
-        return this.#_query(this.QueryParser.parseQuery(query, this.plugins, this.headers));
+        const parsedQuery = this.QueryParser.parseQuery(query, this.plugins, this.headers);
+        return this.#_query(parsedQuery);
     }
 
 
@@ -165,8 +164,8 @@ class SJQLEngine {
         // Process RANGE query
         if (rangeQuery) {
             const first = validIndices.values().next().value;
-            const lower = Math.max(0, first + rangeQuery.lower);
-            const upper = Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
+            const lower = rangeQuery.upper < 0 ? this.data.length + rangeQuery.upper : Math.max(0, first + rangeQuery.lower);
+            const upper = rangeQuery.upper < 0 ? this.data.length : Math.min(this.data.length - 1, first + rangeQuery.upper - 1);
             validIndices = new Set(Array.from({ length: upper - lower + 1 }, (_, i) => i + lower));
         }
 
@@ -208,7 +207,7 @@ class SJQLEngine {
             }));
         }
 
-        console.log(validIndices);
+        // console.log(validIndices);
 
         // Return filtered data
         return this.data.filter((_, i) => validIndices.has(i));
@@ -425,13 +424,15 @@ class SJQLEngine {
     }
 
     alterData(datum, column, value) {
+        const oldValue = this.data[datum][column];
         if (this.data && this.data.length > 0) {
             this.data[datum][column] = value;
         }
 
         //recalculate the data index for the altered row
-        if (this.config.UseDataIndexing && this.dataIndexes && this.dataIndexes[column]) {
-            const oldValue = this.data[datum][column];
+        if (this.dataIndexes && this.dataIndexes[column]) {
+
+            console.log(oldValue, datum, column, value);
             if (this.dataIndexes[column].has(oldValue)) {
                 this.dataIndexes[column].get(oldValue).delete(datum);
             }
@@ -440,6 +441,8 @@ class SJQLEngine {
             }
             this.dataIndexes[column].get(value).add(datum);
         }
+
+        //remove the previous data index for the altered row
     }
 
     #parseJsonData(data, config) {
