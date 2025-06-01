@@ -51,6 +51,10 @@ class SJQLEngine {
             else if (!isNaN(data[key])) {
                 this.headers[key] = { type: 'number', isUnique: false, isHidden: false, isEditable: true  };
             }
+            //check if the value is a date (iso format)
+            else if (new Date(data[key]).toString() !== 'Invalid Date') {
+                this.headers[key] = { type: 'date', isUnique: false, isHidden: false, isEditable: true  };
+            }
             else {
                 this.headers[key] = { type: 'string', isUnique: false, isHidden: false, isEditable: true  };
             }

@@ -183,4 +183,20 @@ class DynamicGrid {
      * @returns {Array<string>} - An array of all exportable formats.
      */
     get exportableFileFormats () {return this.engine.getExportConnectors();}
+
+    /**
+     * Subscribes to an event.
+     * @param {string} eventName - The name of the event to subscribe to.
+     * @param {Function} callback - The function to call when the event is triggered.
+     */
+    on = (eventName, callback) => this.eventEmitter.on(eventName, callback);
+    subscribe = (eventName, callback) => this.eventEmitter.on(eventName, callback);
+
+    /**
+     * Unsubscribes from an event.
+     * @param {string} eventName - The name of the event to unsubscribe from.
+     * @param {Function} callback - The function to remove from the event listeners.
+     */
+    off = (eventName, callback) => this.eventEmitter.off(eventName, callback);
+    unsubscribe = (eventName, callback) => this.eventEmitter.off(eventName, callback);
 }

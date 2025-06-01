@@ -173,11 +173,11 @@
     });
 
     const input = document.getElementById('search');
-    grid.eventEmitter.subscribe('engine-query-update', function (query) {
+    grid.subscribe('engine-query-update', function (query) {
         input.value = query;
     });
 
-    grid.eventEmitter.on('ui-cell-edit', function (edit) {
+    grid.on('ui-cell-edit', function (edit) {
         console.log('cell-edit', edit);
     });
 
