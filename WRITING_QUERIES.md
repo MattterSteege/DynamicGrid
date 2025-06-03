@@ -16,9 +16,8 @@
 5. [Field Matching](#field-matching)
 6. [Plugin System](#plugin-system)
 7. [Error Handling](#error-handling)
-8. [Complete Examples](#complete-examples)
-9. [Best Practices](#best-practices)
-10. [Troubleshooting Guide](#troubleshooting-guide)
+8. [Best Practices](#best-practices)
+9. [Troubleshooting Guide](#troubleshooting-guide)
 
 ---
 
@@ -366,13 +365,13 @@ search "[term]" and group [field] and range [sample_size]
 
 ### Common Issues and Solutions
 
-| Issue | Symptom | Solution |
-|-------|---------|----------|
-| Field not found | "No plugin found" error | Check field name spelling and case |
-| Invalid operator | Operator error with options | Use suggested operators from error |
-| No results | Query runs but returns empty | Verify data exists matching criteria |
-| Wrong results | Unexpected data returned | Check operator logic and value format |
-| Parse error | "Invalid query" warning | Verify query syntax against patterns |
+| Issue            | Symptom                      | Solution                              |
+|------------------|------------------------------|---------------------------------------|
+| Field not found  | "No plugin found" error      | Check field name spelling and case    |
+| Invalid operator | Operator error with options  | Use suggested operators from error    |
+| No results       | Query runs but returns empty | Verify data exists matching criteria  |
+| Wrong results    | Unexpected data returned     | Check operator logic and value format |
+| Parse error      | "Invalid query" warning      | Verify query syntax against patterns  |
 
 ---
 

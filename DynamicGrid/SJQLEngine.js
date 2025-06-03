@@ -51,8 +51,9 @@ class SJQLEngine {
             else if (!isNaN(data[key])) {
                 this.headers[key] = { type: 'number', isUnique: false, isHidden: false, isEditable: true  };
             }
-            //check if the value is a date (iso format)
-            else if (new Date(data[key]).toString() !== 'Invalid Date') {
+            //The regex check for data formats (with built-in validation: 32-13-2023 invalid; 31-01-2023 valid)
+            //else if (data[key].test(/(0?[1-9]|[12][0-9]|3[01])-(0?[1-9]|1[0-2])-(\d{4})/)) {
+            else if (data[key].match(/^(0?[1-9]|[12][0-9]|3[01])-(0?[1-9]|1[0-2])-(\d{4})$/)) {
                 this.headers[key] = { type: 'date', isUnique: false, isHidden: false, isEditable: true  };
             }
             else {
@@ -436,7 +437,6 @@ class SJQLEngine {
         //recalculate the data index for the altered row
         if (this.dataIndexes && this.dataIndexes[column]) {
 
-            console.log(oldValue, datum, column, value);
             if (this.dataIndexes[column].has(oldValue)) {
                 this.dataIndexes[column].get(oldValue).delete(datum);
             }

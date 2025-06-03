@@ -42,16 +42,11 @@
   {
     "eventName": "ui-cell-edit",
     "file": "DynamicGridUI.js",
-    "line": 478
-  },
-  {
-    "eventName": "ui-cell-edit",
-    "file": "DynamicGridUI.js",
-    "line": 487
+    "line": 479
   },
   {
     "eventName": "engine-query-update",
     "file": "SJQLEngine.js",
-    "line": 321
+    "line": 322
   }
 ]

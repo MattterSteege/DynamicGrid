@@ -473,19 +473,10 @@ class DynamicGridUI {
                 if (key === 'internal_id') return;
                 const plugin = this.engine.getPlugin(key);
 
-                // const td = this.engine.headers[key].isEditable ?
-                //     plugin.renderEditableCell(value, (value) => {
-                //         this.eventEmitter.emit('ui-cell-edit', { index, key, value });
-                //         this.engine.updateTracker.addEdit({ index, key, value });
-                //     }) :
-                //     plugin.renderCell(value);
-
                 const onEdit = (callback) => {
-                    callback = plugin.parseValue(callback);
                     this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
                     this.engine.alterData(data['internal_id'], key, callback);
                     this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
-                    td.innerText = callback; // Update the cell text immediately
                     td.classList.add('edited'); // Add a class to indicate
                 }
 
