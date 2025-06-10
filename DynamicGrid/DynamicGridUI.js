@@ -113,6 +113,28 @@ class DynamicGridUI {
         this.eventEmitter.emit('ui-content-cleared');
     }
 
+    destroy() {
+        this.clearContent();
+        this.table?.remove();
+        this.headerTable?.remove();
+        this.scrollContainer?.remove();
+        this.bodyTable?.remove();
+
+        // Clear all event listeners
+        this.eventEmitter.removeAllListeners();
+
+        // Clear context menu
+        this.contextMenu.destroy();
+
+        // Clear properties
+        this.table = null;
+        this.headerTable = null;
+        this.bodyTable = null;
+        this.scrollContainer = null;
+        this.colGroup1 = null;
+        this.colGroup2 = null;
+    }
+
     #_hideColumn(Index) {
         const column = this.colGroup1.children[Index + 1];
         const headerCell = this.headerTable.querySelector(`th:nth-child(${Index + 2})`);

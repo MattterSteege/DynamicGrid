@@ -407,13 +407,30 @@ class SJQLEngine {
         return Connector;
     }
 
+    destroy() {
+        this.data = [];
+        this.headers = [];
+        this.plugins = [];
+        this.connectors = [];
+        this.futureQuery = [];
+        this.QueryParser = null;
+        this.updateTracker = null;
+        this.config = {};
+        this.APIConnector = null;
+        this.eventEmitter.removeAllListeners();
+        this.eventEmitter = null;
+    }
+
     //================================================== IMPORT ==================================================
     importData(data, config) {
         if (this.data && this.data.length > 0) {
             throw new GridError('Data already imported, re-importing data is not (yet) supported');
         }
 
-        if (config.type === 'json') {
+        if (config.type === undefined || config.type === 'object') {
+            this.#parseObjectData(data, config);
+        }
+        else if (config.type === 'json') {
             this.#parseJsonData(data, config);
         } else if (config.type === 'csv') {
             this.#parseCSVData(data, config);
@@ -447,6 +464,31 @@ class SJQLEngine {
         }
 
         //remove the previous data index for the altered row
+    }
+
+
+    #parseObjectData(data, config) {
+        if (!(typeof data === 'object')) {
+            throw new GridError('Data must be an object (parsed JSON)');
+        }
+
+        if (!Array.isArray(data)) {
+            throw new GridError('Data must be an array');
+        }
+
+        if (data.length === 0) {
+            console.warn('No data provided');
+            return [];
+        }
+
+        this.data = data.map((item, index) => {
+            const newItem = {};
+            newItem['internal_id'] = index;
+            for (const key of Object.keys(item)) {
+                newItem[key] = item[key];
+            }
+            return newItem;
+        });
     }
 
     #parseJsonData(data, config) {

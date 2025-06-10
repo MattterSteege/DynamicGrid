@@ -186,6 +186,20 @@ class DynamicGrid {
      */
     off = (eventName, callback) => this.eventEmitter.off(eventName, callback);
     unsubscribe = (eventName, callback) => this.eventEmitter.off(eventName, callback);
+
+    /**
+     * cleans up the grid and removes all event listeners.
+     */
+    destroy() {
+        this.eventEmitter.removeAllListeners();
+        this.ui.destroy();
+        this.engine.destroy();
+        this.keyboardShortcuts.destroy();
+        this.eventEmitter = null;
+        this.ui = null;
+        this.engine = null;
+        this.keyboardShortcuts = null;
+    }
 }
 
 
@@ -303,6 +317,28 @@ class DynamicGridUI {
         }
         this.showData = [];
         this.eventEmitter.emit('ui-content-cleared');
+    }
+
+    destroy() {
+        this.clearContent();
+        this.table?.remove();
+        this.headerTable?.remove();
+        this.scrollContainer?.remove();
+        this.bodyTable?.remove();
+
+        // Clear all event listeners
+        this.eventEmitter.removeAllListeners();
+
+        // Clear context menu
+        this.contextMenu.destroy();
+
+        // Clear properties
+        this.table = null;
+        this.headerTable = null;
+        this.bodyTable = null;
+        this.scrollContainer = null;
+        this.colGroup1 = null;
+        this.colGroup2 = null;
     }
 
     #_hideColumn(Index) {
@@ -2404,13 +2440,30 @@ class SJQLEngine {
         return Connector;
     }
 
+    destroy() {
+        this.data = [];
+        this.headers = [];
+        this.plugins = [];
+        this.connectors = [];
+        this.futureQuery = [];
+        this.QueryParser = null;
+        this.updateTracker = null;
+        this.config = {};
+        this.APIConnector = null;
+        this.eventEmitter.removeAllListeners();
+        this.eventEmitter = null;
+    }
+
     //================================================== IMPORT ==================================================
     importData(data, config) {
         if (this.data && this.data.length > 0) {
             throw new GridError('Data already imported, re-importing data is not (yet) supported');
         }
 
-        if (config.type === 'json') {
+        if (config.type === undefined || config.type === 'object') {
+            this.#parseObjectData(data, config);
+        }
+        else if (config.type === 'json') {
             this.#parseJsonData(data, config);
         } else if (config.type === 'csv') {
             this.#parseCSVData(data, config);
@@ -2444,6 +2497,31 @@ class SJQLEngine {
         }
 
         //remove the previous data index for the altered row
+    }
+
+
+    #parseObjectData(data, config) {
+        if (!(typeof data === 'object')) {
+            throw new GridError('Data must be an object (parsed JSON)');
+        }
+
+        if (!Array.isArray(data)) {
+            throw new GridError('Data must be an array');
+        }
+
+        if (data.length === 0) {
+            console.warn('No data provided');
+            return [];
+        }
+
+        this.data = data.map((item, index) => {
+            const newItem = {};
+            newItem['internal_id'] = index;
+            for (const key of Object.keys(item)) {
+                newItem[key] = item[key];
+            }
+            return newItem;
+        });
     }
 
     #parseJsonData(data, config) {
@@ -2788,6 +2866,13 @@ class EventEmitter {
         // console.info(`Event emitted: ${event}`, data);
 
         this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
+    }
+
+    /**
+     * Remove all listeners
+     */
+    removeAllListeners() {
+        this.events = {};
     }
 }
 

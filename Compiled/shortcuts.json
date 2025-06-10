@@ -3,6 +3,6 @@
     "keybind": "ctrl+shift+a",
     "description": "Shortcut to automatically fit the columns to a (almost) perfect fit",
     "file": "DynamicGridUI.js",
-    "line": 152
+    "line": 174
   }
 ]

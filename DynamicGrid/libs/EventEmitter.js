@@ -62,4 +62,11 @@ class EventEmitter {
 
         this.events[event.toLocaleLowerCase()].forEach(listener => listener(data));
     }
+
+    /**
+     * Remove all listeners
+     */
+    removeAllListeners() {
+        this.events = {};
+    }
 }

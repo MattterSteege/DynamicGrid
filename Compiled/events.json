@@ -37,12 +37,12 @@
   {
     "eventName": "ui-container-initialized",
     "file": "DynamicGridUI.js",
-    "line": 156
+    "line": 178
   },
   {
     "eventName": "ui-cell-edit",
     "file": "DynamicGridUI.js",
-    "line": 479
+    "line": 501
   },
   {
     "eventName": "engine-query-update",

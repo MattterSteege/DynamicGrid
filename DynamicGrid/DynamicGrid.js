@@ -185,4 +185,18 @@ class DynamicGrid {
      */
     off = (eventName, callback) => this.eventEmitter.off(eventName, callback);
     unsubscribe = (eventName, callback) => this.eventEmitter.off(eventName, callback);
+
+    /**
+     * cleans up the grid and removes all event listeners.
+     */
+    destroy() {
+        this.eventEmitter.removeAllListeners();
+        this.ui.destroy();
+        this.engine.destroy();
+        this.keyboardShortcuts.destroy();
+        this.eventEmitter = null;
+        this.ui = null;
+        this.engine = null;
+        this.keyboardShortcuts = null;
+    }
 }
