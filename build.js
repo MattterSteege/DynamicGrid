@@ -5,15 +5,26 @@ const outputDir = './Compiled/';
 const config = {
     compress: {
         dead_code: true,
-        drop_console: ['log', 'info'],
+        drop_console: false,
         drop_debugger: true,
-        keep_classnames: true,
-        keep_fargs: false,
+        keep_classnames: false,
+        keep_fargs: true,
         keep_fnames: false,
-        keep_infinity: false
+        keep_infinity: false,
+        passes: 3, // Number of passes to optimize the code (1 is default)
     },
-    mangle: false,
+    mangle: {
+        eval: false,
+        keep_classnames: false,
+        keep_fnames: false,
+        toplevel: false,
+        safari10: false
+    },
     module: false,
+    sourceMap: {
+        filename: 'DynamicGrid.min.js',
+        url: 'DynamicGrid.min.js.map'
+    },
     output: {
         comments: 'some'
     }
@@ -22,7 +33,6 @@ const config = {
 const files = [
     "./DynamicGrid/DynamicGrid.js",
     "./DynamicGrid/DynamicGridUI.js",
-    "./DynamicGrid/apiBase/APIBase.js",
     "./DynamicGrid/exportConnectors/ExportConnector.js",
     "./DynamicGrid/exportConnectors/InherentExportConnector.js",
     "./DynamicGrid/typePlugins/TypePlugin.js",
@@ -43,6 +53,7 @@ const separateFiles = [
     "./DynamicGrid/libs/ContextMenu.js",
     "./DynamicGrid/libs/EventEmitter.js",
     "./DynamicGrid/libs/KeyboardShortcuts.js",
+    "./DynamicGrid/libs/APIConnector.js",
 ];
 
 const eventRegex = /eventEmitter\.emit\('([^']*)',/g;
@@ -52,7 +63,8 @@ const shortcutRegex = /\.addShortcut\('([^']*)',.*?'([^']*)'/g;
 const shortcuts = [];
 
 // Helper function to add delay
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const zeroDelay = true
+const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0)) : new Promise(resolve => setTimeout(resolve, ms));
 
 (async () => {
     console.log('=== Starting Minification Process ===');
@@ -129,10 +141,6 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         await delay(300);
         const minifiedCombined = await minify(combinedCode, {
             ...config,
-            sourceMap: {
-                filename: 'DynamicGrid.min.js.map',
-                url: 'DynamicGrid.min.js.map'
-            }
         });
         fs.writeFileSync(outputDir + 'DynamicGrid.min.js', minifiedCombined.code);
         fs.writeFileSync(outputDir + 'DynamicGrid.min.js.map', minifiedCombined.map);
@@ -179,5 +187,3 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         console.error('Error during minification:', error);
     }
 })();
-
-//MAKE A FILE THAT FINDS ALL SHORTCUTS IN THE FILES AND TAKES THE COMMENT RIGHT ABOVE IT TO GET THE DESCRIPTION

@@ -149,7 +149,7 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
-        this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to toggle column visibility', () => {
+        this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to automatically fit the columns to a (almost) perfect fit', () => {
             this.autoFitCellWidth();
         });
 

@@ -4,24 +4,23 @@
     <meta charset="UTF-8">
     <title>Dynamic Grid</title>
     <link rel="stylesheet" href="DynamicGrid.css">
-<!--    <script src="DynamicGrid/DynamicGrid.js"></script>-->
-<!--    <script src="DynamicGrid/DynamicGridUI.js"></script>-->
-<!--    <script src="DynamicGrid/typePlugins/TypePlugin.js"></script>-->
-<!--    <script src="DynamicGrid/typePlugins/booleanTypePlugin.js"></script>-->
-<!--    <script src="DynamicGrid/typePlugins/stringTypePlugin.js"></script>-->
-<!--    <script src="DynamicGrid/typePlugins/numberTypePlugin.js"></script>-->
-<!--    <script src="DynamicGrid/typePlugins/dateTypePlugin.js"></script>-->
-<!--    <script src="DynamicGrid/EditTracker.js"></script>-->
-<!--    <script src="DynamicGrid/SJQLEngine.js"></script>-->
-<!--    <script src="DynamicGrid/QueryParser.js"></script>-->
-<!--    <script src="DynamicGrid/apiBase/APIBase.js"></script>-->
-<!--    <script src="DynamicGrid/exportConnectors/ExportConnector.js"></script>-->
-<!--    <script src="DynamicGrid/exportConnectors/InherentExportConnector.js"></script>-->
-<!--    <script src="DynamicGrid/libs/EventEmitter.js"></script>-->
-<!--    <script src="DynamicGrid/libs/KeyboardShortcuts.js"></script>-->
-<!--    <script src="DynamicGrid/libs/ContextMenu.js"></script>-->
-<!--    <script src="DynamicGrid/DynamicGridUtils.js"></script>-->
-    <script src="Compiled/DynamicGrid.min.js"></script>
+    <script src="DynamicGrid/DynamicGrid.js"></script>
+    <script src="DynamicGrid/DynamicGridUI.js"></script>
+    <script src="DynamicGrid/typePlugins/TypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/booleanTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/stringTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/numberTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/dateTypePlugin.js"></script>
+    <script src="DynamicGrid/EditTracker.js"></script>
+    <script src="DynamicGrid/SJQLEngine.js"></script>
+    <script src="DynamicGrid/QueryParser.js"></script>
+    <script src="DynamicGrid/exportConnectors/ExportConnector.js"></script>
+    <script src="DynamicGrid/exportConnectors/InherentExportConnector.js"></script>
+    <script src="DynamicGrid/libs/EventEmitter.js"></script>
+    <script src="DynamicGrid/libs/KeyboardShortcuts.js"></script>
+    <script src="DynamicGrid/libs/ContextMenu.js"></script>
+    <script src="DynamicGrid/DynamicGridUtils.js"></script>
+<!--    <script src="Compiled/DynamicGrid.min.js"></script>-->
 
     <style>
         /* General body styling */
@@ -126,7 +125,6 @@
             transform: scale(0.98);
         }
     </style>
-    <script src="BootAPI.js"></script>
 </head>
 <body>
 
@@ -164,11 +162,6 @@
         },
         plugins: {
             //string: new customStringTypePlugin(),
-        },
-        APIConnector: {
-            connector: BootAPI,
-            baseUrl: 'https://localhost:5001/api',
-            apiVersion: undefined,
         },
         connectors: {
             //csv: new CSVExportConnector(),
@@ -222,7 +215,7 @@
             });
     }
 
-    //fetchPresetData();
+    fetchPresetData();
 </script>
 
 </body>

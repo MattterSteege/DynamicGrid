@@ -1,14 +1,8 @@
 [
   {
     "keybind": "ctrl+shift+a",
-    "description": "Shortcut to toggle column visibility",
+    "description": "Shortcut to automatically fit the columns to a (almost) perfect fit",
     "file": "DynamicGridUI.js",
     "line": 152
-  },
-  {
-    "keybind": "ctrl+s",
-    "description": "The keybind that tells the APIBase to force-send an update request",
-    "file": "APIBase.js",
-    "line": 33
   }
 ]

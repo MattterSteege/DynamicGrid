@@ -1,5 +1,6 @@
 /**
  * DynamicGrid is a library for rendering data in a grid format with dynamic querying capabilities.
+ * Code by Matt ter Steege (Kronk)
  * @license MIT
  */
 
@@ -52,18 +53,6 @@ class DynamicGrid {
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
         this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
 
-        // Set up **possible** API connector
-        if (config.APIConnector && config.APIConnector.connector) {
-            const APIconfig = config.APIConnector;
-            this.APIConnector = new config.APIConnector.connector(this, APIconfig);
-            delete APIconfig.connector;
-
-            this.APIConnector.fetchData().then((data) => {
-                this.importData(data, { type: 'json' });
-                this.render();
-            });
-        }
-
         this.eventEmitter.emit('grid-initialized', { config });
     }
 
@@ -72,7 +61,6 @@ class DynamicGrid {
      * Imports data into the engine and creates a data index.
      * @param {string|object} data - The data to import.
      * @param {Object} [config] - The configuration for importing data.
-     * @preserve
      */
     importData(data, config) {
         this.engine.importData(data, config);
@@ -83,7 +71,6 @@ class DynamicGrid {
     /**
      * Renders the UI based on the provided input.
      * @param {string} input - A query string or data object to render the UI.
-     * @preserve
      */
     render(input) {
         this.eventEmitter.emit('ui-render-start', { input });
@@ -94,7 +81,6 @@ class DynamicGrid {
     /**
      * Renders the UI with the provided data. This method does not run any queries, so the data must be pre-processed already.
      * @param {object} input - The data to render.
-     * @preserve
      */
     renderRaw(input) {
         this.ui.render(input);

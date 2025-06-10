@@ -196,9 +196,9 @@ table.dynamic-grid-table-header {
 }
 
 .header-cell-content .header-cell-text {
-    width: min-content;
     text-overflow: ellipsis;
     overflow: hidden;
+    text-wrap: nowrap;
 }
 
 .dynamic-grid-table-header .header-cell-button {

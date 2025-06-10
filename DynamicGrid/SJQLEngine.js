@@ -500,27 +500,16 @@ class SJQLEngine {
      * @param {string} fileName - The name for the exported file
      * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
      */
-    requestExport(fileName, fileType) {
+    async requestExport(fileName, fileType) {
         const Connector = this.getConnector(fileType);
         if (!Connector) {
             console.error('Connector not found: ' + fileType);
             return;
         }
 
-        // Prepare data without internal_id
-        const exportData = this.data.map(row => {
-            const newRow = {};
-            Object.keys(row).forEach(key => {
-                if (key !== 'internal_id') {
-                    newRow[key] = row[key];
-                }
-            });
-            return newRow;
-        });
-
         try {
             //export the data without the internal_id
-            const exportResult = Connector.export(this.data.map(row => {
+            const exportResult = await Connector.smartExport(this.data.map(row => {
                 const newRow = {};
                 Object.keys(row).forEach(key => {
                     if (key !== 'internal_id') {
@@ -536,7 +525,7 @@ class SJQLEngine {
             }
 
             // Create a blob using the returned data
-            const blob = new Blob([exportResult], { type: Connector.mimeType });
+            const blob = new Blob([exportResult], {type: Connector.mimeType});
 
             // Create a download link and trigger it
             const url = URL.createObjectURL(blob);
@@ -550,7 +539,10 @@ class SJQLEngine {
         } catch (error) {
             console.error(error.message)
             alert('Export failed. See console for details.');
+            return false;
         }
+
+        return true;
     }
 
     getExportConnectors = () => Object.keys(this.connectors);

@@ -1,6 +1,7 @@
 // ./DynamicGrid/DynamicGrid.js
 /**
  * DynamicGrid is a library for rendering data in a grid format with dynamic querying capabilities.
+ * Code by Matt ter Steege (Kronk)
  * @license MIT
  */
 
@@ -53,18 +54,6 @@ class DynamicGrid {
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
         this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
 
-        // Set up **possible** API connector
-        if (config.APIConnector && config.APIConnector.connector) {
-            const APIconfig = config.APIConnector;
-            this.APIConnector = new config.APIConnector.connector(this, APIconfig);
-            delete APIconfig.connector;
-
-            this.APIConnector.fetchData().then((data) => {
-                this.importData(data, { type: 'json' });
-                this.render();
-            });
-        }
-
         this.eventEmitter.emit('grid-initialized', { config });
     }
 
@@ -73,7 +62,6 @@ class DynamicGrid {
      * Imports data into the engine and creates a data index.
      * @param {string|object} data - The data to import.
      * @param {Object} [config] - The configuration for importing data.
-     * @preserve
      */
     importData(data, config) {
         this.engine.importData(data, config);
@@ -84,7 +72,6 @@ class DynamicGrid {
     /**
      * Renders the UI based on the provided input.
      * @param {string} input - A query string or data object to render the UI.
-     * @preserve
      */
     render(input) {
         this.eventEmitter.emit('ui-render-start', { input });
@@ -95,7 +82,6 @@ class DynamicGrid {
     /**
      * Renders the UI with the provided data. This method does not run any queries, so the data must be pre-processed already.
      * @param {object} input - The data to render.
-     * @preserve
      */
     renderRaw(input) {
         this.ui.render(input);
@@ -355,7 +341,7 @@ class DynamicGridUI {
             throw new GridError(`Container with id "${containerId}" not found`);
         }
 
-        this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to toggle column visibility', () => {
+        this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to automatically fit the columns to a (almost) perfect fit', () => {
             this.autoFitCellWidth();
         });
 
@@ -754,341 +740,6 @@ class DynamicGridUI {
     }
 }
 
-// ./DynamicGrid/apiBase/APIBase.js
-/**
- * Base API client class for handling REST API operations.
- * This class provides a foundation for API interactions with consistent error handling,
- * request formatting, authentication, and other common API functionality.
- */
-class APIBase {
-    /**
-     * Creates a new APIBase instance.
-     * @param {DynamicGrid} dynamicGrid - The DynamicGrid instance.
-     * @param {Object} config - Configuration options for the API.
-     * @param {string} [config.baseUrl='https://api.example.com'] - The base URL for the API.
-     * @param {Object} [config.headers={}] - Default headers to include with each request.
-     * @param {number} [config.timeout=30000] - Request timeout in milliseconds.
-     * @param {boolean} [config.useAuth=false] - Whether to use authentication.
-     * @param {string} [config.authToken=null] - Authentication token.
-     * @param {string} [config.apiVersion='v1'] - API version.
-     */
-    constructor(dynamicGrid, config = {}) {
-        this.dynamicGrid = dynamicGrid;
-
-        this.baseUrl = config.baseUrl || 'https://api.example.com';
-        this.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...config.headers
-        };
-        this.timeout = config.timeout || 30000;
-        this.useAuth = config.useAuth || false;
-        this.authToken = config.authToken || null;
-        this.apiVersion = config.apiVersion;
-        this.abortControllers = new Map();
-
-        this.dynamicGrid.keyboardShortcuts.addShortcut('ctrl+s', 'The keybind that tells the APIBase to force-send an update request', () => this.postData(this.dynamicGrid.engine.updateTracker.updates));
-    }
-
-    /**
-     * Sets the authentication token.
-     * @param {string} token - The authentication token.
-     */
-    setAuthToken(token) {
-        this.authToken = token;
-        this.useAuth = !!token;
-    }
-
-    /**
-     * Clears the authentication token.
-     */
-    clearAuthToken() {
-        this.authToken = null;
-        this.useAuth = false;
-    }
-
-    /**
-     * Constructs the complete URL for an endpoint.
-     * @param {string} endpoint - The API endpoint.
-     * @returns {string} The complete URL.
-     */
-    buildUrl(endpoint) {
-        // Remove leading slash if present
-        const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
-
-        if (this.apiVersion)
-            return `${this.baseUrl}/${this.apiVersion}/${cleanEndpoint}`;
-        return `${this.baseUrl}/${cleanEndpoint}`;
-    }
-
-    /**
-     * Prepares headers for a request, including auth if enabled.
-     * @returns {Object} The prepared headers.
-     */
-    prepareHeaders() {
-        const headers = { ...this.headers };
-
-        if (this.useAuth && this.authToken) {
-            headers['Authorization'] = `Bearer ${this.authToken}`;
-        }
-
-        return headers;
-    }
-
-    /**
-     * Makes a request to the API.
-     * @param {string} method - The HTTP method (GET, POST, PUT, DELETE, etc.).
-     * @param {string} endpoint - The API endpoint.
-     * @param {Object} [options={}] - Request options.
-     * @param {Object} [options.data=null] - Data to send with the request.
-     * @param {Object} [options.params={}] - URL parameters.
-     * @param {Object} [options.headers={}] - Additional headers.
-     * @param {boolean} [options.skipAuth=false] - Whether to skip authentication.
-     * @param {number} [options.timeout] - Custom timeout for this request.
-     * @param {string} [options.requestId] - Unique identifier for the request (for cancellation).
-     * @returns {Promise<Object>} The response data.
-     * @throws {APIError} If the request fails.
-     */
-    async request(method, endpoint, options = {}) {
-        const {
-            data = null,
-            params = {},
-            headers = {},
-            skipAuth = false,
-            timeout = this.timeout,
-            requestId = Date.now().toString()
-        } = options;
-
-        // Create URL with query parameters
-        let url = this.buildUrl(endpoint);
-        if (Object.keys(params).length > 0) {
-            const queryParams = new URLSearchParams();
-            for (const [key, value] of Object.entries(params)) {
-                queryParams.append(key, value);
-            }
-            url += `?${queryParams.toString()}`;
-        }
-
-        // Prepare request headers
-        const requestHeaders = {
-            ...this.prepareHeaders(),
-            ...headers
-        };
-
-        if (skipAuth) {
-            delete requestHeaders['Authorization'];
-        }
-
-        // Prepare request options
-        const fetchOptions = {
-            method,
-            headers: requestHeaders,
-            mode: 'cors',
-            cache: 'no-cache',
-            credentials: 'same-origin',
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-        };
-
-        // Add body for methods that support it
-        if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) && data !== null) {
-            fetchOptions.body = JSON.stringify(data);
-        }
-
-        // Set up abort controller for timeout
-        const controller = new AbortController();
-        fetchOptions.signal = controller.signal;
-        this.abortControllers.set(requestId, controller);
-
-        // Set timeout
-        const timeoutId = setTimeout(() => {
-            if (this.abortControllers.has(requestId)) {
-                controller.abort();
-                this.abortControllers.delete(requestId);
-            }
-        }, timeout);
-
-        try {
-            const response = await fetch(url, fetchOptions);
-            clearTimeout(timeoutId);
-            this.abortControllers.delete(requestId);
-
-            // Handle response
-            return await this.handleResponse(response);
-        } catch (error) {
-            clearTimeout(timeoutId);
-            this.abortControllers.delete(requestId);
-
-            if (error.name === 'AbortError') {
-                throw new APIError('Request timeout', 'TIMEOUT', 408);
-            }
-
-            throw new APIError(
-                error.message || 'Network error',
-                'NETWORK_ERROR',
-                0,
-                error
-            );
-        }
-    }
-
-    /**
-     * Handles API responses and error cases.
-     * @param {Response} response - The fetch Response object.
-     * @returns {Promise<Object>} The parsed response data.
-     * @throws {APIError} If the response indicates an error.
-     */
-    async handleResponse(response) {
-        let data;
-
-        // Try to parse the response body
-        try {
-            // Check content type to determine parsing method
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                data = await response.text();
-            }
-        } catch (error) {
-            throw new APIError(
-                'Failed to parse response',
-                'PARSE_ERROR',
-                response.status,
-                error
-            );
-        }
-
-        // Handle error responses
-        if (!response.ok) {
-            const errorCode = data.error?.code || 'API_ERROR';
-            const errorMessage = data.error?.message || 'Unknown API error';
-
-            throw new APIError(
-                errorMessage,
-                errorCode,
-                response.status,
-                null,
-                data
-            );
-        }
-
-        return data;
-    }
-
-    /**
-     * Cancels an ongoing request.
-     * @param {string} requestId - The ID of the request to cancel.
-     * @returns {boolean} Whether a request was cancelled.
-     */
-    cancelRequest(requestId) {
-        if (this.abortControllers.has(requestId)) {
-            const controller = this.abortControllers.get(requestId);
-            controller.abort();
-            this.abortControllers.delete(requestId);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Cancels all ongoing requests.
-     */
-    cancelAllRequests() {
-        for (const controller of this.abortControllers.values()) {
-            controller.abort();
-        }
-        this.abortControllers.clear();
-    }
-
-    /**
-     * Fetches data from the API.
-     * @abstract
-     * @param {Object} [params={}] - URL parameters.
-     * @param {Object} [options={}] - Additional request options.
-     * @returns {Promise<Object>} The response data.
-     * @throws {Error} If the method is not overridden in a subclass.
-     */
-    async fetchData(params = {}, options = {}) {
-        throw new Error('Method "fetchData" must be implemented in a subclass');
-    }
-
-    /**
-     * Posts data to the API.
-     * @abstract
-     * @param {Object} data - The data to be posted.
-     * @param {Object} [options={}] - Additional request options.
-     * @returns {Promise<Object>} The response data.
-     * @throws {Error} If the method is not overridden in a subclass.
-     */
-    async postData(data, options = {}) {
-        throw new Error('Method "postData" must be implemented in a subclass');
-    }
-
-    /**
-     * Updates data in the API.
-     * @abstract
-     * @param {Object} data - The data to be updated.
-     * @param {Object} [options={}] - Additional request options.
-     * @returns {Promise<Object>} The response data.
-     * @throws {Error} If the method is not overridden in a subclass.
-     */
-    async updateData(data, options = {}) {
-        throw new Error('Method "updateData" must be implemented in a subclass');
-    }
-
-    /**
-     * Patches data in the API.
-     * @abstract
-     * @param {Object} data - The partial data to be patched.
-     * @param {Object} [options={}] - Additional request options.
-     * @returns {Promise<Object>} The response data.
-     * @throws {Error} If the method is not overridden in a subclass.
-     */
-    async patchData(data, options = {}) {
-        throw new Error('Method "patchData" must be implemented in a subclass');
-    }
-
-    /**
-     * Deletes data from the API.
-     * @abstract
-     * @param {Object} [options={}] - Additional request options.
-     * @returns {Promise<Object>} The response data.
-     * @throws {Error} If the method is not overridden in a subclass.
-     */
-    async deleteData(options = {}) {
-        throw new Error('Method "deleteData" must be implemented in a subclass');
-    }
-}
-
-/**
- * Custom error class for API-related errors.
- */
-class APIError extends Error {
-    /**
-     * Creates a new APIError.
-     * @param {string} message - The error message.
-     * @param {string} code - The error code.
-     * @param {number} status - The HTTP status code.
-     * @param {Error} [originalError=null] - The original error object.
-     * @param {Object} [responseData=null] - The response data.
-     */
-    constructor(message, code, status, originalError = null, responseData = null) {
-        super(message);
-        this.name = 'APIError';
-        this.code = code;
-        this.status = status;
-        this.originalError = originalError;
-        this.responseData = responseData;
-        this.timestamp = new Date();
-
-        // Maintain proper stack trace
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, APIError);
-        }
-    }
-}
-
 // ./DynamicGrid/exportConnectors/ExportConnector.js
 class ExportConnector {
     constructor() {
@@ -1096,6 +747,7 @@ class ExportConnector {
         this.mimeType = 'application/octet-stream';
         this.extension = 'bin';
     }
+
 
     /**
      * The entrance point which is overwritten by the child, turns the data object into an downloadable blob for the client (must be overridden)
@@ -1108,10 +760,51 @@ class ExportConnector {
      * DynamicGrid.engine.data
      * DynamicGrid.engine.headers
      * @return {any} a single blob that complies with the defined filetype
-     * @override Must be overridden by the child class
      */
     export(data, headers, name) {
-        throw new Error('Export method not implemented');
+        throw new Error('Export or ExportAsync method not implemented');
+    }
+
+    /**
+     * Exports the data in the specified format and triggers a download.
+     * @param data {Array<Object>} data - The data to export.
+     * @param headers {Object<Object>} headers - The headers to export.
+     * @param name {String} name - The name of the file to be downloaded.
+     * @returns {Promise<any>} - A promise that resolves when the export is complete.
+     */
+    exportAsync(data, headers, name) {
+        throw new Error('ExportAsync or Export method not implemented');
+    }
+
+    _isMethodOverridden(methodName) {
+        // Walk up the prototype chain to find where the method is defined
+        let currentProto = Object.getPrototypeOf(this);
+
+        while (currentProto && currentProto !== ExportConnector.prototype) {
+            if (currentProto.hasOwnProperty(methodName)) {
+                return true; // Found in a subclass
+            }
+            currentProto = Object.getPrototypeOf(currentProto);
+        }
+
+        return false; // Only found in base class
+    }
+
+    // Universal export with smart routing
+    async smartExport(data, headers, name) {
+        const hasExport = this._isMethodOverridden('export');
+        const hasExportAsync = this._isMethodOverridden('exportAsync');
+
+        if (hasExport && hasExportAsync) {
+            // Both implemented - prefer sync for better performance
+            return this.export(data, headers, name);
+        } else if (hasExport) {
+            return this.export(data, headers, name);
+        } else if (hasExportAsync) {
+            return await this.exportAsync(data, headers, name);
+        } else {
+            throw new Error('No export method implemented in subclass');
+        }
     }
 }
 
@@ -1139,15 +832,11 @@ class CSVExportConnector extends ExportConnector {
         const headers = Object.keys(data[0]);
 
         // Map data rows to CSV format
-        const rows = data.map(row =>
-            headers.map(header => {
-                const value = row[header];
-                // Escape double quotes and wrap values in quotes if necessary
-                return typeof value === 'string' && value.includes(this.delimiter)
-                    ? `"${value.replace(/"/g, '""')}"`
-                    : value;
-            }).join(this.delimiter)
-        );
+        const rows = data.map(row => headers.map(header => {
+            const value = row[header];
+            // Escape double quotes and wrap values in quotes if necessary
+            return typeof value === 'string' && value.includes(this.delimiter) ? `"${value.replace(/"/g, '""')}"` : value;
+        }).join(this.delimiter));
 
         // Combine headers and rows into a single CSV string
         return [headers.join(this.delimiter), ...rows].join('\n');
@@ -1161,69 +850,81 @@ class XLSXExportConnector extends ExportConnector {
         this.name = 'xlsx'
         this.mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         this.extension = 'xlsx';
-
-        // Initialize library loading
-        this.loadLibrary();
     }
 
     /**
-     * Load the SheetJS library in advance
+     * Loads the SheetJS library if not already loaded.
+     * @returns {Promise<void>}
      */
     loadLibrary() {
-        // Check if the library is already loaded
-        if (window.XLSX) return;
+        if (window.XLSX) return Promise.resolve();
 
-        // Create and append the script tag
-        const script = document.createElement('script');
-        script.src = "https://grid.kronk.tech/xlsx.bundle.js";
-        //type is script
-        script.type = 'application/javascript';
-        document.head.appendChild(script);
+        if (!this._libraryPromise) {
+            this._libraryPromise = new Promise((resolve, reject) => {
+                if (window.XLSX) return resolve();
+
+                const script = document.createElement('script');
+                script.src = "https://grid.kronk.tech/xlsx.bundle.js";
+                script.type = 'application/javascript';
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Failed to load XLSX library'));
+                document.head.appendChild(script);
+            });
+        }
+        return this._libraryPromise;
     }
 
     /**
-     * Synchronously exports data to XLSX format
-     * @param {Array<Object>} data - The data to export
-     * @returns {Uint8Array} - The XLSX file as a binary array
+     * Exports data to XLSX format. Loads the SheetJS library if needed.
+     * @param {Array<Object>} data - The data to export.
+     * @param {Object} headers - The headers object.
+     * @param {string} name - The name for the export.
+     * @returns {Promise<Uint8Array>} - The XLSX file as a binary array.
      */
-    export(data, headers, name) {
+    async exportAsync(data, headers, name) {
         if (!Array.isArray(data) || data.length === 0) {
             throw new Error('Invalid or empty data provided for XLSX export');
         }
 
-        if (!window.XLSX) {
-            throw new Error('XLSX library not loaded. Please try again in a moment.');
-        }
-
         try {
+            // Load the SheetJS library with a timeout
+            await Promise.race([
+                this.loadLibrary(),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('XLSX library load timeout')), 5000)
+                )
+            ]);
+
+            // Create workbook and worksheet
             const workbook = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(data);
+            const worksheet = XLSX.utils.json_to_sheet(data);
 
-            const headerCount = Object.keys(headers).length
+            const headerCount = Object.keys(headers).length;
+            worksheet['!autofilter'] = {
+                ref: `A1:${this.getExcelHeaderLetter(headerCount - 2)}1`
+            };
+            worksheet['!cols'] = this.fitToColumn(data);
 
-            ws['!autofilter'] = { ref:"A1:" + this.getExcelHeaderLetter(headerCount - 2) + "1" };
-            ws['!cols'] = this.fitToColumn(data)
-
-            ws['!cols'].forEach((col, index) => {
+            // Style header row
+            worksheet['!cols'].forEach((col, index) => {
                 const colLetter = this.getExcelHeaderLetter(index);
-                ws[colLetter + '1'].s = {
+                worksheet[`${colLetter}1`].s = {
                     font: { bold: true, color: { rgb: 'FFFFFF' } },
                     fill: { fgColor: { rgb: '4BACC6' } },
                     alignment: { horizontal: 'left', vertical: 'top' },
                 };
             });
 
-            XLSX.utils.book_append_sheet(workbook, ws, 'Sheet');
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet');
 
-            // Generate XLSX as an array
-            const excelData = XLSX.write(workbook, {
+            // Export as Uint8Array
+            return XLSX.write(workbook, {
                 type: 'array',
                 bookType: 'xlsx'
             });
 
-            return excelData;
         } catch (error) {
-            console.error('XLSX export failed:', error);
+            console.error('Error during XLSX export:', error);
             throw error;
         }
     }
@@ -1242,10 +943,8 @@ class XLSXExportConnector extends ExportConnector {
         const widths = []
         for (const field in data[0]) {
             widths.push({
-                wch: Math.max(
-                    field.length + 3, // Add some padding for the filter button
-                    ...data.map(item => item[field]?.toString()?.length ?? 0)
-                )
+                wch: Math.max(field.length + 3, // Add some padding for the filter button
+                    ...data.map(item => item[field]?.toString()?.length ?? 0))
             })
         }
         return widths
@@ -1372,7 +1071,6 @@ Diffrent filetypes exporting should suppert:
 - [x] XML
 - [x] HTML
 - [X] TXT
-- [ ] SQL
 - [ ] YAML
 - [ ] Markdown
  */
@@ -2799,27 +2497,16 @@ class SJQLEngine {
      * @param {string} fileName - The name for the exported file
      * @param {string} fileType - The type of file to export (e.g., 'csv', 'xlsx')
      */
-    requestExport(fileName, fileType) {
+    async requestExport(fileName, fileType) {
         const Connector = this.getConnector(fileType);
         if (!Connector) {
             console.error('Connector not found: ' + fileType);
             return;
         }
 
-        // Prepare data without internal_id
-        const exportData = this.data.map(row => {
-            const newRow = {};
-            Object.keys(row).forEach(key => {
-                if (key !== 'internal_id') {
-                    newRow[key] = row[key];
-                }
-            });
-            return newRow;
-        });
-
         try {
             //export the data without the internal_id
-            const exportResult = Connector.export(this.data.map(row => {
+            const exportResult = await Connector.smartExport(this.data.map(row => {
                 const newRow = {};
                 Object.keys(row).forEach(key => {
                     if (key !== 'internal_id') {
@@ -2835,7 +2522,7 @@ class SJQLEngine {
             }
 
             // Create a blob using the returned data
-            const blob = new Blob([exportResult], { type: Connector.mimeType });
+            const blob = new Blob([exportResult], {type: Connector.mimeType});
 
             // Create a download link and trigger it
             const url = URL.createObjectURL(blob);
@@ -2849,7 +2536,10 @@ class SJQLEngine {
         } catch (error) {
             console.error(error.message)
             alert('Export failed. See console for details.');
+            return false;
         }
+
+        return true;
     }
 
     getExportConnectors = () => Object.keys(this.connectors);
