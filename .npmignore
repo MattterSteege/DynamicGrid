@@ -1,0 +1,5 @@
+DynamicGrid/
+build.js
+.github/
+*.map
+!Compiled/

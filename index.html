@@ -137,15 +137,101 @@
 
 <script>
     let grid = new DynamicGrid({
-        // headers: {
-        //      id: {
-        //          type: 'number',
-        //          isUnique: true,
-        //          isEditable: false,
-        //          isGroupable: true,
-        //          width: 50,
-        //      },
-        // },
+        headers: {
+
+            index: {
+                type: 'number',
+                isUnique: true,
+                isEditable: false,
+                isGroupable: true,
+                width: 50,
+            },
+            guid: {
+                type: 'string',
+                isUnique: true,
+                isEditable: false,
+                isGroupable: true,
+                width: 150,
+            },
+            isActive: {
+                type: 'boolean',
+                isEditable: true,
+                isGroupable: true,
+                width: 100,
+            },
+            balance: {
+                type: 'number',
+                isEditable: true,
+                isGroupable: true,
+                width: 100,
+            },
+            picture: {
+                type: 'string',
+                isEditable: false,
+                isGroupable: false,
+                width: 150,
+            },
+            age: {
+                type: 'number',
+                isEditable: true,
+                isGroupable: true,
+                width: 50,
+            },
+            eyeColor: {
+                type: 'string',
+                isEditable: true,
+                isGroupable: true,
+                width: 100,
+            },
+            name: {
+                type: 'string',
+                isEditable: true,
+                isGroupable: true,
+                width: 150,
+            },
+            gender: {
+                type: 'string',
+                isEditable: true,
+                isGroupable: true,
+                width: 100,
+            },
+            company: {
+                type: 'string',
+                isEditable: true,
+                isGroupable: true,
+                width: 150,
+            },
+            email: {
+                type: 'string',
+                isEditable: true,
+                isGroupable: true,
+                width: 200,
+            },
+            phone: {
+                type: 'string',
+                isEditable: true,
+                isGroupable: true,
+                width: 150,
+            },
+            registered: {
+                type: 'date',
+                isEditable: true,
+                isGroupable: true,
+                width: 150,
+            },
+            latitude: {
+                type: 'number',
+                isEditable: true,
+                isGroupable: true,
+                width: 100,
+            },
+            longitude: {
+                type: 'number',
+                isEditable: true,
+                isGroupable: true,
+                width: 100,
+            }
+        },
         ui: {
             containerId: '#gridContainer',
             rowHeight: 30,

@@ -1,7 +1,7 @@
 // ./DynamicGrid/DynamicGrid.js
 /**
  * DynamicGrid is a library for rendering data in a grid format with dynamic querying capabilities.
- * Code by Matt ter Steege (Kronk)
+ * @author Matt ter Steege (Kronk)
  * @license MIT
  */
 
@@ -2811,6 +2811,8 @@ Date.prototype.addMilliseconds = function(milliseconds) {
  * emitter.sub('event', data => console.log(data));
  * emitter.emit('event', 'Hello, world!');
  * // Output: Hello, world!
+ * @author Matt ter Steege (Kronk)
+ * @license MIT
  */
 class EventEmitter {
     constructor() {
@@ -2877,23 +2879,24 @@ class EventEmitter {
 }
 
 // ./DynamicGrid/libs/KeyboardShortcuts.js
+/**
+ * Initializes the KeyboardShortcuts instance and binds the event listener.
+ * @example
+ * const shortcuts = new KeyboardShortcuts();
+ * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
+ * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
+ * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
+ *
+ * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
+ *
+ * shortcuts.removeShortcut('ctrl+z');
+ * shortcuts.clearShortcuts();
+ *
+ * shortcuts.destroy();
+ * @license MIT
+ * @author Matt ter Steege (Kronk)
+ */
 class KeyboardShortcuts {
-    /**
-     * Initializes the KeyboardShortcuts instance and binds the event listener.
-     *
-     * @example
-     * const shortcuts = new KeyboardShortcuts();
-     * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
-     * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
-     * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
-     *
-     * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
-     *
-     * shortcuts.removeShortcut('ctrl+z');
-     * shortcuts.clearShortcuts();
-     *
-     * shortcuts.destroy();
-     */
     constructor() {
         this.shortcuts = new Map();
         this.listener = this.#_handleKeyPress.bind(this);
@@ -2978,6 +2981,13 @@ class KeyboardShortcuts {
 }
 
 // ./DynamicGrid/libs/ContextMenu.js
+/**
+ * A modern, flexible context menu library for web applications.
+ * Provides a fluent API for creating context menus with various item types.
+ * Supports animations, custom styles, and nested submenus.
+ * @author Matt ter Steege (Kronk)
+ * @license MIT
+*/
 class ContextMenu {
     static ITEM_TYPES = {
         BUTTON: 'button',
@@ -3691,10 +3701,15 @@ class ContextMenu {
   padding: var(--padding) 0;
   min-width: 220px;
   z-index: 1000;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: Arial, sans-serif;
   color: var(--context-menu-text);
   animation: contextMenuSlideIn var(--transition-fast) forwards;
   transform-origin: top center;
+}
+
+.context-menu .context-menu {
+    position: relative;
+    left: -5px; 
 }
 
 .context-menu:has(> .context-menu-dropdown)::after {

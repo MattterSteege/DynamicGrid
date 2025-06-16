@@ -1,20 +1,21 @@
+/**
+ * Initializes the KeyboardShortcuts instance and binds the event listener.
+ * @example
+ * const shortcuts = new KeyboardShortcuts();
+ * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
+ * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
+ * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
+ *
+ * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
+ *
+ * shortcuts.removeShortcut('ctrl+z');
+ * shortcuts.clearShortcuts();
+ *
+ * shortcuts.destroy();
+ * @license MIT
+ * @author Matt ter Steege (Kronk)
+ */
 class KeyboardShortcuts {
-    /**
-     * Initializes the KeyboardShortcuts instance and binds the event listener.
-     *
-     * @example
-     * const shortcuts = new KeyboardShortcuts();
-     * shortcuts.addShortcut('ctrl+s', event => console.log('Save'));
-     * shortcuts.addShortcut('ctrl+z', event => console.log('Undo'));
-     * shortcuts.addShortcut('ctrl+y', event => console.log('Redo'));
-     *
-     * shortcuts.listShortcuts(); // ['ctrl+s', 'ctrl+z', 'ctrl+y']
-     *
-     * shortcuts.removeShortcut('ctrl+z');
-     * shortcuts.clearShortcuts();
-     *
-     * shortcuts.destroy();
-     */
     constructor() {
         this.shortcuts = new Map();
         this.listener = this.#_handleKeyPress.bind(this);

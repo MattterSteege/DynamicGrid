@@ -1,4 +1,13 @@
 {
+  "name": "@MattterSteege/dynamicgrid",
+  "version": "1.0.0",
+  "main": "Compiled/DynamicGrid.min.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "devDependencies": {
     "terser": "^5.36.0"
   }

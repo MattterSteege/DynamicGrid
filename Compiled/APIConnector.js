@@ -2,11 +2,12 @@
  * Versatile API client class for handling REST API operations.
  * This class provides a complete drag-and-drop solution that can be configured
  * through settings rather than requiring method overrides.
+ * @author Matt ter Steege (Kronk)
+ * @license MIT
  */
 class APIConnector {
     /**
      * Creates a new APIConnector instance.
-     * @param {DynamicGrid} dynamicGrid - The DynamicGrid instance.
      * @param {Object} config - Configuration options for the API.
      * @param {string} [config.baseUrl='https://api.example.com'] - The base URL for the API.
      * @param {Object} [config.headers={}] - Default headers to include with each request.
@@ -155,92 +156,93 @@ class APIConnector {
      * @param {Object} options - Additional options.
      * @returns {Promise<*>} The operation result.
      */
-    async executeOperation(operation, data = null, options = {}) {
+    executeOperation(operation, data = null, options = {}) {
         const config = this.endpoints[operation];
         if (!config) {
-            throw new APIError(`Unknown operation: ${operation}`, 'UNKNOWN_OPERATION', 400);
+            return Promise.reject(new APIError(`Unknown operation: ${operation}`, 'UNKNOWN_OPERATION', 400));
         }
 
         // Validate data if validation is enabled
-        if (this.validation.enabled && data) {
-            await this.validateData(operation, data);
-        }
+        const validationPromise = (this.validation.enabled && data)
+            ? this.validateData(operation, data)
+            : Promise.resolve();
 
-        // Transform data before sending
-        const transformedData = this.dataTransform.beforeSend(
-            this.dataTransform.request(data)
-        );
+        return validationPromise.then(() => {
+            // Transform data before sending
+            const transformedData = this.dataTransform.beforeSend(
+                this.dataTransform.request(data)
+            );
 
-        // Check cache for GET requests
-        if (config.method === 'GET' && this.caching.enabled) {
-            const cacheKey = this.caching.keyGenerator(operation, transformedData, options);
-            const cachedResult = this.getFromCache(cacheKey);
-            if (cachedResult) {
-                return this.dataTransform.afterReceive(
-                    this.dataTransform.response(cachedResult)
-                );
+            // Check cache for GET requests
+            if (config.method === 'GET' && this.caching.enabled) {
+                const cacheKey = this.caching.keyGenerator(operation, transformedData, options);
+                const cachedResult = this.getFromCache(cacheKey);
+                if (cachedResult) {
+                    return Promise.resolve(this.dataTransform.afterReceive(
+                        this.dataTransform.response(cachedResult)
+                    ));
+                }
             }
-        }
 
-        // Prepare endpoint URL with parameter substitution
-        let endpoint = config.endpoint;
-        if (options.pathParams) {
-            endpoint = this.substitutePathParams(endpoint, options.pathParams);
-        }
+            // Prepare endpoint URL with parameter substitution
+            let endpoint = config.endpoint;
+            if (options.pathParams) {
+                endpoint = this.substitutePathParams(endpoint, options.pathParams);
+            }
 
-        // Execute request with retry logic
-        const requestOptions = {
-            data: transformedData,
-            params: options.params || {},
-            headers: options.headers || {},
-            ...options
-        };
+            // Execute request with retry logic
+            const requestOptions = {
+                data: transformedData,
+                params: options.params || {},
+                headers: options.headers || {},
+                ...options
+            };
 
-        let result;
-        if (this.retryConfig.enabled) {
-            result = await this.executeWithRetry(config.method, endpoint, requestOptions);
-        } else {
-            result = await this.request(config.method, endpoint, requestOptions);
-        }
+            const requestPromise = this.retryConfig.enabled
+                ? this.executeWithRetry(config.method, endpoint, requestOptions)
+                : this.request(config.method, endpoint, requestOptions);
 
-        // Transform response
-        const transformedResult = this.dataTransform.afterReceive(
-            this.dataTransform.response(result)
-        );
+            return requestPromise.then(result => {
+                // Transform response
+                const transformedResult = this.dataTransform.afterReceive(
+                    this.dataTransform.response(result)
+                );
 
-        // Cache the result for GET requests
-        if (config.method === 'GET' && this.caching.enabled) {
-            const cacheKey = this.caching.keyGenerator(operation, transformedData, options);
-            this.setCache(cacheKey, transformedResult);
-        }
+                // Cache the result for GET requests
+                if (config.method === 'GET' && this.caching.enabled) {
+                    const cacheKey = this.caching.keyGenerator(operation, transformedData, options);
+                    this.setCache(cacheKey, transformedResult);
+                }
 
-        return transformedResult;
+                return transformedResult;
+            });
+        });
     }
 
     /**
      * Convenience methods for common operations.
      */
-    async fetchData(params = {}, options = {}) {
+    fetchData(params = {}, options = {}) {
         return this.executeOperation('fetch', null, { params, ...options });
     }
 
-    async createData(data, options = {}) {
+    createData(data, options = {}) {
         return this.executeOperation('create', data, options);
     }
 
-    async patchData(data, options = {}) {
+    patchData(data, options = {}) {
         return this.executeOperation('patch', data, options);
     }
 
-    async deleteData(options = {}) {
+    deleteData(options = {}) {
         return this.executeOperation('delete', null, options);
     }
 
-    async searchData(query, options = {}) {
+    searchData(query, options = {}) {
         return this.executeOperation('search', query, options);
     }
 
-    async bulkOperation(data, options = {}) {
+    bulkOperation(data, options = {}) {
         return this.executeOperation('bulk', data, options);
     }
 
@@ -251,31 +253,26 @@ class APIConnector {
      * @param {Object} options - Request options.
      * @returns {Promise<*>} Request result.
      */
-    async executeWithRetry(method, endpoint, options) {
-        let lastError;
+    executeWithRetry(method, endpoint, options) {
+        const attemptRequest = (attempt) => {
+            return this.request(method, endpoint, options)
+                .catch(error => {
+                    if (attempt >= this.retryConfig.maxAttempts ||
+                        !this.retryConfig.retryCondition(error, attempt)) {
+                        throw error;
+                    }
 
-        for (let attempt = 1; attempt <= this.retryConfig.maxAttempts; attempt++) {
-            try {
-                return await this.request(method, endpoint, options);
-            } catch (error) {
-                lastError = error;
+                    // Calculate delay
+                    let delay = this.retryConfig.delay;
+                    if (this.retryConfig.backoff === 'exponential') {
+                        delay *= Math.pow(2, attempt - 1);
+                    }
 
-                if (attempt === this.retryConfig.maxAttempts ||
-                    !this.retryConfig.retryCondition(error, attempt)) {
-                    break;
-                }
+                    return this.sleep(delay).then(() => attemptRequest(attempt + 1));
+                });
+        };
 
-                // Calculate delay
-                let delay = this.retryConfig.delay;
-                if (this.retryConfig.backoff === 'exponential') {
-                    delay *= Math.pow(2, attempt - 1);
-                }
-
-                await this.sleep(delay);
-            }
-        }
-
-        throw lastError;
+        return attemptRequest(1);
     }
 
     /**
@@ -315,14 +312,17 @@ class APIConnector {
      * @param {*} data - Data to validate.
      * @returns {Promise<void>}
      */
-    async validateData(operation, data) {
+    validateData(operation, data) {
         const schema = this.validation.schemas[operation];
         if (schema) {
-            const isValid = await this.validation.validator(data, schema);
-            if (!isValid) {
-                throw new APIError(`Validation failed for ${operation}`, 'VALIDATION_ERROR', 400);
-            }
+            return Promise.resolve(this.validation.validator(data, schema))
+                .then(isValid => {
+                    if (!isValid) {
+                        throw new APIError(`Validation failed for ${operation}`, 'VALIDATION_ERROR', 400);
+                    }
+                });
         }
+        return Promise.resolve();
     }
 
     /**
@@ -458,28 +458,30 @@ class APIConnector {
      * @param {Object} options - Request options.
      * @returns {Promise<Object>} The response data.
      */
-    async request(method, endpoint, options = {}) {
+    request(method, endpoint, options = {}) {
         // Apply request interceptors
-        let modifiedOptions = { ...options };
-        for (const interceptor of this.requestInterceptors) {
-            modifiedOptions = await interceptor(method, endpoint, modifiedOptions);
-        }
+        const applyRequestInterceptors = (modifiedOptions) => {
+            return this.requestInterceptors.reduce((promise, interceptor) => {
+                return promise.then(opts => Promise.resolve(interceptor(method, endpoint, opts)));
+            }, Promise.resolve(modifiedOptions));
+        };
 
-        try {
-            const result = await this.executeRequest(method, endpoint, modifiedOptions);
-
-            // Apply response interceptors
-            let modifiedResult = result;
-            for (const interceptor of this.responseInterceptors) {
-                modifiedResult = await interceptor(modifiedResult, method, endpoint);
-            }
-
-            return modifiedResult;
-        } catch (error) {
-            // Handle errors through configured error handling
-            await this.handleError(error);
-            throw error;
-        }
+        return applyRequestInterceptors({ ...options })
+            .then(modifiedOptions => {
+                return this.executeRequest(method, endpoint, modifiedOptions);
+            })
+            .then(result => {
+                // Apply response interceptors
+                return this.responseInterceptors.reduce((promise, interceptor) => {
+                    return promise.then(res => Promise.resolve(interceptor(res, method, endpoint)));
+                }, Promise.resolve(result));
+            })
+            .catch(error => {
+                // Handle errors through configured error handling
+                return this.handleError(error).then(() => {
+                    throw error;
+                });
+            });
     }
 
     /**
@@ -489,7 +491,7 @@ class APIConnector {
      * @param {Object} options - Request options.
      * @returns {Promise<*>} Response data.
      */
-    async executeRequest(method, endpoint, options = {}) {
+    executeRequest(method, endpoint, options = {}) {
         const {
             data = null,
             params = {},
@@ -548,27 +550,27 @@ class APIConnector {
             }
         }, timeout);
 
-        try {
-            const response = await fetch(url, fetchOptions);
-            clearTimeout(timeoutId);
-            this.abortControllers.delete(requestId);
+        return fetch(url, fetchOptions)
+            .then(response => {
+                clearTimeout(timeoutId);
+                this.abortControllers.delete(requestId);
+                return this.handleResponse(response);
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                this.abortControllers.delete(requestId);
 
-            return await this.handleResponse(response);
-        } catch (error) {
-            clearTimeout(timeoutId);
-            this.abortControllers.delete(requestId);
+                if (error.name === 'AbortError') {
+                    throw new APIError('Request timeout', 'TIMEOUT', 408);
+                }
 
-            if (error.name === 'AbortError') {
-                throw new APIError('Request timeout', 'TIMEOUT', 408);
-            }
-
-            throw new APIError(
-                error.message || 'Network error',
-                'NETWORK_ERROR',
-                0,
-                error
-            );
-        }
+                throw new APIError(
+                    error.message || 'Network error',
+                    'NETWORK_ERROR',
+                    0,
+                    error
+                );
+            });
     }
 
     /**
@@ -576,53 +578,58 @@ class APIConnector {
      * @param {Response} response - The fetch Response object.
      * @returns {Promise<Object>} The parsed response data.
      */
-    async handleResponse(response) {
-        let data;
-
-        try {
+    handleResponse(response) {
+        const parseResponse = () => {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
+                return response.json();
             } else {
-                data = await response.text();
+                return response.text();
             }
-        } catch (error) {
-            throw new APIError(
-                'Failed to parse response',
-                'PARSE_ERROR',
-                response.status,
-                error
-            );
-        }
+        };
 
-        if (!response.ok) {
-            const errorCode = data.error?.code || 'API_ERROR';
-            const errorMessage = data.error?.message || 'Unknown API error';
+        return parseResponse()
+            .catch(error => {
+                throw new APIError(
+                    'Failed to parse response',
+                    'PARSE_ERROR',
+                    response.status,
+                    error
+                );
+            })
+            .then(data => {
+                if (!response.ok) {
+                    const errorCode = data.error?.code || 'API_ERROR';
+                    const errorMessage = data.error?.message || 'Unknown API error';
 
-            throw new APIError(
-                errorMessage,
-                errorCode,
-                response.status,
-                null,
-                data
-            );
-        }
+                    throw new APIError(
+                        errorMessage,
+                        errorCode,
+                        response.status,
+                        null,
+                        data
+                    );
+                }
 
-        return data;
+                return data;
+            });
     }
 
     /**
      * Handle errors with configured error handling.
      * @param {Error} error - The error to handle.
+     * @returns {Promise<void>}
      */
-    async handleError(error) {
+    handleError(error) {
         if (this.errorHandling.logErrors) {
             console.error('API Error:', error);
         }
 
         if (this.errorHandling.onError) {
-            await this.errorHandling.onError(error);
+            return Promise.resolve(this.errorHandling.onError(error));
         }
+
+        return Promise.resolve();
     }
 
     /**

@@ -1,3 +1,10 @@
+/**
+ * A modern, flexible context menu library for web applications.
+ * Provides a fluent API for creating context menus with various item types.
+ * Supports animations, custom styles, and nested submenus.
+ * @author Matt ter Steege (Kronk)
+ * @license MIT
+*/
 class ContextMenu {
     static ITEM_TYPES = {
         BUTTON: 'button',
@@ -711,10 +718,15 @@ class ContextMenu {
   padding: var(--padding) 0;
   min-width: 220px;
   z-index: 1000;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: Arial, sans-serif;
   color: var(--context-menu-text);
   animation: contextMenuSlideIn var(--transition-fast) forwards;
   transform-origin: top center;
+}
+
+.context-menu .context-menu {
+    position: relative;
+    left: -5px; 
 }
 
 .context-menu:has(> .context-menu-dropdown)::after {
