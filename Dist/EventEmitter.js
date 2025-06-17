@@ -8,6 +8,7 @@
  * // Output: Hello, world!
  * @author Matt ter Steege (Kronk)
  * @license MIT
+ * @version 0.1.0
  */
 class EventEmitter {
     constructor() {

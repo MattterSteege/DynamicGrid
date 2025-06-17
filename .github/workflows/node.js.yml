@@ -24,11 +24,18 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@MattterSteege'
 
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version
+        run: npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build package
-        run: npm run build
+        run: node build.js --as-version ${{ steps.version.outputs.VERSION }}
 
       - name: Publish to GitHub Packages
         run: npm publish

@@ -4,6 +4,7 @@
  * Supports animations, custom styles, and nested submenus.
  * @author Matt ter Steege (Kronk)
  * @license MIT
+ * @version 0.1.0
 */
 class ContextMenu {
     static ITEM_TYPES = {

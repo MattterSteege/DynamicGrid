@@ -3,3 +3,14 @@ build.js
 .github/
 *.map
 !Compiled/
+Docs/
+.idea/
+LICENSE
+TODO.md
+index.html
+package-lock.json
+package.json
+_README.md
+README.md
+testData/
+xlsx.bundle.js

@@ -1,7 +1,13 @@
 const { minify } = require('terser');
 const fs = require('fs');
 
-const outputDir = './Compiled/';
+const outputDir = './Dist/';
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const versionIndex = args.indexOf('--as-version');
+const version = versionIndex !== -1 && args[versionIndex + 1] ? args[versionIndex + 1] : null;
+
 const config = {
     compress: {
         dead_code: true,
@@ -26,7 +32,11 @@ const config = {
         url: 'DynamicGrid.min.js.map'
     },
     output: {
-        comments: 'some'
+        comments: function(node, comment) {
+            // Preserve license comments and version comments
+            const text = comment.value;
+            return text.includes('@license') || text.includes('@version') || text.includes('DynamicGrid');
+        }
     }
 };
 
@@ -62,12 +72,32 @@ const events = [];
 const shortcutRegex = /\.addShortcut\('([^']*)',.*?'([^']*)'/g;
 const shortcuts = [];
 
+// Helper function to inject version comment
+function injectVersionComment(code, version) {
+    if (!version) return code;
+
+    // Look for @license MIT comment and add version after it
+    const licenseRegex = /(@license\s+MIT)/i;
+    const versionComment = `\n * @version ${version}`;
+
+    if (licenseRegex.test(code)) {
+        return code.replace(licenseRegex, `$1${versionComment}`);
+    } else {
+        // If no license comment found, add version comment at the beginning
+        const versionHeader = `/**\n * @version ${version}\n */\n`;
+        return versionHeader + code;
+    }
+}
+
 // Helper function to add delay
 const zeroDelay = true
 const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0)) : new Promise(resolve => setTimeout(resolve, ms));
 
 (async () => {
     console.log('=== Starting Minification Process ===');
+    if (version) {
+        console.log(`↳  Version specified: ${version}`);
+    }
     await delay(200); // Initial pause
 
     try {
@@ -120,6 +150,12 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
             await delay(100); // Small delay for each file
         }
 
+        // Inject version comment if version is provided
+        if (version) {
+            combinedCode = injectVersionComment(combinedCode, version);
+            console.log(`↳  Version comment injected: ${version}`);
+        }
+
         console.log('\nSaving combined file...');
         await delay(300);
         const combinedFilePath = outputDir + 'DynamicGrid.js';
@@ -154,7 +190,13 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
             console.log(`↳  Processing: ${file}`);
             await delay(100); // Delay for reading each file
 
-            const fileCode = fs.readFileSync(file, 'utf8');
+            let fileCode = fs.readFileSync(file, 'utf8');
+
+            // Inject version comment for separate files too
+            if (version) {
+                fileCode = injectVersionComment(fileCode, version);
+            }
+
             const fileName = file.split('/').pop();
             const unminifiedFilePath = `${outputDir}${fileName}`;
             const minifiedFilePath = `${outputDir}${fileName.replace('.js', '.min.js')}`;
@@ -173,6 +215,13 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
                 sourceMap: {
                     filename: `${fileName}.map`,
                     url: `${fileName}.map`
+                },
+                output: {
+                    comments: function(node, comment) {
+                        // Preserve license comments and version comments
+                        const text = comment.value;
+                        return text.includes('@license') || text.includes('@version');
+                    }
                 }
             });
 
