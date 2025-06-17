@@ -32,11 +32,7 @@ const config = {
         url: 'DynamicGrid.min.js.map'
     },
     output: {
-        comments: function(node, comment) {
-            // Preserve license comments and version comments
-            const text = comment.value;
-            return text.includes('@license') || text.includes('@version') || text.includes('DynamicGrid');
-        }
+        comments: 'some'
     }
 };
 

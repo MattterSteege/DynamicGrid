@@ -2813,7 +2813,6 @@ Date.prototype.addMilliseconds = function(milliseconds) {
  * emitter.emit('event', 'Hello, world!');
  * // Output: Hello, world!
  * @author Matt ter Steege (Kronk)
- * @license MIT
  */
 class EventEmitter {
     constructor() {
@@ -2894,7 +2893,6 @@ class EventEmitter {
  * shortcuts.clearShortcuts();
  *
  * shortcuts.destroy();
- * @license MIT
  * @author Matt ter Steege (Kronk)
  */
 class KeyboardShortcuts {
@@ -2987,7 +2985,6 @@ class KeyboardShortcuts {
  * Provides a fluent API for creating context menus with various item types.
  * Supports animations, custom styles, and nested submenus.
  * @author Matt ter Steege (Kronk)
- * @license MIT
 */
 class ContextMenu {
     static ITEM_TYPES = {

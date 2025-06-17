@@ -3,7 +3,6 @@
  * Provides a fluent API for creating context menus with various item types.
  * Supports animations, custom styles, and nested submenus.
  * @author Matt ter Steege (Kronk)
- * @license MIT
 */
 class ContextMenu {
     static ITEM_TYPES = {

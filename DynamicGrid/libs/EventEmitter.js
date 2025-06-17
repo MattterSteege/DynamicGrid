@@ -7,7 +7,6 @@
  * emitter.emit('event', 'Hello, world!');
  * // Output: Hello, world!
  * @author Matt ter Steege (Kronk)
- * @license MIT
  */
 class EventEmitter {
     constructor() {

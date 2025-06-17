@@ -12,7 +12,6 @@
  * shortcuts.clearShortcuts();
  *
  * shortcuts.destroy();
- * @license MIT
  * @author Matt ter Steege (Kronk)
  */
 class KeyboardShortcuts {

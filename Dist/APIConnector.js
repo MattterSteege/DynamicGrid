@@ -1,10 +1,11 @@
 /**
+ * @version 0.1.0
+ */
+/**
  * Versatile API client class for handling REST API operations.
  * This class provides a complete drag-and-drop solution that can be configured
  * through settings rather than requiring method overrides.
  * @author Matt ter Steege (Kronk)
- * @license MIT
- * @version 0.1.0
  */
 class APIConnector {
     /**

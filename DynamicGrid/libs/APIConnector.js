@@ -3,7 +3,6 @@
  * This class provides a complete drag-and-drop solution that can be configured
  * through settings rather than requiring method overrides.
  * @author Matt ter Steege (Kronk)
- * @license MIT
  */
 class APIConnector {
     /**

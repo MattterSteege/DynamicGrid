@@ -1,4 +1,7 @@
 /**
+ * @version 0.1.0
+ */
+/**
  * Initializes the KeyboardShortcuts instance and binds the event listener.
  * @example
  * const shortcuts = new KeyboardShortcuts();
@@ -12,8 +15,6 @@
  * shortcuts.clearShortcuts();
  *
  * shortcuts.destroy();
- * @license MIT
- * @version 0.1.0
  * @author Matt ter Steege (Kronk)
  */
 class KeyboardShortcuts {
