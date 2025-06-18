@@ -1,4 +1,7 @@
 /**
+ * @version 0.1.0
+ */
+/**
  * A modern, flexible context menu library for web applications.
  * Provides a fluent API for creating context menus with various item types.
  * Supports animations, custom styles, and nested submenus.

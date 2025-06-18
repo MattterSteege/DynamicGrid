@@ -1,4 +1,7 @@
 /**
+ * @version 0.1.0
+ */
+/**
  * A simple event emitter class.
  * @class
  * @example

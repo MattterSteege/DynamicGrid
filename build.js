@@ -62,6 +62,10 @@ const separateFiles = [
     "./DynamicGrid/libs/APIConnector.js",
 ];
 
+const cssFiles = [
+    "./DynamicGrid.css",
+];
+
 const eventRegex = /eventEmitter\.emit\('([^']*)',/g;
 const events = [];
 
@@ -225,6 +229,39 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
             fs.writeFileSync(sourceMapPath, minifiedFile.map);
             console.log(`  ↳ Minified file and source map saved\n`);
             await delay(200); // Delay after saving each file
+        }
+
+        console.log('\nProcessing CSS files...');
+        await delay(200);
+
+        for (const cssFile of cssFiles) {
+            console.log(`↳  Processing: ${cssFile}`);
+            await delay(100); // Delay for reading each file
+
+            let cssCode = fs.readFileSync(cssFile, 'utf8');
+
+            // Inject version comment for CSS files too
+
+            const cssFileName = cssFile.split('/').pop();
+            const unminifiedCssPath = `${outputDir}${cssFileName}`;
+            const minifiedCssPath = `${outputDir}${cssFileName.replace('.css', '.min.css')}`;
+
+            // Save the unminified CSS file
+            fs.writeFileSync(unminifiedCssPath, cssCode);
+            console.log(`  ↳ Unminified CSS file saved: ${unminifiedCssPath}`);
+
+            // Minify the CSS file (using a simple regex for demonstration)
+            var minifiedCss = cssCode.replace(/\s+/g, ' ').trim();
+            //remove /* comments */
+            minifiedCss = minifiedCss.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+
+            if (version) {
+                //cssCode = `/* @version ${version} */\n` + cssCode;
+                minifiedCss = `/* @version ${version} */\n` + minifiedCss;
+            }
+
+            fs.writeFileSync(minifiedCssPath, minifiedCss);
+            console.log(`  ↳ Minified CSS file saved: ${minifiedCssPath}\n`);
         }
 
         console.log('\n=== Minification Process Completed Successfully ===');

@@ -3,6 +3,7 @@
  * DynamicGrid is a library for rendering data in a grid format with dynamic querying capabilities.
  * @author Matt ter Steege (Kronk)
  * @license MIT
+ * @version 0.1.0
  */
 
 class DynamicGrid {
