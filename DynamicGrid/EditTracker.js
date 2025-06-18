@@ -40,5 +40,11 @@ class EditTracker {
 
     clear() {
         this.updates = [];
+
+        //find all .body-cell.edited and remove the edited class
+        const editedCells = document.querySelectorAll('.body-cell.edited');
+        editedCells.forEach(cell => {
+            cell.classList.remove('edited');
+        });
     }
 }

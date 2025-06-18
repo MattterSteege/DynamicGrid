@@ -1,7 +1,4 @@
 /**
- * @version 0.1.0
- */
-/**
  * Initializes the KeyboardShortcuts instance and binds the event listener.
  * @example
  * const shortcuts = new KeyboardShortcuts();

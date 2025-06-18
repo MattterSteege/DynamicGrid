@@ -53,6 +53,14 @@ class DynamicGrid {
         this.visibleRows = config.ui.visibleRows || 20; // Number of rows to render at once
         this.ui = new DynamicGridUI(this, config.ui, this.eventEmitter);
 
+        //SETUP update tracker fully
+        this.keyboardShortcuts.addShortcut('ctrl+s', 'Shortcut to save the changed data', () => {
+            this.eventEmitter.emit('save-changes-requested', {
+                data: this.engine.updateTracker.updates,
+                updateSuccess: () => this.engine.updateTracker.clear()
+            });
+        });
+
         this.eventEmitter.emit('grid-initialized', { config });
     }
 

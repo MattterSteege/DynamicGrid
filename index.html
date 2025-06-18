@@ -263,6 +263,11 @@
         console.log('cell-edit', edit);
     });
 
+    grid.on('save-changes-requested', function ({data, updateSuccess}) {
+        console.log('save-changes-requested', data, updateSuccess);
+        updateSuccess();
+    });
+
 
     function handleFile(file) {
         const reader = new FileReader();

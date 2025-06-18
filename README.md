@@ -176,9 +176,28 @@ Filters rows with `price > 100`, `category == Electronics`, and sorts them by th
 
 ## ⚙️ Installation
 
-### Prerequisites
+To use **DynamicGrid** in your project, you can either include the pre-built JavaScript file or build it from source.
+### Pre-built Version
 
-Ensure you have the following installed:
+You can include the pre-built version of **DynamicGrid** directly in your HTML:
+```HTML
+<script src="https://cdn.jsdelivr.net/gh/matttersteege/dynamicgrid@0.1.0/Dist/DynamicGrid.min.js"></script>
+```
+Or if you prefer the latest version, you can use:
+```HTML
+<script src="https://cdn.jsdelivr.net/gh/matttersteege/dynamicgrid@latest/Dist/DynamicGrid.min.js"></script>
+```
+
+P.S.<br>
+if you're interested in one of the sub-libraries, you can find the compiled version on the same package:
+```
+https://cdn.jsdelivr.net/gh/matttersteege/dynamicgrid@latest/Dist/
+```
+Here you can also find an `shortcuts.json` and an `evenets.json` file, which contain all the shortcuts and events that are available in the library, so you can use them in your code.
+
+### Prerequisites (for building the project)
+
+Ensure you have the following installed (for building the project):
 - [Node.js](https://nodejs.org/)
 - Modules: `Terser` and `fs` (available via `npm`)
 

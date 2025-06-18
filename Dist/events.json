@@ -1,28 +1,33 @@
 [
   {
+    "eventName": "save-changes-requested",
+    "file": "DynamicGrid.js",
+    "line": 58
+  },
+  {
     "eventName": "grid-initialized",
     "file": "DynamicGrid.js",
-    "line": 56
+    "line": 64
   },
   {
     "eventName": "grid-data-imported",
     "file": "DynamicGrid.js",
-    "line": 68
+    "line": 76
   },
   {
     "eventName": "ui-render-start",
     "file": "DynamicGrid.js",
-    "line": 76
+    "line": 84
   },
   {
     "eventName": "ui-render-end",
     "file": "DynamicGrid.js",
-    "line": 78
+    "line": 86
   },
   {
     "eventName": "ui-raw-rendered",
     "file": "DynamicGrid.js",
-    "line": 87
+    "line": 95
   },
   {
     "eventName": "ui-initialized",

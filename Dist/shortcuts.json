@@ -1,5 +1,11 @@
 [
   {
+    "keybind": "ctrl+s",
+    "description": "Shortcut to save the changed data",
+    "file": "DynamicGrid.js",
+    "line": 57
+  },
+  {
     "keybind": "ctrl+shift+a",
     "description": "Shortcut to automatically fit the columns to a (almost) perfect fit",
     "file": "DynamicGridUI.js",
