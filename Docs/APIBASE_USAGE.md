@@ -675,11 +675,6 @@ const options = {
         }
     },
 
-    // Progress tracking (for large uploads/downloads)
-    onProgress: (progress) => {
-        console.log(`Progress: ${progress.loaded}/${progress.total} (${Math.round(progress.percent)}%)`);
-    },
-
     // Success callback
     onSuccess: (result) => {
         console.log("Operation successful:", result);

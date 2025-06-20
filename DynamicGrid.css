@@ -22,6 +22,7 @@
     --scrollbar-height: 8px;
     --font-size: 14px;
     --font-size-header: 14px;
+    --row-height: 30px;
 }
 
 /* === Theme Variations === */
@@ -116,10 +117,60 @@
     border: 1px solid var(--border-color);
 }
 
-.scroll-container {
-    overflow-y: auto;
-    max-height: 500px;
-    position: relative;
+/* === Grouped Rows Styles === */
+.grouped-rows {
+    --y-offset: 0px;
+    position: absolute;
+    top: 0;
+    width: 30px;
+    height: calc(100% - 41px);
+    left: -30px;
+    /*background: blue;*/
+    margin-top: 41px;
+    overflow-y: hidden;
+}
+
+.grouped-rows .grouped-row {
+    /* start adn end row are set by
+    <div class="grouped-row" start="0" end="5"></div>
+     */
+    --start-row: calc(attr(start type(<integer>), 1));
+    --end-row: calc(attr(end type(<integer>), 1));
+    position: absolute;
+    top: calc(var(--start-row) * var(--row-height) + var(--y-offset) * -1);
+    left: 10px;
+    width: 12px;
+    height: calc((var(--end-row) - var(--start-row) + 1) * var(--row-height) - 6px);
+    background: transparent;
+    z-index: 100;
+    border: 2px solid var(--text-primary);
+    border-right: unset;
+}
+
+.grouped-row::before {
+    --margin: 4px;
+    content: '➖';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    position: sticky;
+    top: calc(var(--margin) * 2);
+    width: 21px;
+    height: 21px;
+    background: var(--text-primary);
+    margin: var(--margin) 0;
+    translate: -12px 0;
+    outline: 3px solid #ffffff;
+}
+
+.grouped-rows .grouped-row.hidden {
+    height: 0;
+}
+
+.grouped-rows .grouped-row.hidden::before {
+    content: '＋';
 }
 
 /* === Common Table Styles === */
@@ -133,6 +184,8 @@
     border-bottom-right-radius: 0;
     width: fit-content;
     table-layout: fixed;
+
+    counter-reset: row;
 }
 
 .dynamic-grid-table-header *,
@@ -161,11 +214,11 @@ table.dynamic-grid-table-header {
     color: var(--text-primary);
     font-size: var(--font-size-header, 14px);
     text-transform: capitalize;
-    height: 30px;
+    height: var(--row-height);
 }
 
 .dynamic-grid-table-header .header-cell {
-    max-height: 30px;
+    max-height: var(--row-height);
     vertical-align: middle;
     border-right: 1px solid var(--border-color);
 }
@@ -272,7 +325,7 @@ table.dynamic-grid-table-header {
 
 /* === Data Row Styles === */
 .dynamic-grid-table-header .data-row {
-    height: 30px;
+    height: var(--row-height);
     background: var(--bg-body);
 }
 
@@ -281,6 +334,10 @@ table.dynamic-grid-table-header {
 }
 
 /* === Body Cell Styles === */
+.dynamic-grid-table-body tr:not(:first-child) {
+    counter-increment: row;
+}
+
 td.body-cell {
     color: var(--text-secondary);
     background: var(--bg-body);
@@ -297,21 +354,18 @@ td.body-cell:not(:first-child) {
 }
 
 td.body-cell:first-child {
-    background: var(--bg-secondary);
-    text-align: center;
-    color: var(--text-primary);
-    font-size: var(--font-size, 12px);
     position: sticky;
     left: 0;
+    background: var(--bg-secondary);
 }
 
 td.body-cell:first-child::after {
-    width: 1px;
-    position: absolute;
-    height: 100%;
-    background: var(--border-accent);
-    top: 0;
-    left: -1px;
+    content: counter(row);
+    text-align: center;
+    color: var(--text-primary);
+    font-size: var(--font-size, 12px);
+    width: 100%;
+    display: block;
 }
 
 td.body-cell:focus {

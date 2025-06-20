@@ -47,11 +47,11 @@ class DynamicGridUI {
         this.UIChache = 0;
         this.UICacheRefresh = false;
 
+        //array of ints
         this.showData = [];
+        this.showDataLength = 0; // Length of the data currently shown in the UI
+        this.showDataHidden = []; // Array of hidden data items (if any) also an array of ints
 
-        this.hiddenColumns = new Set(); // Track hidden columns
-        this.undoStack = []; // Stack for undo actions
-        this.redoStack = []; // Stack for redo actions
 
         // Set up context menu
         this.contextMenu = new ContextMenu({
@@ -67,6 +67,7 @@ class DynamicGridUI {
         });
     }
 
+    //TODO: data sometimes returns not an array of ints, but an array of objects, so we need to check if the data is an array of objects or not
     render(data) {
         if (!data) return;
         if (data.length === 0) {
@@ -74,12 +75,27 @@ class DynamicGridUI {
             return;
         }
 
-        this.showData = data;
+        console.log(data)
 
-        const isGrouped = (data) => Array.isArray(firstItem(data));
-        const isGroupedData = isGrouped(this.showData);
-        const columns = isGroupedData ? Object.keys(firstItem(this.showData)[0]) : Object.keys(this.showData[0]);
-        const firstDataItem = isGroupedData ? firstItem(this.showData)[0] : this.showData[0];
+
+        this.isGroupedData = typeof data === 'object' && Array.isArray(firstItem(data));
+
+        if (this.isGroupedData) {
+            this.showData = [];
+            let index = 0;
+            Object.keys(data).forEach((key) => {
+                this.showData.push(...data[key]);
+                this.GroupRowRange(index, index + data[key].length - 1);
+                index += data[key].length;
+            });
+        }
+        else{
+            this.showData = data;
+        }
+        this.showDataLength = this.showData.length; // Update the length of the data currently shown in the UI
+
+        const columns = this.engine.getColumns();
+        const firstDataItem = this.engine.getData(data[0], true);
 
         // Check if the data has changed in its structure (can I keep the headers etc.)
         const cacheHash = FastHash(columns);
@@ -87,10 +103,10 @@ class DynamicGridUI {
         this.UIChache = cacheHash;
 
         if (this.UICacheRefresh) {
-            this.table = this.#_createResizableTable(columns.slice(1), firstDataItem, isGroupedData);
+            this.table = this.#_createResizableTable(columns, firstDataItem);
         }
 
-        this.#_renderTable(this.showData, columns.slice(1), isGroupedData);
+        this.#_renderTable(columns);
 
         // Set up virtual scrolling after rendering the table
         this.#_setupVirtualScrolling();
@@ -133,6 +149,58 @@ class DynamicGridUI {
         this.scrollContainer = null;
         this.colGroup1 = null;
         this.colGroup2 = null;
+    }
+
+    //TODO: recalculate the top position when a group is toggled (when multiple groups are toggled, the top position should be recalculated)
+    GroupRowRange(startIndex, endIndex) {
+        console.log(`Grouping rows from ${startIndex} to ${endIndex}`);
+        if (startIndex < 0 || endIndex >= this.showData.length || startIndex > endIndex) {
+            console.log(startIndex < 0, endIndex >= this.showData.length, startIndex > endIndex)
+            console.log(startIndex, this.showData.length, endIndex)
+            throw new GridError('Invalid row range to hide');
+        }
+
+        // for (let i = startIndex; i <= endIndex; i++) {
+        //     this.showDataHidden.push(this.showData[i]);
+        // }
+
+        //add a grouped row element to the groupedRows div
+        const groupedRow = document.createElement('div');
+        groupedRow.className = 'grouped-row';
+        groupedRow.setAttribute('start', startIndex);
+        groupedRow.setAttribute('end', endIndex);
+        this.groupedRows.appendChild(groupedRow);
+
+        groupedRow.onclick = () => {
+            // Toggle visibility of the grouped rows
+            const isHidden = groupedRow.classList.toggle('hidden');
+            if (isHidden) {
+                this.eventEmitter.emit('ui-row-range-hidden', { startIndex, endIndex });
+            } else {
+                this.eventEmitter.emit('ui-row-range-shown', { startIndex, endIndex });
+            }
+
+            //add the range to the showDataHidden array
+            if (isHidden) {
+                for (let i = startIndex; i <= endIndex; i++) {
+                    if (!this.showDataHidden.includes(this.showData[i])) {
+                        this.showDataHidden.push(this.showData[i]);
+                    }
+                }
+            }
+            else {
+                //remove the range from the showDataHidden array
+                this.showDataHidden = this.showDataHidden.filter(item => !this.showData.slice(startIndex, endIndex + 1).includes(item));
+            }
+
+            // Update the visible rows
+            this._updateVisibleRows();
+        }
+
+        //update scrollcontainer
+        this._updateVisibleRows();
+
+        this.eventEmitter.emit('ui-row-range-hidden', { startIndex, endIndex });
     }
 
     #_hideColumn(Index) {
@@ -191,10 +259,11 @@ class DynamicGridUI {
         return this.table;
     }
 
-    #_renderTable(data, columns, isGroupedData) {
+    #_renderTable(columns) {
         const tableExists = this.table && this.table.parentNode;
         const tableHeaderExists = this.headerTable && this.headerTable.parentNode;
         const bodyTableExists = this.bodyTable && this.bodyTable.parentNode;
+
 
         if (!tableExists) {
             this.table = document.createElement('div');
@@ -212,7 +281,7 @@ class DynamicGridUI {
             this.colGroup1 = colgroup;
 
             this.headerTable.appendChild(colgroup);
-            this.headerTable.appendChild(this.#_createHeader(columns, isGroupedData, colgroup));
+            this.headerTable.appendChild(this.#_createHeader(columns));
 
             this.table.appendChild(this.headerTable);
         }
@@ -246,6 +315,13 @@ class DynamicGridUI {
 
             this.scrollContainer.appendChild(this.bodyTable);
             this.table.appendChild(this.scrollContainer);
+
+
+            //grouped rows buttons
+            this.groupedRows = document.createElement('div');
+            this.groupedRows.className = 'grouped-rows';
+            this.groupedRows.style.setProperty('--y-offset', '0px');
+            this.table.appendChild(this.groupedRows);
         }
         else {
             this.bodyTable.innerHTML = '';
@@ -444,6 +520,8 @@ class DynamicGridUI {
 
         if (this.virtualScrolling.scrollTop === scrollTop && scrollTop !== 0) return;
 
+        this.groupedRows.style.setProperty('--y-offset', `${scrollTop}px`);
+
         const rowIndex = Math.floor(scrollTop / this.config.rowHeight);
         const startIndex = Math.max(0, rowIndex - this.config.bufferedRows);
         const endIndex = Math.min(
@@ -464,8 +542,13 @@ class DynamicGridUI {
         currentRows.forEach(row => row.remove());
 
         const fragment = document.createDocumentFragment();
-        for (let i = this.virtualScrolling.startIndex; i < this.virtualScrolling.endIndex; i++) {
-            const row = this.#_createRow(i);
+        let endIndex = this.virtualScrolling.endIndex;
+        for (let i = this.virtualScrolling.startIndex; i < endIndex; i++) {
+            if (this.showDataHidden.includes(this.showData[i])) {
+                endIndex++; // Skip hidden rows
+                continue;
+            }
+            const row = this.#_createRow(this.showData[i]);
             fragment.appendChild(row);
         }
 
@@ -483,11 +566,12 @@ class DynamicGridUI {
         const tr = document.createElement('tr');
         tr.dataset.index = index;
 
-        this.getData(index, false).then((data) => {
+
+        this.engine.getData(index).then((data) => {
             const numberCell = document.createElement('td');
             numberCell.className = 'body-cell';
             numberCell.style.height = `${this.config.rowHeight}px`;
-            numberCell.innerText = index + 1;
+            //numberCell.innerText = index + 1;
 
             tr.appendChild(numberCell);
 
@@ -497,7 +581,7 @@ class DynamicGridUI {
 
                 const onEdit = (callback) => {
                     this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
-                    this.engine.alterData(data['internal_id'], key, callback);
+                    this.engine.alterData(index, key, callback);
                     this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
                     td.classList.add('edited'); // Add a class to indicate
                 }
@@ -512,7 +596,6 @@ class DynamicGridUI {
 
                 td.className = 'body-cell';
                 td.style.height = `${this.config.rowHeight}px`;
-
                 tr.appendChild(td);
             });
         });
@@ -520,21 +603,21 @@ class DynamicGridUI {
         return tr;
     }
 
-    /**
-     * Retrieves the data at the specified index.
-     * @param index {number} - The index of the data to retrieve.
-     * @param removeInternalId {boolean} - Whether to remove the internal_id field from the returned data. (default: true)
-     * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
-     */
-    getData(index, removeInternalId = true) {
-        if (!this.showData || index >= this.showData.length) {
-            return Promise.reject(new Error('No data to return (data is empty, or index is out of bounds)'));
-        }
-
-        index = index < 0 ? this.showData.length + index : index;
-        const { internal_id, ...data } = this.showData[index];
-        return Promise.resolve(removeInternalId ? data : this.showData[index]);
-    }
+    // /**
+    //  * Retrieves the data at the specified index.
+    //  * @param index {number} - The index of the data to retrieve.
+    //  * @param removeInternalId {boolean} - Whether to remove the internal_id field from the returned data. (default: true)
+    //  * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
+    //  */
+    // getData(index, removeInternalId = true) {
+    //     if (!this.showData || index >= this.showData.length) {
+    //         return Promise.reject(new Error('No data to return (data is empty, or index is out of bounds)'));
+    //     }
+    //
+    //     index = index < 0 ? this.showData.length + index : index;
+    //     const { internal_id, ...data } = this.showData[index];
+    //     return Promise.resolve(removeInternalId ? data : this.showData[index]);
+    // }
 
     #_approximateColumnWidth() {
         function approximateWidth(sampleData) {
@@ -546,9 +629,14 @@ class DynamicGridUI {
         const columnWidths = {};
 
         columns.forEach((column) => {
-            const plugin = this.engine.getPlugin(column);
-            const sampleData = this.showData.map((item) => item[column]);
-            columnWidths[column] = approximateWidth(sampleData);
+            //const sampleData = this.showData.map((item) => item[column]);
+            //columnWidths[column] = approximateWidth(sampleData);
+            const sampleData = this.engine.getData(0, true);
+            if (sampleData && sampleData[column] !== undefined) {
+                columnWidths[column] = approximateWidth([sampleData[column]]);
+            } else {
+                columnWidths[column] = this.config.minColumnWidth; // Fallback to minimum width if no data
+            }
         });
 
         return columnWidths;

@@ -205,14 +205,14 @@ Ensure you have the following installed (for building the project):
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/DynamicGrid.git
+   git clone https://github.com/matttersteege/DynamicGrid.git
    cd DynamicGrid
    ```
 
 2. Run one of the build commands:
-    - `node build.js` — Builds the project and removes the combined file afterward.
-    - `node build.js --rcf` — Builds the project and removes the combined file.
-    - `node build.js --kcf` — Builds the project and keeps the combined file.
+    - `node build.js` — Builds the project(s).
+      - `--as-version [0.1.0]` — Builds the project and sets the version number in the files.
+      - `--full-build` || `-fb` — Builds the project and includes the combined files, json files, and the un-minified combined version.
 
 ---
 

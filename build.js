@@ -7,6 +7,7 @@ const outputDir = './Dist/';
 const args = process.argv.slice(2);
 const versionIndex = args.indexOf('--as-version');
 const version = versionIndex !== -1 && args[versionIndex + 1] ? args[versionIndex + 1] : null;
+const hasFullBuild = args.includes('--full-build') || args.includes('-fb');
 
 const config = {
     compress: {
@@ -27,14 +28,16 @@ const config = {
         safari10: false
     },
     module: false,
-    sourceMap: {
-        filename: 'DynamicGrid.min.js',
-        url: 'DynamicGrid.min.js.map'
-    },
+    // sourceMap: {
+    //     filename: 'DynamicGrid.min.js',
+    //     url: 'DynamicGrid.min.js.map'
+    // },
     output: {
         comments: 'some'
     }
 };
+
+hasFullBuild ? config.sourceMap = { filename: 'DynamicGrid.min.js', url: 'DynamicGrid.min.js.map' } : null;
 
 const files = [
     "./DynamicGrid/DynamicGrid.js",
@@ -94,10 +97,21 @@ const zeroDelay = true
 const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0)) : new Promise(resolve => setTimeout(resolve, ms));
 
 (async () => {
-    console.log('=== Starting Minification Process ===');
-    if (version) {
-        console.log(`↳  Version specified: ${version}`);
+    console.clear();
+    console.log('DynamicGrid Build Script');
+    console.log('=====================================');
+    console.log(`Output Directory: ${outputDir}`);
+    console.log(`Full Build: ${hasFullBuild ? 'Enabled' : 'Disabled'}`);
+    console.log(`Version: ${version ? version : 'Not specified'}`);
+    console.log('=====================================');
+
+    //remove output directory if it exists
+    if (fs.existsSync(outputDir)) {
+        fs.rmSync(outputDir, { recursive: true, force: true });
     }
+
+    // Create output directory
+    fs.mkdirSync(outputDir, { recursive: true });
     await delay(200); // Initial pause
 
     try {
@@ -179,7 +193,7 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
             ...config,
         });
         fs.writeFileSync(outputDir + 'DynamicGrid.min.js', minifiedCombined.code);
-        fs.writeFileSync(outputDir + 'DynamicGrid.min.js.map', minifiedCombined.map);
+        hasFullBuild ? fs.writeFileSync(outputDir + 'DynamicGrid.min.js.map', minifiedCombined.map) : null;
         console.log('↳  Minified combined file and source map saved.');
         await delay(300);
 
@@ -203,30 +217,32 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
             const sourceMapPath = `${minifiedFilePath}.map`;
 
             // Save the unminified file in the Compiled folder
-            fs.writeFileSync(unminifiedFilePath, fileCode);
+            hasFullBuild ? fs.writeFileSync(unminifiedFilePath, fileCode) : null;
 
             console.log(`  ↳ Unminified file saved:`);
             await delay(100);
 
             // Minify the file and save the minified version and source map
-            const minifiedFile = await minify(fileCode, {
+            const config = {
                 compress: true,
                 mangle: true,
-                sourceMap: {
-                    filename: `${fileName}.map`,
-                    url: `${fileName}.map`
-                },
+                // sourceMap: {
+                //     filename: `${fileName}.map`,
+                //     url: `${fileName}.map`
+                // },
                 output: {
-                    comments: function(node, comment) {
+                    comments: function (node, comment) {
                         // Preserve license comments and version comments
                         const text = comment.value;
                         return text.includes('@license') || text.includes('@version');
                     }
                 }
-            });
+            }
+            hasFullBuild ? config.sourceMap = { filename: `${fileName}.min.js`, url: `${fileName}.min.js.map` } : null;
+            const minifiedFile = await minify(fileCode, config);
 
             fs.writeFileSync(minifiedFilePath, minifiedFile.code);
-            fs.writeFileSync(sourceMapPath, minifiedFile.map);
+            hasFullBuild ? fs.writeFileSync(sourceMapPath, minifiedFile.map) : null;
             console.log(`  ↳ Minified file and source map saved\n`);
             await delay(200); // Delay after saving each file
         }
@@ -247,7 +263,7 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
             const minifiedCssPath = `${outputDir}${cssFileName.replace('.css', '.min.css')}`;
 
             // Save the unminified CSS file
-            fs.writeFileSync(unminifiedCssPath, cssCode);
+            hasFullBuild ? fs.writeFileSync(unminifiedCssPath, cssCode) : null;
             console.log(`  ↳ Unminified CSS file saved: ${unminifiedCssPath}`);
 
             // Minify the CSS file (using a simple regex for demonstration)

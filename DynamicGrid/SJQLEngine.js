@@ -106,7 +106,7 @@ class SJQLEngine {
         if (!query || query === '') {
             console.warn('No query provided, returning all data');
             this.currentQueryStr = '';
-            return this.data;
+            return this.data.map((_, index) => index);
         }
 
         const parsedQuery = this.QueryParser.parseQuery(query, this.plugins, this.headers);
@@ -183,7 +183,7 @@ class SJQLEngine {
             for (const index of validIndices) {
                 const row = this.data[index];
                 const groupKey = row[groupField];
-                (groupedData[groupKey] ||= []).push(row); // Use nullish coalescing for concise grouping
+                (groupedData[groupKey] ||= []).push(row.internal_id); // Use nullish coalescing for concise grouping
             }
 
             // Sort groups if required
@@ -192,12 +192,6 @@ class SJQLEngine {
             }
 
             return groupedData;
-        }
-
-        // Sort if no grouping
-        if (sortQuery) {
-            const sortedData = this.data.filter((_, i) => validIndices.has(i));
-            return this.getPlugin(sortQuery.type).sort(sortQuery, sortedData);
         }
 
         // Process Fuzzy search
@@ -212,10 +206,14 @@ class SJQLEngine {
             }));
         }
 
-        // console.log(validIndices);
+        // Sort if no grouping
+        if (sortQuery) {
+            const sortedData = this.data.filter((_, i) => validIndices.has(i));
+            return this.getPlugin(sortQuery.type).sort(sortQuery, sortedData)
+                .map(row => row.internal_id); // Return only internal_ids
+        }
 
-        // Return filtered data
-        return this.data.filter((_, i) => validIndices.has(i));
+        return Array.from(validIndices);
     }
 
     //================================================== SELECT ==================================================
@@ -446,6 +444,7 @@ class SJQLEngine {
     }
 
     alterData(datum, column, value) {
+        console.log(datum, column, value);
         const oldValue = this.data[datum][column];
         if (this.data && this.data.length > 0) {
             this.data[datum][column] = value;

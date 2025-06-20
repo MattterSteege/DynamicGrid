@@ -458,7 +458,6 @@ class APIConnector {
      * @returns {Promise<Object>} The response data.
      */
     request(method, endpoint, options = {}) {
-        // Apply request interceptors
         const applyRequestInterceptors = (modifiedOptions) => {
             return this.requestInterceptors.reduce((promise, interceptor) => {
                 return promise.then(opts => Promise.resolve(interceptor(method, endpoint, opts)));
@@ -470,12 +469,20 @@ class APIConnector {
                 return this.executeRequest(method, endpoint, modifiedOptions);
             })
             .then(result => {
+                // Call onSuccess callback if defined
+                if (typeof options.onSuccess === 'function') {
+                    options.onSuccess();
+                }
                 // Apply response interceptors
                 return this.responseInterceptors.reduce((promise, interceptor) => {
                     return promise.then(res => Promise.resolve(interceptor(res, method, endpoint)));
                 }, Promise.resolve(result));
             })
             .catch(error => {
+                // Call onError callback if defined
+                if (typeof options.onError === 'function') {
+                    options.onError(error, { method, endpoint });
+                }
                 // Handle errors through configured error handling
                 return this.handleError(error).then(() => {
                     throw error;
