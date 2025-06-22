@@ -22,6 +22,9 @@ class DynamicGridUI {
         this.header = null;
         this.body = null;
         this.scrollContainer = null;
+        this.groupedRows = null;
+
+
 
         this.config = {
             minColumnWidth: ui_config.minColumnWidth ?? 50,
@@ -50,7 +53,7 @@ class DynamicGridUI {
         //array of ints
         this.showData = [];
         this.showDataLength = 0; // Length of the data currently shown in the UI
-        this.showDataHidden = []; // Array of hidden data items (if any) also an array of ints
+        this.hiddenIndices = new Set();
 
 
         // Set up context menu
@@ -151,56 +154,99 @@ class DynamicGridUI {
         this.colGroup2 = null;
     }
 
-    //TODO: recalculate the top position when a group is toggled (when multiple groups are toggled, the top position should be recalculated)
     GroupRowRange(startIndex, endIndex) {
-        console.log(`Grouping rows from ${startIndex} to ${endIndex}`);
         if (startIndex < 0 || endIndex >= this.showData.length || startIndex > endIndex) {
-            console.log(startIndex < 0, endIndex >= this.showData.length, startIndex > endIndex)
-            console.log(startIndex, this.showData.length, endIndex)
             throw new GridError('Invalid row range to hide');
         }
-
-        // for (let i = startIndex; i <= endIndex; i++) {
-        //     this.showDataHidden.push(this.showData[i]);
-        // }
 
         //add a grouped row element to the groupedRows div
         const groupedRow = document.createElement('div');
         groupedRow.className = 'grouped-row';
-        groupedRow.setAttribute('start', startIndex);
-        groupedRow.setAttribute('end', endIndex);
+        groupedRow.setAttribute('s', startIndex); // start index of the grouped row
+        groupedRow.setAttribute('_s', startIndex);  //original start index (never changes)
+        groupedRow.setAttribute('l', endIndex - startIndex + 1); // length of the grouped row
         this.groupedRows.appendChild(groupedRow);
 
         groupedRow.onclick = () => {
-            // Toggle visibility of the grouped rows
-            const isHidden = groupedRow.classList.toggle('hidden');
-            if (isHidden) {
-                this.eventEmitter.emit('ui-row-range-hidden', { startIndex, endIndex });
-            } else {
-                this.eventEmitter.emit('ui-row-range-shown', { startIndex, endIndex });
-            }
+            this.toggleGroupedRow(groupedRow);
+        };
 
-            //add the range to the showDataHidden array
-            if (isHidden) {
-                for (let i = startIndex; i <= endIndex; i++) {
-                    if (!this.showDataHidden.includes(this.showData[i])) {
-                        this.showDataHidden.push(this.showData[i]);
-                    }
-                }
-            }
-            else {
-                //remove the range from the showDataHidden array
-                this.showDataHidden = this.showDataHidden.filter(item => !this.showData.slice(startIndex, endIndex + 1).includes(item));
-            }
-
-            // Update the visible rows
-            this._updateVisibleRows();
-        }
-
-        //update scrollcontainer
+        this.#_computeVisibleIndices();
+        this.virtualScrolling.startIndex = 0; // or keep current scroll position logic if you prefer
         this._updateVisibleRows();
 
-        this.eventEmitter.emit('ui-row-range-hidden', { startIndex, endIndex });
+        this.eventEmitter.emit('ui-row-range-hidden', {startIndex, endIndex});
+    }
+
+    /**
+     * Toggles the visibility of a grouped row.
+     * @param groupedRow {HTMLElement} - The grouped row element to toggle.
+     * @param show {-1|boolean} - If -1, toggles the visibility. If 1|true, shows the row. If 0|false, hides the row.
+     */
+    toggleGroupedRow(groupedRow, show = -1) {
+        // Get start and end index from the DOM attributes
+        const startIndex = parseInt(groupedRow.getAttribute('_s'), 10);
+        const length = parseInt(groupedRow.getAttribute('l'), 10);
+        const endIndex = startIndex + length - 1;
+
+        // // Toggle visibility of the grouped rows
+        // const hidden = show == -1 ? groupedRow.classList.toggle('hidden')
+        // const isHidden = groupedRow.classList.contains('hidden');
+
+        if (show === -1) {
+            groupedRow.classList.toggle('hidden');
+        }
+        const isHidden = show === -1 ? groupedRow.classList.contains('hidden') : show == 1 ? !true : !false;
+
+        //add the range to the showDataHidden array
+        const previousGroupedRow = groupedRow.previousElementSibling;
+        if (isHidden) {
+            //toggle to hide the rows
+            for (let i = startIndex + 1; i <= endIndex; i++) {
+                this.hiddenIndices.add(this.showData[i]);
+            }
+
+            if (previousGroupedRow) {
+                const previousStart = parseInt(previousGroupedRow.getAttribute('s'), 10);
+                const previousLength = parseInt(previousGroupedRow.getAttribute('l'), 10);
+                groupedRow.setAttribute('s', `${previousGroupedRow.classList.contains('hidden') ? previousStart + 1 : previousStart + previousLength}`);
+            } else {
+                groupedRow.setAttribute('s', startIndex);
+            }
+
+            const parent = groupedRow.parentNode;
+            const children = Array.from(parent.children);
+            const nextIndex = children.indexOf(groupedRow) + 1;
+            for (let i = nextIndex; i < children.length; i++) {
+                const child = children[i];
+                if (child.classList.contains('grouped-row')) {
+                    child.setAttribute('s', `${parseInt(child.getAttribute('s'), 10) + 1 - parseInt(groupedRow.getAttribute('l'), 10)}`);
+                }
+            }
+
+            this.eventEmitter.emit('ui-row-range-hidden', {startIndex, endIndex});
+        } else {
+            //toggle to show the rows
+            for (let i = startIndex + 1; i <= endIndex; i++) {
+                this.hiddenIndices.delete(this.showData[i]);
+            }
+
+            const parent = groupedRow.parentNode;
+            const children = Array.from(parent.children);
+            const nextIndex = children.indexOf(groupedRow) + 1;
+            for (let i = nextIndex; i < children.length; i++) {
+                const child = children[i];
+                if (child.classList.contains('grouped-row')) {
+                    child.setAttribute('s', `${parseInt(child.getAttribute('s'), 10) + parseInt(groupedRow.getAttribute('l'), 10) - 1}`);
+                }
+            }
+
+            this.eventEmitter.emit('ui-row-range-shown', {startIndex, endIndex});
+        }
+
+        this.#_computeVisibleIndices();
+        this.virtualScrolling.startIndex = 0; // or keep current scroll position logic if you prefer
+        this._updateVisibleRows();
     }
 
     #_hideColumn(Index) {
@@ -241,6 +287,36 @@ class DynamicGridUI {
 
         this.keyboardShortcuts.addShortcut('ctrl+shift+a', 'Shortcut to automatically fit the columns to a (almost) perfect fit', () => {
             this.autoFitCellWidth();
+        });
+
+        this.keyboardShortcuts.addShortcut('ctrl+shift+r', 'Shortcut to refresh the UI', () => {
+            this.UICacheRefresh = true;
+            this.render(this.showData);
+        });
+
+        //add a shortcut to open or close all grouped rows
+        this.keyboardShortcuts.addShortcut('ctrl+shift+g', 'Shortcut to toggle all grouped rows', () => {
+            const groupedRows = this.groupedRows.querySelectorAll('.grouped-rows > .grouped-row');
+            if (groupedRows.length === 0) return;
+
+            //if the first grouped row is hidden, show all, otherwise hide all
+            const firstGroupedRow = groupedRows[0];
+            const shouldShow = firstGroupedRow.classList.contains('hidden');
+            console.log(shouldShow, firstGroupedRow.classList.contains('hidden'));
+            groupedRows.forEach((row) => {
+                //if shouldShow and the row is hidden, show it, otherwise skip it
+                //if !shouldShow and the row is not hidden, hide it, otherwise skip it
+                if (shouldShow && row.classList.contains('hidden')) {
+                    this.toggleGroupedRow(row);
+                }
+                else if (!shouldShow && !row.classList.contains('hidden')) {
+                    this.toggleGroupedRow(row);
+                }
+            });
+
+            this.#_computeVisibleIndices();
+            this.virtualScrolling.startIndex = 0; // or keep current scroll position logic if you prefer
+            this._updateVisibleRows();
         });
 
         this.eventEmitter.emit('ui-container-initialized', { containerId });
@@ -492,6 +568,8 @@ class DynamicGridUI {
         const totalRows = this.showData.length;
         this.virtualScrolling.totalHeight = totalRows * this.config.rowHeight;
 
+        this.#_computeVisibleIndices();
+
         // Calculate how many rows can be visible at once
         const visibleHeight = this.table.clientHeight || 400; // Default height if not set
         this.virtualScrolling.visibleRowsCount = Math.ceil(visibleHeight / this.config.rowHeight);
@@ -517,49 +595,71 @@ class DynamicGridUI {
 
     #_handleScroll(event) {
         const scrollTop = event.target.scrollTop;
+        const rowHeight = this.config.rowHeight;
 
-        if (this.virtualScrolling.scrollTop === scrollTop && scrollTop !== 0) return;
-
+        this.virtualScrolling.scrollTop = scrollTop;
         this.groupedRows.style.setProperty('--y-offset', `${scrollTop}px`);
 
-        const rowIndex = Math.floor(scrollTop / this.config.rowHeight);
+        const rowIndex = Math.floor(scrollTop / rowHeight);
         const startIndex = Math.max(0, rowIndex - this.config.bufferedRows);
-        const endIndex = Math.min(
-            this.showData.length,
-            rowIndex + this.virtualScrolling.visibleRowsCount + this.config.bufferedRows
+
+        const visibleRows = this.visibleIndices;
+
+        const clampedStart = Math.min(startIndex, visibleRows.length - 1);
+        const clampedEnd = Math.min(
+            clampedStart + this.virtualScrolling.visibleRowsCount + this.config.bufferedRows * 2,
+            visibleRows.length
         );
 
-        if (startIndex !== this.virtualScrolling.startIndex || endIndex !== this.virtualScrolling.endIndex) {
-            this.virtualScrolling.startIndex = startIndex;
-            this.virtualScrolling.endIndex = endIndex;
+        if (
+            clampedStart !== this.virtualScrolling.startIndex ||
+            clampedEnd !== this.virtualScrolling.endIndex
+        ) {
+            this.virtualScrolling.startIndex = clampedStart;
+            this.virtualScrolling.endIndex = clampedEnd;
             this._updateVisibleRows();
         }
     }
 
     _updateVisibleRows() {
+        const visibleRows = this.visibleIndices;
+        const start = this.virtualScrolling.startIndex;
+        const end = Math.min(
+            start + this.virtualScrolling.visibleRowsCount + this.config.bufferedRows * 2,
+            visibleRows.length
+        );
 
+        // Clear current non-spacer rows
         const currentRows = Array.from(this.body.querySelectorAll('tr:not(.virtual-scroll-spacer)'));
         currentRows.forEach(row => row.remove());
 
         const fragment = document.createDocumentFragment();
-        let endIndex = this.virtualScrolling.endIndex;
-        for (let i = this.virtualScrolling.startIndex; i < endIndex; i++) {
-            if (this.showDataHidden.includes(this.showData[i])) {
-                endIndex++; // Skip hidden rows
-                continue;
-            }
-            const row = this.#_createRow(this.showData[i]);
+
+        for (let i = start; i < end; i++) {
+            const rowIndex = visibleRows[i];
+            const rowData = this.showData[rowIndex];
+            const row = this.#_createRow(rowData);
             fragment.appendChild(row);
         }
 
         this.virtualScrolling.topSpacer.after(fragment);
 
-        this.virtualScrolling.topSpacer.style.height = `${this.virtualScrolling.startIndex * this.config.rowHeight}px`;
-        const bottomSpacerHeight = Math.max(
-            0,
-            (this.showData.length - this.virtualScrolling.endIndex) * this.config.rowHeight
-        );
-        this.virtualScrolling.bottomSpacer.style.height = `${bottomSpacerHeight}px`;
+        this.virtualScrolling.topSpacer.style.height = `${start * this.config.rowHeight}px`;
+        this.virtualScrolling.bottomSpacer.style.height = `${(visibleRows.length - end) * this.config.rowHeight}px`;
+    }
+
+
+    #_getNextVisibleIndex(startIndex) {
+        while (startIndex < this.showData.length && this.hiddenIndices.has(this.showData[startIndex])) {
+            startIndex++;
+        }
+        return startIndex;
+    }
+
+    #_computeVisibleIndices() {
+        this.visibleIndices = this.showData
+            .map((_, i) => i)
+            .filter(i => !this.hiddenIndices.has(this.showData[i]));
     }
 
     #_createRow(index) {
@@ -571,7 +671,7 @@ class DynamicGridUI {
             const numberCell = document.createElement('td');
             numberCell.className = 'body-cell';
             numberCell.style.height = `${this.config.rowHeight}px`;
-            //numberCell.innerText = index + 1;
+            numberCell.innerText = this.showData.indexOf(index) + 1; // Display the row number
 
             tr.appendChild(numberCell);
 

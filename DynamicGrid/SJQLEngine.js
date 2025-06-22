@@ -71,6 +71,14 @@ class SJQLEngine {
         const isValidIndex = this.data && this.data.length > 0 && index < this.data.length;
         index = (index < 0 ? this.data.length + index : index);
 
+        if (index === undefined || index === null || !isValidIndex) {
+            console.warn('No data provided, returning empty object');
+            if (noPromise) return {};
+            return new Promise((resolve, reject) => {
+                resolve({});
+            });
+        }
+
         if (noPromise) {
             if (!isValidIndex) throw new Error('No data to return (data is empty, or index is out of bounds)');
             const { internal_id, ...data } = this.data[index];

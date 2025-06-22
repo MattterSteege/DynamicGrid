@@ -132,15 +132,15 @@
 
 .grouped-rows .grouped-row {
     /* start adn end row are set by
-    <div class="grouped-row" start="0" end="5"></div>
+    <div class="grouped-row" start="0" length="5"></div>
      */
-    --start-row: calc(attr(start type(<integer>), 1));
-    --end-row: calc(attr(end type(<integer>), 1));
+    --start-row: calc(attr(s type(<integer>), 1));
+    --amount-of-rows: calc(attr(l type(<integer>), 1));
     position: absolute;
     top: calc(var(--start-row) * var(--row-height) + var(--y-offset) * -1);
     left: 10px;
     width: 12px;
-    height: calc((var(--end-row) - var(--start-row) + 1) * var(--row-height) - 6px);
+    height: calc(var(--amount-of-rows) * var(--row-height) - 6px);
     background: transparent;
     z-index: 100;
     border: 2px solid var(--text-primary);
@@ -359,14 +359,14 @@ td.body-cell:first-child {
     background: var(--bg-secondary);
 }
 
-td.body-cell:first-child::after {
-    content: counter(row);
-    text-align: center;
-    color: var(--text-primary);
-    font-size: var(--font-size, 12px);
-    width: 100%;
-    display: block;
-}
+/*td.body-cell:first-child::after {*/
+/*    content: counter(row);*/
+/*    text-align: center;*/
+/*    color: var(--text-primary);*/
+/*    font-size: var(--font-size, 12px);*/
+/*    width: 100%;*/
+/*    display: block;*/
+/*}*/
 
 td.body-cell:focus {
     outline: 1px solid var(--outline-color);
