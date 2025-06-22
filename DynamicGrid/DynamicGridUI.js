@@ -70,7 +70,6 @@ class DynamicGridUI {
         });
     }
 
-    //TODO: data sometimes returns not an array of ints, but an array of objects, so we need to check if the data is an array of objects or not
     render(data) {
         if (!data) return;
         if (data.length === 0) {

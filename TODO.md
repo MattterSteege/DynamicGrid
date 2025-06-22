@@ -11,7 +11,7 @@
 - [ ] **Frozen Columns and Rows**: Implement the ability to "freeze" certain columns or rows, so they remain visible while the user scrolls the rest of the grid.
 - [ ] **Row Grouping and Aggregation**:
   - [x]  Implement the ability to collapse/expand groups to show/hide the underlying data.
-  - [ ]  Add support for nested groups, allowing the user to create hierarchical groupings of data.
+  - [x]  Add support for nested groups, allowing the user to create hierarchical groupings of data.
   - [ ]  Enable the user to customize the aggregation functions and formatting for each group.
 - [x] **Export and Import**: Implement the ability to export the grid data to various formats (e.g., CSV, Excel, JSON) and import data into the grid.
 - [ ] **Accessibility and Keyboard Navigation**: Ensure the grid component is accessible to users with disabilities by providing proper keyboard navigation, screen reader support, and compliance with WCAG guidelines.

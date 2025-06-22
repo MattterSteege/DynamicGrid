@@ -334,8 +334,8 @@ table.dynamic-grid-table-header {
 }
 
 /* === Body Cell Styles === */
-.dynamic-grid-table-body tr:not(:first-child) {
-    counter-increment: row;
+.dynamic-grid-table-body tbody tr td[bold] {
+    font-weight: bold;
 }
 
 td.body-cell {

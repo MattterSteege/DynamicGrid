@@ -32,7 +32,6 @@ class CSVExportConnector extends ExportConnector {
     }
 }
 
-//TODO: find a diffrent host for xlsx.bundle.js
 class XLSXExportConnector extends ExportConnector {
     constructor() {
         super();

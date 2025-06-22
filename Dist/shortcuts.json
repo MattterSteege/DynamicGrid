@@ -9,18 +9,18 @@
     "keybind": "ctrl+shift+a",
     "description": "Shortcut to automatically fit the columns to a (almost) perfect fit",
     "file": "DynamicGridUI.js",
-    "line": 288
+    "line": 287
   },
   {
     "keybind": "ctrl+shift+r",
     "description": "Shortcut to refresh the UI",
     "file": "DynamicGridUI.js",
-    "line": 292
+    "line": 291
   },
   {
     "keybind": "ctrl+shift+g",
     "description": "Shortcut to toggle all grouped rows",
     "file": "DynamicGridUI.js",
-    "line": 298
+    "line": 297
   }
 ]

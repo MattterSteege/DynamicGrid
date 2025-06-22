@@ -37,32 +37,32 @@
   {
     "eventName": "ui-rendered",
     "file": "DynamicGridUI.js",
-    "line": 117
+    "line": 116
   },
   {
     "eventName": "ui-row-range-hidden",
     "file": "DynamicGridUI.js",
-    "line": 178
+    "line": 177
   },
   {
     "eventName": "ui-row-range-hidden",
     "file": "DynamicGridUI.js",
-    "line": 227
+    "line": 226
   },
   {
     "eventName": "ui-row-range-shown",
     "file": "DynamicGridUI.js",
-    "line": 244
+    "line": 243
   },
   {
     "eventName": "ui-container-initialized",
     "file": "DynamicGridUI.js",
-    "line": 322
+    "line": 321
   },
   {
     "eventName": "ui-cell-edit",
     "file": "DynamicGridUI.js",
-    "line": 685
+    "line": 684
   },
   {
     "eventName": "engine-query-update",

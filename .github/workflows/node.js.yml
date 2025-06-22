@@ -35,7 +35,7 @@ jobs:
         run: npm ci
 
       - name: Build package
-        run: node build.js --as-version ${{ steps.version.outputs.VERSION }}
+        run: node build.js --as-version ${{ steps.version.outputs.VERSION }} --full-build --github
 
       - name: Publish to GitHub Packages
         run: npm publish

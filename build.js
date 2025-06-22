@@ -8,6 +8,7 @@ const args = process.argv.slice(2);
 const versionIndex = args.indexOf('--as-version');
 const version = versionIndex !== -1 && args[versionIndex + 1] ? args[versionIndex + 1] : null;
 const hasFullBuild = args.includes('--full-build') || args.includes('-fb');
+const hasGithub = args.includes('--github');
 
 const config = {
     compress: {
@@ -281,6 +282,12 @@ const delay = (ms) => zeroDelay ? new Promise(resolve => setTimeout(resolve, 0))
         }
 
         console.log('\n=== Minification Process Completed Successfully ===');
+
+        if (hasGithub) {
+            console.log('\ngithub pushed build to package repository');
+            console.log('full package can be found at:');
+            console.log('https://cdn.jsdelivr.net/gh/matttersteege/dynamicgrid@' + (version ? version : 'latest') + '/Dist/');
+        }
     } catch (error) {
         console.error('Error during minification:', error);
     }
