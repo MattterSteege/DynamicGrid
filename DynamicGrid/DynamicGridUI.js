@@ -416,13 +416,19 @@ class DynamicGridUI {
         topLeftCorner.style.width = `30px`;
         colgroup.appendChild(topLeftCorner);
 
+
+
         var width = 0;
         for (const key in headers) {
             if (typeof headers[key] !== 'string') continue;
+            const header = grid.engine.getHeader(headers[key]).config;
+            console.log(header)
             const col = document.createElement('col');
-            width += headers[key].width ?? 100;
-            col.style.width = `${headers[key].width ?? 100}px`;
-            col.style.minWidth = `${this.config.minColumnWidth}px`;
+            width += header.width ?? 100;
+            col.style.width = `${header.width ?? 100}px`;
+            col.style.minWidth = `${header.minWidth}px`;
+            col.style.maxWidth = `${header.maxWidth}px`;
+            header.resizable ? col.setAttribute('resizable', 'true') : null;
             colgroup.appendChild(col);
         }
         colgroup.style.width = `${width}px`;
@@ -676,7 +682,8 @@ class DynamicGridUI {
 
             Object.entries(data).forEach(([key, value]) => {
                 if (key === 'internal_id') return;
-                const plugin = this.engine.getPlugin(key);
+                const header = this.engine.getHeader(key);
+                const plugin = header.plugin || this.engine.getPlugin(key);
 
                 const onEdit = (callback) => {
                     this.engine.updateTracker.addEdit({ column: key, row: data, previousValue: value, newValue: callback });
@@ -685,12 +692,15 @@ class DynamicGridUI {
                     td.classList.add('edited'); // Add a class to indicate
                 }
 
-                const td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
+                //let td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
+                let td = plugin.renderCell(value, onEdit, header.config);
 
                 // If td is not a td html element, log it, the value and the key and the plugin
                 if (!(td instanceof HTMLTableCellElement)) {
-                    console.error('[plugin].renderCell() did not return a td element', { td, value, key, plugin });
-                    return;
+                    console.error(plugin.name + '.renderCell() did not return a td element', { td, value, key, plugin });
+                    td = document.createElement('td');
+                    td.style.backgroundColor = 'red';
+                    td.innerText = `Invalid cell`;
                 }
 
                 td.className = 'body-cell';
@@ -702,21 +712,6 @@ class DynamicGridUI {
         return tr;
     }
 
-    // /**
-    //  * Retrieves the data at the specified index.
-    //  * @param index {number} - The index of the data to retrieve.
-    //  * @param removeInternalId {boolean} - Whether to remove the internal_id field from the returned data. (default: true)
-    //  * @returns {Promise<Object>} - The data at the specified index, or a promise that resolves to the data.
-    //  */
-    // getData(index, removeInternalId = true) {
-    //     if (!this.showData || index >= this.showData.length) {
-    //         return Promise.reject(new Error('No data to return (data is empty, or index is out of bounds)'));
-    //     }
-    //
-    //     index = index < 0 ? this.showData.length + index : index;
-    //     const { internal_id, ...data } = this.showData[index];
-    //     return Promise.resolve(removeInternalId ? data : this.showData[index]);
-    // }
 
     #_approximateColumnWidth() {
         function approximateWidth(sampleData) {

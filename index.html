@@ -136,101 +136,73 @@
 <div id="gridContainer" style="width: 90vw; height: 90vh; position: fixed; top: calc(50% + 2vh); left: 50%; transform: translate(-50%, -50%); border-radius: 10px;"></div>
 
 <script>
+    // Complete column configuration object with every possible value set
+    const completeColumnConfig = {
+        // Core type system properties
+        name: 'email',               // Column name
+        type: 'string',                    // Plugin type to use
+        isUnique: false,                   // Whether values in this column are unique
+        isEditable: true,                  // Whether cells can be edited
+        isGroupable: true,                 // Whether column can be grouped by
+
+        // Styling
+        cellClass: 'email-cell custom-column',  // CSS classes for the cell
+        headerClass: 'custom-header-class',     // CSS class for column header
+
+        // Column sizing
+        width: 250,                            // Fixed width in pixels
+        minWidth: 150,                         // Minimum width when resizing
+        maxWidth: 400,                         // Maximum width when resizing
+        resizable: true,                       // Whether column can be resized
+
+        cellStyle: {
+            backgroundColor: '#f0f8ff',        // Background color for cells
+            color: '#333',                     // Text color
+            fontSize: '14px',                  // Font size
+            textAlign: 'left',                 // Text alignment
+        },
+
+        // Value formatting
+        valueFormatter: (value) => {
+            return `📧 ${value}`;
+        },
+
+        // Validation
+        cellValueValidator: (value, rowData, rowIndex) => {
+            // Validate cell value
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+                return {
+                    valid: false,
+                    message: 'Please enter a valid email address'
+                };
+            }
+            return { valid: true };
+        },
+
+        onCellDoubleClicked: (params) => {
+            // Called when cell is double-clicked
+            console.log('Opening email client...', params.value);
+        },
+    };
+
     let grid = new DynamicGrid({
         headers: {
-
-            index: {
-                type: 'number',
-                isUnique: true,
-                isEditable: false,
-                isGroupable: true,
-                width: 50,
-            },
-            guid: {
-                type: 'string',
-                isUnique: true,
-                isEditable: false,
-                isGroupable: true,
-                width: 150,
-            },
-            isActive: {
-                type: 'boolean',
-                isEditable: true,
-                isGroupable: true,
-                width: 100,
-            },
-            balance: {
-                type: 'number',
-                isEditable: true,
-                isGroupable: true,
-                width: 100,
-            },
-            picture: {
-                type: 'string',
-                isEditable: false,
-                isGroupable: false,
-                width: 150,
-            },
-            age: {
-                type: 'number',
-                isEditable: true,
-                isGroupable: true,
-                width: 50,
-            },
-            eyeColor: {
-                type: 'string',
-                isEditable: true,
-                isGroupable: true,
-                width: 100,
-            },
-            name: {
-                type: 'string',
-                isEditable: true,
-                isGroupable: true,
-                width: 150,
-            },
-            gender: {
-                type: 'string',
-                isEditable: true,
-                isGroupable: true,
-                width: 100,
-            },
-            company: {
-                type: 'string',
-                isEditable: true,
-                isGroupable: true,
-                width: 150,
-            },
-            email: {
-                type: 'string',
-                isEditable: true,
-                isGroupable: true,
-                width: 200,
-            },
-            phone: {
-                type: 'string',
-                isEditable: true,
-                isGroupable: true,
-                width: 150,
-            },
-            registered: {
-                type: 'date',
-                isEditable: true,
-                isGroupable: true,
-                width: 150,
-            },
-            latitude: {
-                type: 'number',
-                isEditable: true,
-                isGroupable: true,
-                width: 100,
-            },
-            longitude: {
-                type: 'number',
-                isEditable: true,
-                isGroupable: true,
-                width: 100,
-            }
+            index:      {type: 'number',  isUnique: true, isEditable: false},
+            guid:       { type: 'string', isUnique: true, isEditable: false, },
+            isActive:   { type: 'boolean'},
+            balance:    { type: 'number',},
+            picture:    { type: 'string', isEditable: false, isGroupable: false, width: 150},
+            age:        { type: 'number' },
+            eyeColor:   { type: 'string' },
+            name:       { type: 'string' },
+            gender:     { type: 'string' },
+            company:    { type: 'string' },
+            email: completeColumnConfig, // Use the complete column config for email
+            phone:      { type: 'string' },
+            registered: { type: 'date'   },
+            latitude:   { type: 'number' },
+            longitude:  { type: 'number' }
         },
         ui: {
             containerId: '#gridContainer',

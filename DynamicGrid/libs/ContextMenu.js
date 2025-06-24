@@ -674,8 +674,7 @@ class ContextMenu {
         // Apply initial styles for animation
         menu.style.opacity = 0;
         menu.style.transform = 'scale(0.9)';
-        menu.style.transition = `opacity ${this.options.animation.duration}ms ${this.options.animation.timing}, 
-                             transform ${this.options.animation.duration}ms ${this.options.animation.timing}`;
+        menu.style.transition = `opacity ${this.options.animation.duration}ms ${this.options.animation.timing},transform ${this.options.animation.duration}ms ${this.options.animation.timing}`;
 
         // Trigger the animation
         requestAnimationFrame(() => {

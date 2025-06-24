@@ -19,7 +19,6 @@ class TypePlugin {
         }
 
         this.name = this.constructor.name;
-        //if this.operators is set and the value it is set to is not equal to the default operators, then set the operators to those operators + the default operators
         this.operators = ['==', '!=', 'in'];
     }
 
@@ -102,45 +101,110 @@ class TypePlugin {
         return [...this.operators];
     }
 
+    /**
+     * Create a table data cell with flexible rendering options
+     * @param {*} value Cell value
+     * @param onEdit {Function} Callback function for when cell is edited
+     * @param {Object} columnConfig Column configuration object
+     * @param {Object} params Additional parameters (row data, column key, etc.)
+     * @return {HTMLElement} Data cell element
+     */
+    renderCell(value, onEdit, columnConfig = {}) {
+
+        // Use custom cell renderer if provided
+        if (columnConfig.cellRenderer) {
+            return columnConfig.cellRenderer(value, columnConfig);
+        }
+
+        // Apply value formatter if provided
+        let displayValue = value;
+        if (columnConfig.valueFormatter) {
+            displayValue = columnConfig.valueFormatter(value);
+        }
+
+        // Use default rendering
+        return columnConfig.isEditable ? this._createDefaultEditableCell(value, displayValue, onEdit, columnConfig) : this._createDefaultCell(displayValue, columnConfig);
+    }
 
     /**
-     * Create a table data cell
-     * @param {*} value Cell value (that can be .toString()ed)
-     * @return {HTMLElement} Data cell element (div)
-     * @virtual (should be overridden, not required)
+     * Default cell creation (can be overridden by subclasses)
+     * @param {*} displayValue Formatted display value
+     * @param {Object} columnConfig Column configuration
+     * @returns {HTMLElement} Cell element
+     * @protected
      */
-    renderCell(value) {
+    _createDefaultCell(displayValue, columnConfig) {
         const cell = document.createElement('td');
-        cell.innerText = String(value);
+        cell.innerHTML = String(displayValue);
+
+        // Apply custom CSS classes if provided
+        if (columnConfig.cellClass) {
+            cell.className = columnConfig.cellClass;
+        }
+
+        // Apply custom styles if provided
+        if (columnConfig.cellStyle) {
+            Object.assign(cell.style, columnConfig.cellStyle);
+        }
+
         return cell;
     }
 
     /**
-     * Create a table data cell for editing
-     * @param {*} value Cell value (that can be .toString()ed)
-     * @param {Function} onEdit Callback function for when cell is edited
-     * @returns {HTMLElement} Data cell element (div)
-     * @virtual (should be overridden, not required)
+     * Default editable cell creation (can be overridden by subclasses)
+     * @param {*} rawValue Original raw value
+     * @param {*} displayValue Formatted display value
+     * @param {Function} onEdit Edit callback
+     * @param {Object} columnConfig Column configuration
+     * @returns {HTMLElement} Cell element
+     * @protected
      */
-    renderEditableCell(value, onEdit) {
+    _createDefaultEditableCell(rawValue, displayValue, onEdit, columnConfig) {
         const cell = document.createElement('td');
-        cell.innerHTML = String(value);
+        cell.innerHTML = String(displayValue);
         cell.contentEditable = true;
         cell.spellcheck = false;
+
+        // Apply custom CSS classes if provided
+        if (columnConfig.cellClass) {
+            cell.className = columnConfig.cellClass;
+        }
+
+        // Apply custom styles if provided
+        if (columnConfig.cellStyle) {
+            Object.assign(cell.style, columnConfig.cellStyle);
+        }
 
         cell.addEventListener('focus', (e) => {
             cell.classList.add('editing');
             cell.setAttribute('data-editing', 'true');
-            cell.setAttribute('start-value', cell.innerText);
+            // Store raw value for comparison, not formatted value
+            cell.setAttribute('start-value', String(rawValue));
+
+            // Show raw value for editing
+            cell.innerHTML = String(rawValue);
         });
 
         cell.addEventListener('focusout', (e) => {
             cell.classList.remove('editing');
             cell.removeAttribute('data-editing');
-            if (cell.getAttribute('start-value') !== cell.innerText) {
-                // Call the onEdit function with the new value
-                onEdit(cell.innerText);
+
+            const newValue = cell.innerText;
+            const startValue = cell.getAttribute('start-value');
+
+            if (startValue !== newValue) {
+                // Parse the new value using the plugin's parseValue method
+                const parsedValue = this.parseValue(newValue);
+                onEdit(parsedValue);
             }
+
+            // Restore formatted display
+            let displayValue = newValue;
+            if (columnConfig.valueFormatter) {
+                displayValue = columnConfig.valueFormatter({ value: newValue });
+            }
+            cell.innerHTML = String(displayValue);
+
             cell.removeAttribute('start-value');
         });
 
@@ -155,46 +219,49 @@ class TypePlugin {
     }
 
     /**
-     * Handle additional data loading
+     * Handle additional data loading with flexible menu options
      * @param {string} key Data key
      * @param {HTMLElement} element Clicked element
      * @param {SJQLEngine} engine Query engine instance
      * @param {DynamicGridUI} UI User interface instance
+     * @param {Object} columnConfig Column configuration object
      * @returns {HTMLDivElement} Context menu element
-     * @virtual (should be overridden, not required)
      */
-    showMore(key, element, engine, UI) {
+    showMore(key, element, engine, UI, columnConfig = {}) {
         const {x, y, width, height} = element.getBoundingClientRect();
         const typeOptions = engine.headers[key];
 
-        console.log(typeOptions, key, x, y);
-
         UI.contextMenu.clear();
-        UI.contextMenu
-            .button('Sort ' + key + ' ascending', () => {
-                engine.setSort(key, 'asc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Sort ' + key + ' descending', () => {
-                engine.setSort(key, 'desc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Unsort ' + key, () => {
-                engine.setSort(key);
-                UI.render(engine.runCurrentQuery());
-            });
 
-        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+        // Default sort options (unless disabled)
+        if (!columnConfig.disableSort) {
             UI.contextMenu
-            .separator()
-            .button('Group by ' + key, () => {
-                engine.setGroup(key);
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Un-group', () => {
-                engine.setGroup();
-                UI.render(engine.runCurrentQuery());
-            })
+                .button('Sort ' + key + ' ascending', () => {
+                    engine.setSort(key, 'asc');
+                    UI.render(engine.runCurrentQuery());
+                })
+                .button('Sort ' + key + ' descending', () => {
+                    engine.setSort(key, 'desc');
+                    UI.render(engine.runCurrentQuery());
+                })
+                .button('Unsort ' + key, () => {
+                    engine.setSort(key);
+                    UI.render(engine.runCurrentQuery());
+                });
+        }
+
+        // Default group options (unless disabled)
+        if (!typeOptions.config.isUnique && typeOptions.config.isGroupable) {
+            UI.contextMenu
+                .separator()
+                .button('Group by ' + key, () => {
+                    engine.setGroup(key);
+                    UI.render(engine.runCurrentQuery());
+                })
+                .button('Un-group', () => {
+                    engine.setGroup();
+                    UI.render(engine.runCurrentQuery());
+                });
         }
 
         // Display the context menu at the specified coordinates

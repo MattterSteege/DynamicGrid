@@ -137,10 +137,10 @@
     --start-row: calc(attr(s type(<integer>), 1));
     --amount-of-rows: calc(attr(l type(<integer>), 1));
     position: absolute;
-    top: calc(var(--start-row) * var(--row-height) + var(--y-offset) * -1);
+    top: calc(var(--start-row) * var(--row-height) + var(--y-offset) * -1 + 3px);
     left: 10px;
     width: 12px;
-    height: calc(var(--amount-of-rows) * var(--row-height) - 6px);
+    height: calc(var(--amount-of-rows) * var(--row-height) - 9px);
     background: transparent;
     z-index: 100;
     border: 2px solid var(--text-primary);
@@ -166,11 +166,15 @@
 }
 
 .grouped-rows .grouped-row.hidden {
-    height: 0;
+    height: calc(var(--row-height) - 9px);
+    top: calc(var(--start-row)* var(--row-height) + var(--y-offset)* -1 + 3px);););
 }
 
 .grouped-rows .grouped-row.hidden::before {
     content: '＋';
+    margin: 0 0;
+    outline: none;
+    translate: -12px;
 }
 
 /* === Common Table Styles === */

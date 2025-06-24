@@ -1,20 +1,8 @@
-- [X] **Sorting and Filtering**: The current implementation supports basic sorting by clicking on the column headers. You could expand on this by:
-  - [x]  Adding multi-column sorting, allowing the user to sort by multiple columns in sequence.
-  - [x]  Implementing advanced filtering, with the ability to create complex filter conditions using the various operators supported by the type plugins.
-  - [X]  Providing a UI for the user to easily configure sorting and filtering, such as dropdown menus, input fields, and buttons.
-  - [x]  Add grouping, so that the user can group data by one or more columns, and expand/collapse groups to view the underlying data.
-    - [x] Add the same scrolling optimization to the grouped data as the main data.
-- [x] **Column Resizing and Reordering**: Allow the user to resize columns by dragging the column borders. You could also implement the ability to reorder columns by dragging and dropping them.
-- [X] **Inline Editing**: Enable the user to edit cell values directly in the grid, with the changes persisting in the underlying data.
-- [x] **Pagination and Infinite Scrolling**: Enhance the pagination functionality to provide a smoother user experience, such as displaying page numbers, jump-to-page controls, and infinite scrolling.
-- [ ] **Row Selection and Actions**: Add the ability for the user to select one or more rows, and provide actions that can be performed on the selected rows, such as deleting, exporting, or performing bulk updates.
-- [ ] **Frozen Columns and Rows**: Implement the ability to "freeze" certain columns or rows, so they remain visible while the user scrolls the rest of the grid.
-- [ ] **Row Grouping and Aggregation**:
-  - [x]  Implement the ability to collapse/expand groups to show/hide the underlying data.
-  - [x]  Add support for nested groups, allowing the user to create hierarchical groupings of data.
-  - [ ]  Enable the user to customize the aggregation functions and formatting for each group.
-- [x] **Export and Import**: Implement the ability to export the grid data to various formats (e.g., CSV, Excel, JSON) and import data into the grid.
-- [ ] **Accessibility and Keyboard Navigation**: Ensure the grid component is accessible to users with disabilities by providing proper keyboard navigation, screen reader support, and compliance with WCAG guidelines.
-- [x] **Theming and Customization**: Allow the grid to be easily themed and customized, enabling users to change the look and feel to match the branding and design of the application.
-- [x] **Performance Optimization**: Continuously monitor and optimize the grid's performance, especially for large data sets, by leveraging techniques like virtualization, debouncing, and efficient data manipulation.
-- [x] **API Integration**: Integrate the grid with external data sources, allowing users to view and manipulate data from various APIs directly within the grid.
+- Custom Cell Rendering
+  - `grid.setRenderer('price', (value) => '$${value.toFixed(2)}');`
+- Edit Constraints: Regex/type validators
+- Error Indicators: Invalid cell highlighting
+- Extend TypePlugin:
+  - `numberTypePlugin.addValidator('positive', v => v >= 0);`
+- Cell Styling API:
+  - `grid.addRule('temperature', '>38', { background: '#ffcccc' });`

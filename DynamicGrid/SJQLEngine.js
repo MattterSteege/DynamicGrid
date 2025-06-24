@@ -92,6 +92,26 @@ class SJQLEngine {
         });
     }
 
+
+    getHeader(key) {
+        if (!this.headers || Object.keys(this.headers).length === 0) {
+            console.warn('No headers provided, returning empty object');
+            return {};
+        }
+
+        if (key === undefined || key === null) {
+            console.warn('No key provided, returning all headers');
+            return this.headers;
+        }
+
+        if (this.headers[key]) {
+            return this.headers[key];
+        } else {
+            console.warn(`Header not found for key: ${key}`);
+            return {};
+        }
+    }
+
     /**
      * Retrieves all the columns from the data.
      * @returns {string[]|*[]}
@@ -104,6 +124,7 @@ class SJQLEngine {
 
         return Object.keys(this.data[0]).filter(key => key !== 'internal_id');
     }
+
 
     query(query = '') {
         if (!this.data || this.data.length === 0) {
@@ -360,13 +381,13 @@ class SJQLEngine {
         if (!name) throw new GridError('Plugin name not provided');
         if (typeof name !== 'string') return false;
 
-        var plugin = this.plugins[name.replace("TypePlugin", "")];
+        var plugin = this.getHeader(name).plugin || this.plugins[name.replace("TypePlugin", "")];
 
         if (!plugin) {
             plugin = this.plugins[this.headers[name]?.type];
         }
 
-        if (!plugin && !justChecking) throw new GridError('Plugin not found: ' + name);
+        if (!plugin && !justChecking) throw new GridError('Plugin not found for column: ' + name);
         else if (!plugin && justChecking)  return false;
 
 

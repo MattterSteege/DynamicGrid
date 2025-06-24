@@ -31,19 +31,33 @@ class DynamicGrid {
         // Set up headers
         if (config.headers) {
             Object.entries(config.headers).forEach(([key, value]) => {
+                this.engine.headers[key] = {
+                    // Core type system properties
+                    name: 'email',
+                    type: value,
+                    plugin: this.engine.getPlugin(value.type) || null, // Get the plugin for the type
 
-                if (typeof value === 'string') {
-                    this.engine.headers[key] = { type: value, isUnique: false, isGroupable: true, isHidden: false, isEditable: true };
-                }
-                else {
-                    this.engine.headers[key] = {
-                        type: value.type || key,
-                        isUnique: value.isUnique || false,
-                        isGroupable: value.isGroupable  === undefined ? true : value.isGroupable,
-                        isHidden: value.isHidden || false,
-                        isEditable: value.isEditable === undefined ? true : value.isEditable,
-                    };
-                }
+                    config: {
+                        isUnique: value.isUnique || false,                                      //Default isUnique to false
+                        isEditable: value.isEditable === undefined ? true : value.isEditable,   // Default isEditable to true
+                        isGroupable: value.isGroupable === undefined ? true : value.isGroupable,// Default isGroupable to true
+
+                        // Styling
+                        cellClass: value.cellClass || '',                                       // CSS class for cell
+                        headerClass: value.headerClass || '',                                   // CSS class for header
+
+                        // Column sizing
+                        width: value.width || 100,                                              // Default width in pixels
+                        minWidth: value.minWidth || 0,                                          // Minimum width when resizing
+                        maxWidth: value.maxWidth || 10000,                    // Maximum width when resizing
+                        resizable: value.resizable === undefined ? true : value.resizable,      // Default resizable to true
+
+                        // Cell behavior
+                        valueFormatter: value.valueFormatter || ((val) => val),                 // Function to format the cell value
+                        cellValueValidator: value.cellValueValidator || ((val) => true),// Function to validate the cell value
+                        onCellDoubleClicked: value.onCellDoubleClicked || (() => {}),           // Function to handle double-click events on the cell
+                    }
+                };
             });
         }
 

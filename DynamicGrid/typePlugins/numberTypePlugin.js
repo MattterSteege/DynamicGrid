@@ -204,7 +204,7 @@ class numberTypePlugin extends TypePlugin {
                 UI.render(engine.runCurrentQuery());
             });
 
-        if (!typeOptions.isUnique && typeOptions.isGroupable) {
+        if (!typeOptions.config.isUnique && typeOptions.isGroupable) {
             UI.contextMenu
                 .separator()
                 .button('Group by ' + key, () => {

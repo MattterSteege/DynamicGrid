@@ -1,7 +1,7 @@
 class stringTypePlugin extends TypePlugin {
     constructor() {
         super();
-        this.operators = ['%=', '=%', '*=', '!*=', '==', '!=', '??', '!!', 'in'] //starts with, ends with, contains, does not contain, equals, not equals, empty, not empty, in
+        this.operators = ['%=', '=%', '*=', '!*=', '==', '!=', '??', '!!', 'in'];
     }
 
     validate(value) {
@@ -13,29 +13,23 @@ class stringTypePlugin extends TypePlugin {
         return String(value);
     }
 
-    //query = {field: 'name', operator: 'eq', value: 'John'}
     evaluate(query, dataIndexes, data, indices) {
-        //loop over the indices and remove the ones that do not match the query
-        //console.log('using ' + (dataIndexes?.size <= indices?.size ? 'dataIndexes' : 'indices') + ' sorting for stringTypePlugin');
         if (dataIndexes && indices && dataIndexes.size <= indices.size) {
             for (const index of dataIndexes.keys()) {
                 if (!this.evaluateCondition(index, query.operator, query.value)) {
                     dataIndexes.get(index).forEach(idx => indices.delete(idx));
                 }
             }
-        }
-        else {
+        } else {
             for (const index of indices) {
                 if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
                     indices.delete(index);
                 }
             }
         }
-
         return indices;
     }
 
-    //dataValue is the value of the field in the data, value is the value in the query
     evaluateCondition(dataValue, operator, value) {
         if (operator === 'in') {
             value = JSON.parse(value);
@@ -63,7 +57,6 @@ class stringTypePlugin extends TypePlugin {
             case '!!':
                 return dataValue !== null && dataValue !== undefined && dataValue !== '';
         }
-
         return false;
     }
 
@@ -72,19 +65,19 @@ class stringTypePlugin extends TypePlugin {
         return data.sort((a, b) => {
             if (value === 'asc') {
                 return a[field].localeCompare(b[field]);
-            }
-            else if (value === 'desc') {
+            } else if (value === 'desc') {
                 return b[field].localeCompare(a[field]);
             }
         });
     }
 
-    showMore(key, element, engine, UI) {
+    showMore(key, element, engine, UI, columnConfig = {}) {
         const {x, y, width, height} = element.getBoundingClientRect();
         const typeOptions = engine.headers[key];
-        const vanTot = {van: Number.MIN_SAFE_INTEGER, tot: Number.MAX_SAFE_INTEGER};
 
         UI.contextMenu.clear();
+
+        // String-specific filter submenu
         UI.contextMenu
             .submenu('Filter ' + key, (submenu) => {
                 var operator = '==';
@@ -115,38 +108,10 @@ class stringTypePlugin extends TypePlugin {
                             elementId: 'dropdown-id',
                             value: ['==', '!=', '%=', '=%', '*=', '!*='],
                         }
-                    })
+                    });
             });
 
-
-        UI.contextMenu
-            .button('Sort ' + key + ' ascending', () => {
-                engine.setSort(key, 'asc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Sort ' + key + ' descending', () => {
-                engine.setSort(key, 'desc');
-                UI.render(engine.runCurrentQuery());
-            })
-            .button('Unsort ' + key, () => {
-                engine.setSort(key);
-                UI.render(engine.runCurrentQuery());
-            });
-
-        if (!typeOptions.isUnique && typeOptions.isGroupable) {
-            UI.contextMenu
-                .separator()
-                .button('Group by ' + key, () => {
-                    engine.setGroup(key);
-                    UI.render(engine.runCurrentQuery());
-                })
-                .button('Un-group', () => {
-                    engine.setGroup();
-                    UI.render(engine.runCurrentQuery());
-                })
-        }
-
-        // Display the context menu at the specified coordinates
-        return UI.contextMenu.showAt(x, y + height);
+        // Call parent method for common functionality
+        return super.showMore(key, element, engine, UI, columnConfig);
     }
 }
