@@ -10,12 +10,11 @@ class DynamicGrid {
         this.eventEmitter = new EventEmitter();
         this.keyboardShortcuts = new KeyboardShortcuts();
 
-        // Initialize the query engine
         this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
         // Initialize plugins
         this.engine.plugins = config.plugins ?? [];
         this.engine.addPlugin(new stringTypePlugin, true);
-        this.engine.addPlugin(new numberTypePlugin, true);
+        this.engine.addPlugin(new NumberTypePlugin, true);
         this.engine.addPlugin(new booleanTypePlugin, true);
         this.engine.addPlugin(new dateTypePlugin, true);
 
@@ -33,29 +32,30 @@ class DynamicGrid {
             Object.entries(config.headers).forEach(([key, value]) => {
                 this.engine.headers[key] = {
                     // Core type system properties
-                    name: 'email',
-                    type: value,
+                    name: value.name || key, // Use key as default name if not provided
+                    type: value.type || 'string', // Default type is string
                     plugin: this.engine.getPlugin(value.type) || null, // Get the plugin for the type
 
                     config: {
                         isUnique: value.isUnique || false,                                      //Default isUnique to false
                         isEditable: value.isEditable === undefined ? true : value.isEditable,   // Default isEditable to true
                         isGroupable: value.isGroupable === undefined ? true : value.isGroupable,// Default isGroupable to true
+                        isSortable: value.isSortable === undefined ? true : value.isSortable,   // Default isSortable to true
+                        spellCheck: value.spellCheck || false,                                  // Default spellCheck to false
 
                         // Styling
                         cellClass: value.cellClass || '',                                       // CSS class for cell
                         headerClass: value.headerClass || '',                                   // CSS class for header
+                        cellStyle: value.cellStyle || {},                                       // Inline styles for cell
 
                         // Column sizing
                         width: value.width || 100,                                              // Default width in pixels
                         minWidth: value.minWidth || 0,                                          // Minimum width when resizing
-                        maxWidth: value.maxWidth || 10000,                    // Maximum width when resizing
+                        maxWidth: value.maxWidth || 10000,                                      // Maximum width when resizing
                         resizable: value.resizable === undefined ? true : value.resizable,      // Default resizable to true
 
                         // Cell behavior
-                        valueFormatter: value.valueFormatter || ((val) => val),                 // Function to format the cell value
-                        cellValueValidator: value.cellValueValidator || ((val) => true),// Function to validate the cell value
-                        onCellDoubleClicked: value.onCellDoubleClicked || (() => {}),           // Function to handle double-click events on the cell
+                        cellValueValidator: value.cellValueValidator || ((val) => { return {valid: true, message: ''}}),// Function to validate the cell value
                     }
                 };
             });

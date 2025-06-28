@@ -31,34 +31,32 @@ class stringTypePlugin extends TypePlugin {
     }
 
     evaluateCondition(dataValue, operator, value) {
+        // Handle 'in' operator early and return
         if (operator === 'in') {
-            value = JSON.parse(value);
+            try {
+                const parsed = JSON.parse(value);
+                return Array.isArray(parsed) && parsed.includes(dataValue);
+            } catch {
+                return false; // Invalid JSON
+            }
         }
 
-        if (Array.isArray(value) && value.length > 0 && operator === 'in') {
-            return value.includes(dataValue);
-        }
+        // Normalize nullish check
+        const isEmpty = (v) => v === null || v === undefined || v === '';
 
         switch (operator) {
-            case '==':
-                return dataValue === value;
-            case '!=':
-                return dataValue !== value;
-            case '%=':
-                return dataValue.startsWith(value);
-            case '=%':
-                return dataValue.endsWith(value);
-            case '*=':
-                return dataValue.includes(value);
-            case '!*=':
-                return !dataValue.includes(value);
-            case '??':
-                return dataValue === null || dataValue === undefined || dataValue === '';
-            case '!!':
-                return dataValue !== null && dataValue !== undefined && dataValue !== '';
+            case '==':  return dataValue === value;
+            case '!=':  return dataValue !== value;
+            case '%=':  return String(dataValue).startsWith(value);
+            case '=%':  return String(dataValue).endsWith(value);
+            case '*=':  return String(dataValue).includes(value);
+            case '!*=': return !String(dataValue).includes(value);
+            case '??':  return isEmpty(dataValue);
+            case '!!':  return !isEmpty(dataValue);
+            default:    return false;
         }
-        return false;
     }
+
 
     sort(query, data) {
         const {field, value} = query;
@@ -72,9 +70,6 @@ class stringTypePlugin extends TypePlugin {
     }
 
     showMore(key, element, engine, UI, columnConfig = {}) {
-        const {x, y, width, height} = element.getBoundingClientRect();
-        const typeOptions = engine.headers[key];
-
         UI.contextMenu.clear();
 
         // String-specific filter submenu

@@ -362,10 +362,10 @@ class SJQLEngine {
         if (existingPlugin && !dontOverride) {
             console.warn('Plugin already exists, removing the old plugin');
             //set the new plugin to have key of the name of the plugin
-            this.plugins[plugin.name.replace("TypePlugin", "")] = plugin;
+            this.plugins[plugin.name.replace("TypePlugin", "").toLowerCase()] = plugin;
         }
         else {
-            this.plugins[plugin.name.replace("TypePlugin", "")] = plugin;
+            this.plugins[plugin.name.replace("TypePlugin", "").toLowerCase()] = plugin;
         }
     }
 

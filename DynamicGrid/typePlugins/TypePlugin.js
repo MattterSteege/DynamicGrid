@@ -8,10 +8,14 @@ class TypePlugin {
      * @readonly
      * @static
      */
-    static DEFAULT_OPERATORS = ['==', '!=', 'in'];
+    static DEFAULT_OPERATORS = ['==', '!='];
 
     /**
      * Initialize the plugin
+     * @constructor
+     * @throws {Error} If instantiated directly
+     * @throws {Error} If subclass does not implement required methods
+     * @property {string} name Name of the plugin, derived from the class name
      */
     constructor() {
         if (this.constructor === TypePlugin) {
@@ -19,7 +23,7 @@ class TypePlugin {
         }
 
         this.name = this.constructor.name;
-        this.operators = ['==', '!=', 'in'];
+        this.operators = ['==', '!='];
     }
 
     /**
@@ -72,6 +76,7 @@ class TypePlugin {
      * @param {{field: string, value: 'asc'|'desc'}} query Sort parameters
      * @param {Array<Object>} data Data to sort
      * @returns {Array<Object>} Sorted data
+     * @virtual
      */
     sort(query, data) {
         const { field, value: direction } = query;
@@ -101,46 +106,27 @@ class TypePlugin {
         return [...this.operators];
     }
 
+
     /**
      * Create a table data cell with flexible rendering options
      * @param {*} value Cell value
      * @param onEdit {Function} Callback function for when cell is edited
-     * @param {Object} columnConfig Column configuration object
-     * @param {Object} params Additional parameters (row data, column key, etc.)
+     * @param {columnConfig} columnConfig Column configuration object
+     * @param {boolean} [columnConfig.isEditable=false] Whether the cell is editable
+     * @param {boolean} [columnConfig.isSortable=true] Whether the cell is sortable
+     * @param {boolean} [columnConfig.isGroupable=true] Whether the cell can be grouped
+     * @param {boolean} [columnConfig.isUnique=false] Whether the cell value must be unique
+     * @param {boolean} [columnConfig.spellCheck=false] Whether to enable spellcheck
+     * @param {Object} [columnConfig.cellStyle={}] Inline styles for the cell
+     * @param {string} [columnConfig.cellClass=''] CSS class for the cell
+     * @param {string} [columnConfig.headerClass=''] CSS class for the header
+     * @param {Function} [columnConfig.cellValueValidator] Function to validate the cell value
      * @return {HTMLElement} Data cell element
-     */
-    renderCell(value, onEdit, columnConfig = {}) {
-
-        // Use custom cell renderer if provided
-        if (columnConfig.cellRenderer) {
-            return columnConfig.cellRenderer(value, columnConfig);
-        }
-
-        // Apply value formatter if provided
-        let displayValue = value;
-        if (columnConfig.valueFormatter) {
-            displayValue = columnConfig.valueFormatter(value);
-        }
-
-        // Use default rendering
-        return columnConfig.isEditable ? this._createDefaultEditableCell(value, displayValue, onEdit, columnConfig) : this._createDefaultCell(displayValue, columnConfig);
-    }
-
-    /**
-     * Default cell creation (can be overridden by subclasses)
-     * @param {*} displayValue Formatted display value
-     * @param {Object} columnConfig Column configuration
-     * @returns {HTMLElement} Cell element
      * @protected
      */
-    _createDefaultCell(displayValue, columnConfig) {
-        const cell = document.createElement('td');
-        cell.innerHTML = String(displayValue);
-
-        // Apply custom CSS classes if provided
-        if (columnConfig.cellClass) {
-            cell.className = columnConfig.cellClass;
-        }
+    renderCell(value, onEdit, columnConfig = {}) {
+        // Use default rendering
+        const cell = columnConfig.isEditable ? this.createEditableCell(value, onEdit, columnConfig) : this.createCell(value);
 
         // Apply custom styles if provided
         if (columnConfig.cellStyle) {
@@ -151,29 +137,31 @@ class TypePlugin {
     }
 
     /**
-     * Default editable cell creation (can be overridden by subclasses)
-     * @param {*} rawValue Original raw value
+     * Default cell creation (can be overridden by subclasses)
      * @param {*} displayValue Formatted display value
+     * @returns {HTMLElement} Cell element
+     * @protected
+     */
+    createCell(displayValue) {
+        const cell = document.createElement('span');
+        cell.innerHTML = String(displayValue);
+        return cell;
+    }
+
+    /**
+     * Default editable cell creation (can be overridden by subclasses)
+     * @param {string} rawValue Original raw value
      * @param {Function} onEdit Edit callback
      * @param {Object} columnConfig Column configuration
      * @returns {HTMLElement} Cell element
      * @protected
      */
-    _createDefaultEditableCell(rawValue, displayValue, onEdit, columnConfig) {
-        const cell = document.createElement('td');
-        cell.innerHTML = String(displayValue);
+    createEditableCell(rawValue, onEdit, columnConfig) {
+        const cell = document.createElement('span');
+        cell.innerHTML = String(rawValue);
         cell.contentEditable = true;
-        cell.spellcheck = false;
-
-        // Apply custom CSS classes if provided
-        if (columnConfig.cellClass) {
-            cell.className = columnConfig.cellClass;
-        }
-
-        // Apply custom styles if provided
-        if (columnConfig.cellStyle) {
-            Object.assign(cell.style, columnConfig.cellStyle);
-        }
+        cell.classList.add('editable');
+        cell.spellcheck = columnConfig.spellCheck || false; // Allow spellcheck if specified
 
         cell.addEventListener('focus', (e) => {
             cell.classList.add('editing');
@@ -191,19 +179,29 @@ class TypePlugin {
 
             const newValue = cell.innerText;
             const startValue = cell.getAttribute('start-value');
+            rawValue = newValue;
+
+
+            if (columnConfig.cellValueValidator) {
+                const validationResult = columnConfig.cellValueValidator(rawValue);
+                if (validationResult.valid !== true) {
+                    // If validation fails, revert to the original value
+                    cell.innerHTML = String(rawValue);
+                    cell.setAttribute('data-invalid', 'true');
+                    console.warn(`Invalid value for ${columnConfig.key}:`, validationResult);
+                    return;
+                } else {
+                    cell.removeAttribute('data-invalid');
+                }
+            }
 
             if (startValue !== newValue) {
                 // Parse the new value using the plugin's parseValue method
-                const parsedValue = this.parseValue(newValue);
-                onEdit(parsedValue);
+                rawValue = this.parseValue(newValue);
+                onEdit(rawValue);
             }
 
-            // Restore formatted display
-            let displayValue = newValue;
-            if (columnConfig.valueFormatter) {
-                displayValue = columnConfig.valueFormatter({ value: newValue });
-            }
-            cell.innerHTML = String(displayValue);
+            cell.innerHTML = String(rawValue);
 
             cell.removeAttribute('start-value');
         });
@@ -226,15 +224,13 @@ class TypePlugin {
      * @param {DynamicGridUI} UI User interface instance
      * @param {Object} columnConfig Column configuration object
      * @returns {HTMLDivElement} Context menu element
+     * @virtual
      */
     showMore(key, element, engine, UI, columnConfig = {}) {
         const {x, y, width, height} = element.getBoundingClientRect();
-        const typeOptions = engine.headers[key];
-
-        UI.contextMenu.clear();
 
         // Default sort options (unless disabled)
-        if (!columnConfig.disableSort) {
+        if (columnConfig.isSortable) {
             UI.contextMenu
                 .button('Sort ' + key + ' ascending', () => {
                     engine.setSort(key, 'asc');
@@ -251,7 +247,7 @@ class TypePlugin {
         }
 
         // Default group options (unless disabled)
-        if (!typeOptions.config.isUnique && typeOptions.config.isGroupable) {
+        if (!columnConfig.isUnique && columnConfig.isGroupable) {
             UI.contextMenu
                 .separator()
                 .button('Group by ' + key, () => {
@@ -264,7 +260,6 @@ class TypePlugin {
                 });
         }
 
-        // Display the context menu at the specified coordinates
         return UI.contextMenu.showAt(x, y + height);
     }
 }

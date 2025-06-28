@@ -173,7 +173,7 @@ To use your custom plugin, register it with the `DynamicGrid` instance:
 const grid = new DynamicGrid({
     plugins: {
         string: new stringTypePlugin(), //is registered by default (can override by custom plugin)
-        number: new numberTypePlugin(), //is registered by default (can override by custom plugin)
+        number: new NumberTypePlugin(), //is registered by default (can override by custom plugin)
         boolean: new booleanTypePlugin(), //is registered by default (can override by custom plugin)
     }
 });
@@ -184,7 +184,7 @@ const grid = new DynamicGrid({
 You can extend existing plugins to modify or add functionality. For example, to create a custom money type plugin:
 
 ```javascript
-class moneyTypePlugin extends numberTypePlugin {
+class moneyTypePlugin extends NumberTypePlugin {
     renderCell(value) {
         const parts = value.toFixed(2).split(".");
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");

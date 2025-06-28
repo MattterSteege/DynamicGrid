@@ -77,9 +77,6 @@ class DynamicGridUI {
             return;
         }
 
-        console.log(data)
-
-
         this.isGroupedData = typeof data === 'object' && Array.isArray(firstItem(data));
 
         if (this.isGroupedData) {
@@ -414,6 +411,7 @@ class DynamicGridUI {
         const colgroup = document.createElement('colgroup');
         const topLeftCorner = document.createElement('col');
         topLeftCorner.style.width = `30px`;
+        topLeftCorner.setAttribute('resizable', 'false');
         colgroup.appendChild(topLeftCorner);
 
 
@@ -422,7 +420,7 @@ class DynamicGridUI {
         for (const key in headers) {
             if (typeof headers[key] !== 'string') continue;
             const header = grid.engine.getHeader(headers[key]).config;
-            console.log(header)
+            // console.log(header)
             const col = document.createElement('col');
             width += header.width ?? 100;
             col.style.width = `${header.width ?? 100}px`;
@@ -473,7 +471,8 @@ class DynamicGridUI {
         columns.forEach((columnName, colIndex) => {
             colIndex++;
 
-            const plugin = this.engine.getPlugin(columnName);
+            const header = this.engine.headers[columnName];
+            const plugin = header.plugin || this.engine.getPlugin(columnName);
 
             const th = document.createElement('th');
             th.className = 'header-cell';
@@ -489,61 +488,63 @@ class DynamicGridUI {
 
             const span = document.createElement('span');
             span.className = 'header-cell-text';
-            span.innerText = columnName;
+            span.innerText = header.name || columnName;
 
             div.appendChild(button);
             div.appendChild(span);
             th.appendChild(div);
 
             // === ADD: RESIZE HANDLE ===
-            const resizeHandle = document.createElement('div');
-            resizeHandle.className = 'header-resize-handle';
+            if (header.config.resizable) {
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'header-resize-handle';
 
-            let isDragging = false;
-            let startX = 0;
-            let startWidth = 0;
-            const colElement = this.colGroup1?.children[colIndex];
-            let newWidth = 0;
+                let isDragging = false;
+                let startX = 0;
+                let startWidth = 0;
+                const colElement = this.colGroup1?.children[colIndex];
+                let newWidth = 0;
 
-            resizeHandle.addEventListener('mouseenter', () => {
-                resizeHandle.classList.add('hover');
-            });
-            resizeHandle.addEventListener('mouseleave', () => {
-                if (!isDragging) resizeHandle.classList.remove('hover');
-            });
+                resizeHandle.addEventListener('mouseenter', () => {
+                    resizeHandle.classList.add('hover');
+                });
+                resizeHandle.addEventListener('mouseleave', () => {
+                    if (!isDragging) resizeHandle.classList.remove('hover');
+                });
 
-            resizeHandle.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                startX = e.clientX;
-                startWidth = colElement?.offsetWidth || 100;
+                resizeHandle.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.clientX;
+                    startWidth = colElement?.offsetWidth || 100;
 
-                const onMouseMove = (e) => {
-                    if (!isDragging || !colElement) return;
-                    const delta = e.clientX - startX;
-                    newWidth = Math.max(this.config.minColumnWidth, startWidth + delta);
-                    newWidth = Math.max(newWidth, this.config.minColumnWidth);
-                    colElement.style.width = `${newWidth}px`;
-                };
+                    const onMouseMove = (e) => {
+                        if (!isDragging || !colElement) return;
+                        const delta = e.clientX - startX;
+                        newWidth = Math.max(this.config.minColumnWidth, startWidth + delta);
+                        newWidth = Math.max(newWidth, this.config.minColumnWidth);
+                        colElement.style.width = `${newWidth}px`;
+                    };
 
-                const onMouseUp = () => {
-                    isDragging = false;
-                    resizeHandle.classList.remove('hover');
-                    this.colGroup2.children[colIndex].style.width = `${newWidth}px`;
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                };
+                    const onMouseUp = () => {
+                        isDragging = false;
+                        resizeHandle.classList.remove('hover');
+                        this.colGroup2.children[colIndex].style.width = `${newWidth}px`;
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                    };
 
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                });
 
-            th.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                plugin.showMore(columnName, th, this.engine, this);
-            });
+                th.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    plugin.showMore(columnName, th, this.engine, this, header.config);
+                });
 
-            th.appendChild(resizeHandle);
+                th.appendChild(resizeHandle);
+            }
             tr.appendChild(th);
         });
 
@@ -692,8 +693,13 @@ class DynamicGridUI {
                     td.classList.add('edited'); // Add a class to indicate
                 }
 
-                //let td = (this.engine.headers[key].isEditable) ? plugin.renderEditableCell(value, onEdit) : plugin.renderCell(value);
-                let td = plugin.renderCell(value, onEdit, header.config);
+                let td = document.createElement('td');
+                td.append(plugin.renderCell(value, onEdit, header.config));
+
+                // Apply custom CSS classes if provided
+                if (!!header.config.cellClass) {
+                    td.classList.add(...header.config.cellClass.split(' '));
+                }
 
                 // If td is not a td html element, log it, the value and the key and the plugin
                 if (!(td instanceof HTMLTableCellElement)) {
@@ -703,7 +709,7 @@ class DynamicGridUI {
                     td.innerText = `Invalid cell`;
                 }
 
-                td.className = 'body-cell';
+                td.classList.add('body-cell');
                 td.style.height = `${this.config.rowHeight}px`;
                 tr.appendChild(td);
             });

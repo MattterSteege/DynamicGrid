@@ -342,6 +342,24 @@ table.dynamic-grid-table-header {
     font-weight: bold;
 }
 
+.dynamic-grid-table-body tbody tr td[data-invalid="true"] {
+    background: #ffcccc;
+}
+
+.dynamic-grid-table-body tbody tr td.body-cell > span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    align-content: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dynamic-grid-table-body tbody tr td.editable {
+    cursor: pointer;
+    background: var(--bg-hover);
+}
+
 td.body-cell {
     color: var(--text-secondary);
     background: var(--bg-body);

@@ -1,8 +1,10 @@
-- Custom Cell Rendering
-  - `grid.setRenderer('price', (value) => '$${value.toFixed(2)}');`
-- Edit Constraints: Regex/type validators
-- Error Indicators: Invalid cell highlighting
-- Extend TypePlugin:
-  - `numberTypePlugin.addValidator('positive', v => v >= 0);`
 - Cell Styling API:
   - `grid.addRule('temperature', '>38', { background: '#ffcccc' });`
+
+https://chatgpt.com/share/685bcdb2-68a8-8013-a67a-010bdcfbfa7e
+
+Port over the new rendering engine to the following types:
+- string &#x2611;
+- number &#x2612;
+- boolean &#x2612;
+- date &#x2612;

@@ -7,10 +7,10 @@
     <script src="DynamicGrid/DynamicGrid.js"></script>
     <script src="DynamicGrid/DynamicGridUI.js"></script>
     <script src="DynamicGrid/typePlugins/TypePlugin.js"></script>
-    <script src="DynamicGrid/typePlugins/booleanTypePlugin.js"></script>
-    <script src="DynamicGrid/typePlugins/stringTypePlugin.js"></script>
-    <script src="DynamicGrid/typePlugins/numberTypePlugin.js"></script>
-    <script src="DynamicGrid/typePlugins/dateTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/BooleanTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/StringTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/NumberTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/DateTypePlugin.js"></script>
     <script src="DynamicGrid/EditTracker.js"></script>
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
@@ -139,36 +139,30 @@
     // Complete column configuration object with every possible value set
     const completeColumnConfig = {
         // Core type system properties
-        name: 'email',               // Column name
-        type: 'string',                    // Plugin type to use
-        isUnique: false,                   // Whether values in this column are unique
-        isEditable: true,                  // Whether cells can be edited
-        isGroupable: true,                 // Whether column can be grouped by
+        name: 'test',                           // Column name                                      //WORKING
+        type: 'string',                         // Plugin type to use                               //WORKING
+        isUnique: false,                        // Whether values in this column are unique         //WORKING
+        isEditable: true,                       // Whether cells can be edited                      //WORKING
+        isGroupable: true,                      // Whether column can be grouped by                 //WORKING
+        isSortable: false,                       // Whether column can be sorted                    //WORKING
+        spellCheck: true,                       // Whether spell check is enabled for this column   //WORKING
+
+        // Column sizing
+        width: 250,                             // Fixed width in pixels                            //WORKING
+        minWidth: 150,                          // Minimum width when resizing                      //WORKING
+        maxWidth: 400,                          // Maximum width when resizing
+        resizable: false,                       // Whether column can be resized                    //WORKING
 
         // Styling
         cellClass: 'email-cell custom-column',  // CSS classes for the cell
         headerClass: 'custom-header-class',     // CSS class for column header
 
-        // Column sizing
-        width: 250,                            // Fixed width in pixels
-        minWidth: 150,                         // Minimum width when resizing
-        maxWidth: 400,                         // Maximum width when resizing
-        resizable: true,                       // Whether column can be resized
-
-        cellStyle: {
-            backgroundColor: '#f0f8ff',        // Background color for cells
-            color: '#333',                     // Text color
-            fontSize: '14px',                  // Font size
-            textAlign: 'left',                 // Text alignment
-        },
-
-        // Value formatting
-        valueFormatter: (value) => {
-            return `📧 ${value}`;
+        cellStyle: {                            // any CSS styles for the cell                      //WORKING
+            textAlign: 'left',                  // Text alignment
         },
 
         // Validation
-        cellValueValidator: (value, rowData, rowIndex) => {
+        cellValueValidator: (value) => {                                                            //WORKING
             // Validate cell value
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(value)) {
@@ -178,12 +172,7 @@
                 };
             }
             return { valid: true };
-        },
-
-        onCellDoubleClicked: (params) => {
-            // Called when cell is double-clicked
-            console.log('Opening email client...', params.value);
-        },
+        }
     };
 
     let grid = new DynamicGrid({
@@ -191,13 +180,13 @@
             index:      {type: 'number',  isUnique: true, isEditable: false},
             guid:       { type: 'string', isUnique: true, isEditable: false, },
             isActive:   { type: 'boolean'},
-            balance:    { type: 'number',},
+            balance:    { type: 'number', isGroupable: false},
             picture:    { type: 'string', isEditable: false, isGroupable: false, width: 150},
             age:        { type: 'number' },
             eyeColor:   { type: 'string' },
             name:       { type: 'string' },
             gender:     { type: 'string' },
-            company:    { type: 'string' },
+            company:    { type: 'string', isGroupable: false},
             email: completeColumnConfig, // Use the complete column config for email
             phone:      { type: 'string' },
             registered: { type: 'date'   },
