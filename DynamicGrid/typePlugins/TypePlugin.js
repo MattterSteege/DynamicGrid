@@ -1,6 +1,8 @@
 /**
  * Abstract base class for type-specific plugins that handle data operations and rendering.
  * @abstract
+ * @deprecated Use BaseTypePlugin instead, as this class is just for reference for now, and will be removed in future versions.
+ * @see BaseTypePlugin
  */
 class TypePlugin {
     /**

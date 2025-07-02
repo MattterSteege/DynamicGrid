@@ -5,7 +5,7 @@ class BaseTypePlugin {
         }
 
         this.operators = ['==', '!='];
-        this.sortingHint = 'string'; // of 'number', 'boolean', etc.
+        this.sortingHint = 'string'; // 'number' | 'boolean' | 'date' | etc.
     }
 
     validate(value) {
@@ -48,5 +48,13 @@ class BaseTypePlugin {
         }
 
         return indices;
+    }
+
+    getInputComponent(currentValue, onChange, config = {}) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentValue ?? '';
+        input.addEventListener('input', (e) => onChange(e.target.value));
+        return input;
     }
 }

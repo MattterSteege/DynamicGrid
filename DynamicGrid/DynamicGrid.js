@@ -13,7 +13,7 @@ class DynamicGrid {
         this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
         // Initialize plugins
         this.engine.plugins = config.plugins ?? [];
-        this.engine.addPlugin(new stringTypePlugin, true);
+        this.engine.addPlugin(new StringTypePlugin, true);
         this.engine.addPlugin(new NumberTypePlugin, true);
         this.engine.addPlugin(new BooleanTypePlugin, true);
         this.engine.addPlugin(new DateTypePlugin, true);

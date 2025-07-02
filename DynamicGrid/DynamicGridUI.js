@@ -74,8 +74,6 @@ class DynamicGridUI {
             return;
         }
 
-        console.log(data);
-
         this.isGroupedData = typeof data === 'object' && Array.isArray(firstItem(data));
 
         if (this.isGroupedData) {
@@ -713,7 +711,45 @@ class DynamicGridUI {
                 }
 
                 let td = document.createElement('td');
-                td.append(plugin.renderCell(value, onEdit, header.config));
+                //td.append(plugin.renderCell(value, onEdit, header.config));
+
+                try {
+                    if (header.config.isEditable) {
+                        const input = typeof plugin.getInputComponent === 'function'
+                            ? plugin.getInputComponent(value, onEdit)
+                            : BaseTypePlugin.prototype.getInputComponent(value, onEdit);
+
+                        td.appendChild(input);
+                    }
+                    else {
+                        let span = document.createElement('span');
+                        span.className = 'cell-value';
+                        span.innerText = value !== undefined ? String(value) : '';
+                        td.appendChild(span);
+                    }
+                }
+                catch (error) {
+                    console.error(`Error rendering cell for key "${key}" with value "${value}":\n`, error);
+
+                    switch (error.name) {
+                        case 'RangeError':
+                            td.innerText = `YYYY-MM-DD`;
+                            break;
+                        case 'TypeError':
+                            td.innerText = `Invalid value: ${value}`;
+                            break;
+                        case 'SyntaxError':
+                            td.innerText = `Syntax Error: ${error.message}`;
+                            break;
+                        case 'GridError':
+                            td.innerText = `Grid Error: ${error.message}`;
+                            break;
+                        default:
+                            td.innerText = `Error: ${error.message}`;
+                    }
+                    td.style.backgroundColor = 'red';
+                }
+
 
                 // Apply custom CSS classes if provided
                 if (!!header.config.cellClass) {

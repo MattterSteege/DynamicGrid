@@ -6,7 +6,8 @@
     <link rel="stylesheet" href="DynamicGrid.css">
     <script src="DynamicGrid/DynamicGrid.js"></script>
     <script src="DynamicGrid/DynamicGridUI.js"></script>
-    <script src="DynamicGrid/typePlugins/TypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/BaseTypePlugin.js"></script>
+<!--    <script src="DynamicGrid/typePlugins/TypePlugin.js"></script>-->
     <script src="DynamicGrid/typePlugins/BooleanTypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/StringTypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/NumberTypePlugin.js"></script>
@@ -85,7 +86,7 @@
         }
 
         /* Styling for input fields */
-        input[type="file"], input[type="text"] {
+        input[type="file"], #search[type="text"] {
             padding: 10px;
             margin: 10px 10px 10px 0;
             /*border: 1px solid #ccc;*/
@@ -95,11 +96,11 @@
             transition: border-color 0.3s, box-shadow 0.3s;
         }
 
-        input[type="file"]:hover, input[type="text"]:hover {
+        #search+input[type="file"]:hover, #search+input[type="text"]:hover {
             border-color: #888;
         }
 
-        input[type="file"]:focus, input[type="text"]:focus {
+        #search+input[type="file"]:focus, #search+input[type="text"]:focus {
             border-color: #007BFF;
             outline: none;
             box-shadow: 0 0 5px #007BFF;

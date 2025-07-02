@@ -125,6 +125,24 @@ class SJQLEngine {
         return Object.keys(this.data[0]).filter(key => key !== 'internal_id');
     }
 
+    sortData(data, field, direction, typePlugin) {
+        const hint = typePlugin?.sortingHint || 'string';
+
+        return [...data].sort((a, b) => {
+            const aVal = typePlugin.parseValue(a[field]);
+            const bVal = typePlugin.parseValue(b[field]);
+
+            if (hint === 'number') return direction === 'asc' ? aVal - bVal : bVal - aVal;
+            if (hint === 'boolean') return direction === 'asc' ? (aVal === bVal ? 0 : aVal ? 1 : -1) : (aVal === bVal ? 0 : aVal ? -1 : 1);
+            if (hint === 'string' || hint === 'text') return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            // For date, we assume the values are in a format that can be parsed by Date
+            if (hint === 'date') {
+                const aDate = new Date(aVal);
+                const bDate = new Date(bVal);
+                return direction === 'asc' ? aDate - bDate : bDate - aDate;
+            }
+        });
+    }
 
     query(query = '') {
         if (!this.data || this.data.length === 0) {
@@ -237,9 +255,14 @@ class SJQLEngine {
 
         // Sort if no grouping
         if (sortQuery) {
-            const sortedData = this.data.filter((_, i) => validIndices.has(i));
-            return this.getPlugin(sortQuery.type).sort(sortQuery, sortedData)
-                .map(row => row.internal_id); // Return only internal_ids
+            //use this.sortData
+            const sortedData = this.sortData(
+                this.data.filter((_, i) => validIndices.has(i)),
+                sortQuery.field,
+                sortQuery.value,
+                this.getPlugin(sortQuery.type)
+            );
+            return sortedData.map(row => row.internal_id); // Return only internal_ids
         }
 
         return Array.from(validIndices);
@@ -354,8 +377,10 @@ class SJQLEngine {
 
     //================================================== PLUGIN SYSTEM ==================================================
     addPlugin(plugin, dontOverride = false) {
-        if (!(plugin instanceof TypePlugin)) {
-            throw new GridError('Plugin must extend TypePlugin');
+        plugin.name = plugin.name || plugin.constructor.name;
+
+        if (!(plugin instanceof BaseTypePlugin)) {
+            throw new GridError('Plugin must extend BaseTypePlugin');
         }
 
         //if already exists, remove it and add the new one, while warning the user
