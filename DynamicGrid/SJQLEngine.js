@@ -148,8 +148,8 @@ class SJQLEngine {
         // Early exit if no queries
         if (!query || query.length === 0) {
             this.currentQueryStr = '';
-            console.warn('No valid query provided, returning all data');
-            return this.data;
+            console.warn('No valid query provided, returning NO data');
+            return []
         }
 
         // Separate queries by type
@@ -247,7 +247,7 @@ class SJQLEngine {
 
     //================================================== SELECT ==================================================
     addSelect(key, operator, value) {
-        if (!key || !operator || value === undefined) return;
+        if (!key || !operator || value === undefined || value === '') return;
 
         const newClause = `${key} ${operator} ${value}`;
 
@@ -255,6 +255,8 @@ class SJQLEngine {
             this.currentQueryStr = newClause;
         else
             this.currentQueryStr += ` and ${newClause}`;
+
+        console.log(this.currentQueryStr);
     }
 
     setSelect(key, operator, value) {

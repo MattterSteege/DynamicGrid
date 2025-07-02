@@ -1,4 +1,4 @@
-class booleanTypePlugin extends TypePlugin {
+class BooleanTypePlugin extends TypePlugin {
     constructor() {
         super();
         this.operators = ['==', '!='];

@@ -11,6 +11,7 @@
     <script src="DynamicGrid/typePlugins/StringTypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/NumberTypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/DateTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/EmailTypePlugin.js"></script>
     <script src="DynamicGrid/EditTracker.js"></script>
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
@@ -139,45 +140,28 @@
     // Complete column configuration object with every possible value set
     const completeColumnConfig = {
         // Core type system properties
-        name: 'test',                           // Column name                                      //WORKING
-        type: 'string',                         // Plugin type to use                               //WORKING
+        name: 'email',                          // Column name                                      //WORKING
+        type: 'email',                          // Plugin type to use                               //WORKING
         isUnique: false,                        // Whether values in this column are unique         //WORKING
         isEditable: true,                       // Whether cells can be edited                      //WORKING
         isGroupable: true,                      // Whether column can be grouped by                 //WORKING
-        isSortable: false,                       // Whether column can be sorted                    //WORKING
-        spellCheck: true,                       // Whether spell check is enabled for this column   //WORKING
+        isSortable: false,                      // Whether column can be sorted                     //WORKING
+        spellCheck: false,                      // Whether spell check is enabled for this column   //WORKING
 
         // Column sizing
         width: 250,                             // Fixed width in pixels                            //WORKING
         minWidth: 150,                          // Minimum width when resizing                      //WORKING
-        maxWidth: 400,                          // Maximum width when resizing
+        maxWidth: 400,                          // Maximum width when resizing                      //NOT WORKING
         resizable: false,                       // Whether column can be resized                    //WORKING
 
         // Styling
-        cellClass: 'email-cell custom-column',  // CSS classes for the cell
-        headerClass: 'custom-header-class',     // CSS class for column header
-
-        cellStyle: {                            // any CSS styles for the cell                      //WORKING
-            textAlign: 'left',                  // Text alignment
-        },
-
-        // Validation
-        cellValueValidator: (value) => {                                                            //WORKING
-            // Validate cell value
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(value)) {
-                return {
-                    valid: false,
-                    message: 'Please enter a valid email address'
-                };
-            }
-            return { valid: true };
-        }
+        cellClass: 'custom-column',  // CSS classes for the cell                                    //WORKING
+        headerClass: 'custom-header-class',     // CSS class for column header                      //WORKING
     };
 
     let grid = new DynamicGrid({
         headers: {
-            index:      {type: 'number',  isUnique: true, isEditable: false},
+            index:      { type: 'number',  isUnique: true, isEditable: false},
             guid:       { type: 'string', isUnique: true, isEditable: false, },
             isActive:   { type: 'boolean'},
             balance:    { type: 'number', isGroupable: false},

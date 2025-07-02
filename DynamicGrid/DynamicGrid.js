@@ -15,8 +15,9 @@ class DynamicGrid {
         this.engine.plugins = config.plugins ?? [];
         this.engine.addPlugin(new stringTypePlugin, true);
         this.engine.addPlugin(new NumberTypePlugin, true);
-        this.engine.addPlugin(new booleanTypePlugin, true);
-        this.engine.addPlugin(new dateTypePlugin, true);
+        this.engine.addPlugin(new BooleanTypePlugin, true);
+        this.engine.addPlugin(new DateTypePlugin, true);
+        this.engine.addPlugin(new EmailTypePlugin, true);
 
         this.engine.connectors = config.connectors || [];
         this.engine.addConnector(new CSVExportConnector(), true);

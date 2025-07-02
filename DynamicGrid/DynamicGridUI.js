@@ -24,13 +24,10 @@ class DynamicGridUI {
         this.scrollContainer = null;
         this.groupedRows = null;
 
-
-
         this.config = {
             minColumnWidth: ui_config.minColumnWidth ?? 50,
             rowHeight: ui_config.rowHeight ?? 40,
             bufferedRows: ui_config.bufferedRows ?? 5,
-            allowFieldEditing: ui_config.allowFieldEditing ?? false,
             colorScheme: ui_config.colorScheme ?? 'light',
         };
 
@@ -76,6 +73,8 @@ class DynamicGridUI {
             this.clearContent();
             return;
         }
+
+        console.log(data);
 
         this.isGroupedData = typeof data === 'object' && Array.isArray(firstItem(data));
 
@@ -315,6 +314,22 @@ class DynamicGridUI {
             this._updateVisibleRows();
         });
 
+        this.container.addEventListener('keydown', (event) => {
+            ['ctrl', 'shift', 'alt'].forEach((key) => {
+                if (event[`${key}Key`]) {
+                    this.container.setAttribute(key, 'true');
+                }
+            });
+        });
+
+        this.container.addEventListener('keyup', (event) => {
+            ['ctrl', 'shift', 'alt'].forEach((key) => {
+                if (!event[`${key}Key`]) {
+                    this.container.removeAttribute(key);
+                }
+            });
+        });
+
         this.eventEmitter.emit('ui-container-initialized', { containerId });
     }
 
@@ -476,8 +491,10 @@ class DynamicGridUI {
 
             const th = document.createElement('th');
             th.className = 'header-cell';
+            th.className += ` ${header.config.headerClass || ''}`;
             th.style.height = `${this.config.rowHeight}px`;
             th.style.position = 'relative';
+
 
             const div = document.createElement('div');
             div.className = 'header-cell-content';
@@ -537,14 +554,16 @@ class DynamicGridUI {
                     document.addEventListener('mouseup', onMouseUp);
                 });
 
-                th.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    plugin.showMore(columnName, th, this.engine, this, header.config);
-                });
 
                 th.appendChild(resizeHandle);
             }
+
+            th.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                plugin.showMore(columnName, th, this.engine, this, header.config);
+            });
+
             tr.appendChild(th);
         });
 

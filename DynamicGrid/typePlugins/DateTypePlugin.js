@@ -1,4 +1,4 @@
-class dateTypePlugin extends TypePlugin {
+class DateTypePlugin extends TypePlugin {
     constructor() {
         super();
         this.operators = ['==', '!=', '>', '<', '>=', '<=', 'in', '><'];

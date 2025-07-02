@@ -381,15 +381,6 @@ td.body-cell:first-child {
     background: var(--bg-secondary);
 }
 
-/*td.body-cell:first-child::after {*/
-/*    content: counter(row);*/
-/*    text-align: center;*/
-/*    color: var(--text-primary);*/
-/*    font-size: var(--font-size, 12px);*/
-/*    width: 100%;*/
-/*    display: block;*/
-/*}*/
-
 td.body-cell:focus {
     outline: 1px solid var(--outline-color);
 }
@@ -425,3 +416,8 @@ td.body-cell.edited {
     color: var(--text-secondary);
     text-align: left;
 }
+
+/* === CUSTOM CELL STYLES === */
+[ctrl] td.email-cell span {display: none;}
+:not([ctrl]) td.email-cell a {display: none;}
+[ctrl] td.email-cell a {display: block}

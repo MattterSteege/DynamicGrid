@@ -52,7 +52,10 @@ class stringTypePlugin extends TypePlugin {
             case '*=':  return String(dataValue).includes(value);
             case '!*=': return !String(dataValue).includes(value);
             case '??':  return isEmpty(dataValue);
-            case '!!':  return !isEmpty(dataValue);
+            case '!!':  {
+                console.log(!isEmpty(dataValue), dataValue);
+                return !isEmpty(dataValue);
+            }
             default:    return false;
         }
     }

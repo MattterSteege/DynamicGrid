@@ -174,7 +174,7 @@ const grid = new DynamicGrid({
     plugins: {
         string: new stringTypePlugin(), //is registered by default (can override by custom plugin)
         number: new NumberTypePlugin(), //is registered by default (can override by custom plugin)
-        boolean: new booleanTypePlugin(), //is registered by default (can override by custom plugin)
+        boolean: new BooleanTypePlugin(), //is registered by default (can override by custom plugin)
     }
 });
 ```
