@@ -1,7 +1,7 @@
 class EnumTypePlugin extends BaseTypePlugin {
-    constructor(options = []) {
+    constructor(config = []) {
         super();
-        this.options = options;
+        this.options = config;
         this.sortingHint = 'string';
     }
 
@@ -15,6 +15,7 @@ class EnumTypePlugin extends BaseTypePlugin {
 
     getInputComponent(currentValue, onChange) {
         const select = document.createElement('select');
+        select.name = '_';
         this.options.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;

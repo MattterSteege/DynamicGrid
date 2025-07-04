@@ -61,24 +61,20 @@ class QueryParser {
         if (type === 'SELECT') {
             let [_, key, operator, value] = match;
             key = findMatchingIndexKey(Object.keys(headers), key, this.config);
-            const pluginType = headers[key].type;
-            const plugin = plugins[pluginType];
+            const plugin = headers[key] && headers[key].plugin;
             if (!plugin) {
-                throw new GridError('No plugin found for header (' + pluginType + ') for key (' + key + ')\nDo you know certain that the name of the key is correct?');
+                throw new GridError('No plugin found for header (' + plugin.type + ') for key (' + key + ')\nDo you know certain that the name of the key is correct?');
             }
 
-            let field = key;
-            let operatorObj = plugin.checkOperator(operator);
-
-            if (!operatorObj) {
-                throw new GridError(this.formatOperatorError(operator, field + ' ' + operator + ' ' + value, plugin));
+            if (!plugin.operators.includes(operator)) {
+                throw new GridError(this.formatOperatorError(operator, key + ' ' + operator + ' ' + value, plugin));
             }
 
             if (!plugin.validate(value)) return;
 
             value = plugin.parseValue(value);
 
-            return {type: pluginType, field, operator: operatorObj, value, queryType: 'SELECT'};
+            return {type: plugin.name, field: key, operator: operator, value, queryType: 'SELECT'};
         }
         else if (type === 'SORT') {
             let [_, key, value] = match;
@@ -132,7 +128,7 @@ class QueryParser {
         return [
             '\n\nInvalid operator:    ' + operator,
             '       For query:    ' + field,
-            '     options are:    ' + plugin.getOperatorSymbols().join(', '),
+            '     options are:    ' + plugin.operators.join(', '),
             '\n'
         ].join('\n');
     }

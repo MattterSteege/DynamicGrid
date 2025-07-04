@@ -13,11 +13,13 @@ class DynamicGrid {
         this.engine = new SJQLEngine(config.engine || {}, this.eventEmitter);
         // Initialize plugins
         this.engine.plugins = config.plugins ?? [];
-        this.engine.addPlugin(new StringTypePlugin, true);
-        this.engine.addPlugin(new NumberTypePlugin, true);
-        this.engine.addPlugin(new BooleanTypePlugin, true);
-        this.engine.addPlugin(new DateTypePlugin, true);
-        this.engine.addPlugin(new EmailTypePlugin, true);
+        this.engine.addPlugin(StringTypePlugin, true);
+        this.engine.addPlugin(NumberTypePlugin, true);
+        this.engine.addPlugin(BooleanTypePlugin, true);
+        this.engine.addPlugin(DateTypePlugin, true);
+        this.engine.addPlugin(EmailTypePlugin, true);
+        this.engine.addPlugin(EnumTypePlugin, true);
+        this.engine.addPlugin(PhoneNumberTypePlugin, true);
 
         this.engine.connectors = config.connectors || [];
         this.engine.addConnector(new CSVExportConnector(), true);
@@ -34,8 +36,8 @@ class DynamicGrid {
                 this.engine.headers[key] = {
                     // Core type system properties
                     name: value.name || key, // Use key as default name if not provided
-                    type: value.type || 'string', // Default type is string
-                    plugin: this.engine.getPlugin(value.type) || null, // Get the plugin for the type
+                    type: value.type, // Default type is string
+                    //plugin: this.engine.getPlugin(value.type) || null, // Get the plugin for the type
 
                     config: {
                         isUnique: value.isUnique || false,                                      //Default isUnique to false
@@ -57,8 +59,13 @@ class DynamicGrid {
 
                         // Cell behavior
                         cellValueValidator: value.cellValueValidator || ((val) => { return {valid: true, message: ''}}),// Function to validate the cell value
-                    }
+                    },
+
+                    options: value.options || {}, // Additional options for the header
                 };
+
+                this.engine.headers[key].plugin = this.engine.generatePluginInstance(value.type, this.engine.headers[key].options || {});
+                this.engine.headers[key].plugin.operators.push('==', '!='); // Ensure basic equality operators are always available
             });
         }
 

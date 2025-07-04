@@ -1,7 +1,7 @@
 class StringTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
-        this.operators = ['==', '!=', '*='];
+        this.operators = ['%=', '=%', '*=', '!*='];
         this.sortingHint = 'string';
     }
 
@@ -15,9 +15,10 @@ class StringTypePlugin extends BaseTypePlugin {
 
     evaluateCondition(dataValue, operator, compareValue) {
         switch (operator) {
-            case '==': return dataValue === compareValue;
-            case '!=': return dataValue !== compareValue;
-            case '*=': return dataValue.includes(compareValue);
+            case '%=':  return String(dataValue).startsWith(compareValue);
+            case '=%':  return String(dataValue).endsWith(compareValue);
+            case '*=':  return String(dataValue).includes(compareValue);
+            case '!*=': return !String(dataValue).includes(compareValue);
             default: return false;
         }
     }

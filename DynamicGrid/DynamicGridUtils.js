@@ -26,6 +26,7 @@ function FastHash(object) {
 * @returns {string}
 */
 function findMatchingIndexKey(dataIndexesKeys, field, config) {
+
     const normalize = str => {
         let result = str;
         if (config.SymbolsToIgnore?.length) {

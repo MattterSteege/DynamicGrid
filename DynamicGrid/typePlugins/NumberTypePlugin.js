@@ -28,7 +28,9 @@ class NumberTypePlugin extends BaseTypePlugin {
 
     getInputComponent(currentValue, onChange) {
         const input = document.createElement('input');
-        input.type = 'number';
+        input.type = 'text';
+        input.name = '_'
+        input.pattern = '\d*'; // Allows only numeric input on mobile devices
         input.value = currentValue ?? '';
         input.addEventListener('input', () => onChange(parseFloat(input.value)));
         return input;

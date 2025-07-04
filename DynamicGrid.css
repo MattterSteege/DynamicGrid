@@ -433,6 +433,24 @@ td.body-cell.edited {
     outline: 1px solid var(--outline-color);
 }
 
+.body-cell input[type="tel"]:invalid {
+    border: 1px solid red;
+}
+
+/*
+<td class="body-cell" style="height: 30px;"><select><option value="blue">blue</option><option value="brown">brown</option><option value="green">green</option><option value="hazel">hazel</option></select></td>
+*/
+
+
+.body-cell select {
+    width: 100%;
+    height: 100%;
+    border: none;
+    color: var(--text-secondary);
+    background: transparent;
+    appearance: none;
+}
+
 /* === Data Cell Styles === */
 .dynamic-grid-table-header .data-cell {
     padding: 8px;

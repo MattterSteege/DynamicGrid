@@ -15,6 +15,7 @@ class BooleanTypePlugin extends BaseTypePlugin {
     getInputComponent(currentValue, onChange) {
         const input = document.createElement('input');
         input.type = 'checkbox';
+        input.name = '_'
         input.checked = this.parseValue(currentValue);
         input.addEventListener('change', () => onChange(input.checked));
         return input;

@@ -95,8 +95,7 @@ class SJQLEngine {
 
     getHeader(key) {
         if (!this.headers || Object.keys(this.headers).length === 0) {
-            console.warn('No headers provided, returning empty object');
-            return {};
+            throw new GridError('No headers provided, returning empty object');
         }
 
         if (key === undefined || key === null) {
@@ -107,8 +106,7 @@ class SJQLEngine {
         if (this.headers[key]) {
             return this.headers[key];
         } else {
-            console.warn(`Header not found for key: ${key}`);
-            return {};
+            throw new GridError(`Header not found for key: ${key} ${this.headers} ${key}`);
         }
     }
 
@@ -205,11 +203,16 @@ class SJQLEngine {
         let validIndices = new Set(this.data.keys());
         let groupedData = null;
 
+        console.log(selectQueries, sortQuery, rangeQuery, groupQuery, fuzzyQuery);
+
         // Process SELECT queries
         for (const q of selectQueries) {
             q.field = findMatchingIndexKey(Object.keys(this.data[0]), q.field, this.config);
-            const plugin = this.getPlugin(q.type);
+            const plugin = this.getHeader(q.field)?.plugin || new this.getPlugin(q.type, true);
             if (!plugin) throw new GridError(`No plugin found for header (${q.type}) for key (${q.field})`);
+
+            console.log(plugin)
+
             validIndices = plugin.evaluate(q, this.dataIndexes[q.field], this.data, validIndices);
         }
 
@@ -377,22 +380,22 @@ class SJQLEngine {
 
     //================================================== PLUGIN SYSTEM ==================================================
     addPlugin(plugin, dontOverride = false) {
-        plugin.name = plugin.name || plugin.constructor.name;
+        const testInstance = new plugin();
 
-        if (!(plugin instanceof BaseTypePlugin)) {
+        if (!(testInstance instanceof BaseTypePlugin)) {
             throw new GridError('Plugin must extend BaseTypePlugin');
         }
 
         //if already exists, remove it and add the new one, while warning the user
-        const existingPlugin = this.getPlugin(plugin.name, true);
+        const existingPlugin = this.getPlugin(testInstance.constructor.name, true);
         if (dontOverride && existingPlugin) return;
         if (existingPlugin && !dontOverride) {
             console.warn('Plugin already exists, removing the old plugin');
             //set the new plugin to have key of the name of the plugin
-            this.plugins[plugin.name.replace("TypePlugin", "").toLowerCase()] = plugin;
+            this.plugins[testInstance.constructor.name.replace("TypePlugin", "").toLowerCase()] = plugin;
         }
         else {
-            this.plugins[plugin.name.replace("TypePlugin", "").toLowerCase()] = plugin;
+            this.plugins[testInstance.constructor.name.replace("TypePlugin", "").toLowerCase()] = plugin;
         }
     }
 
@@ -401,24 +404,30 @@ class SJQLEngine {
      *
      * @param {string} name - The name of the plugin to retrieve.
      * @param {boolean} [justChecking=false] - If true, only checks if the plugin exists without throwing an error.
-     * @returns {TypePlugin|boolean} - The plugin if found, or false if not found and justChecking is true.
+     * @returns {BaseTypePlugin|boolean} - The plugin if found, or false if not found and justChecking is true.
      * @throws {GridError} - If the plugin name is not provided or the plugin is not found and justChecking is false.
      */
     getPlugin(name, justChecking = false) {
         if (!name) throw new GridError('Plugin name not provided');
         if (typeof name !== 'string') return false;
 
-        var plugin = this.getHeader(name).plugin || this.plugins[name.replace("TypePlugin", "")];
-
-        if (!plugin) {
-            plugin = this.plugins[this.headers[name]?.type];
-        }
+        var plugin = this.plugins[name.replace("TypePlugin", "")] || this.plugins[this.headers[name]?.type];
 
         if (!plugin && !justChecking) throw new GridError('Plugin not found for column: ' + name);
         else if (!plugin && justChecking)  return false;
 
-
         return plugin;
+    }
+
+    generatePluginInstance(name, config = {}) {
+        const Plugin = this.getPlugin(name);
+        if (!Plugin) throw new GridError('Plugin not found: ' + name);
+
+        // Create a new instance of the plugin
+        const pluginInstance = new Plugin(config);
+        pluginInstance.name = name;
+
+        return pluginInstance;
     }
 
     //================================================== EXPORT CONNECTORS ==================================================

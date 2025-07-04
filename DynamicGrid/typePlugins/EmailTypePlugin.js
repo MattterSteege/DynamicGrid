@@ -15,6 +15,7 @@ class EmailTypePlugin extends BaseTypePlugin {
     getInputComponent(currentValue, onChange) {
         const input = document.createElement('input');
         input.type = 'email';
+        input.name = '_'
         input.value = currentValue ?? '';
         input.addEventListener('input', (e) => onChange(e.target.value));
         return input;
