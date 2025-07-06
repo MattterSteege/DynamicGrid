@@ -22,4 +22,19 @@ class StringTypePlugin extends BaseTypePlugin {
             default: return false;
         }
     }
+
+    getContextMenuItems(columnName, engine, ui) {
+        return [
+            {
+                type: 'filter',
+                label: 'Filter',
+                operators: this.operators
+            },
+            {
+                type: 'sort',
+                label: 'Sort',
+                sortingHint: this.sortingHint
+            }
+        ];
+    }
 }

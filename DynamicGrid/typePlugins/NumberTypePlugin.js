@@ -1,7 +1,7 @@
 class NumberTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
-        this.operators = ['==', '!=', '>', '<', '>=', '<='];
+        this.operators = ['>', '<', '>=', '<='];
         this.sortingHint = 'number';
     }
 
@@ -34,5 +34,29 @@ class NumberTypePlugin extends BaseTypePlugin {
         input.value = currentValue ?? '';
         input.addEventListener('input', () => onChange(parseFloat(input.value)));
         return input;
+    }
+
+    getContextMenuItems(columnName, engine, ui) {
+        return [
+            {
+                type: 'filter',
+                label: 'Filter',
+                operators: this.operators
+            },
+            {
+                type: 'sort',
+                label: 'Sort',
+                sortingHint: this.sortingHint
+            },
+            {
+                type: 'action',
+                label: 'Calculate Stats',
+                action: () => this.calculateStats(columnName)
+            }
+        ];
+    }
+
+    calculateStats(columnName) {
+        // Plugin-specific implementation
     }
 }

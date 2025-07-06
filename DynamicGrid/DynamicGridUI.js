@@ -65,6 +65,13 @@ class DynamicGridUI {
             closeOnClick: true,
             closeOnOutsideClick: true,
         });
+
+        // Create the column header context menu handler
+        this.columnHeaderContextMenu = new ColumnHeaderContextMenu(
+            this.contextMenu,
+            this.engine,
+            this
+        );
     }
 
     render(data) {
@@ -125,6 +132,7 @@ class DynamicGridUI {
         this.eventEmitter.emit('ui-content-cleared');
     }
 
+// Make sure to clean up in the destroy method:
     destroy() {
         this.clearContent();
         this.table?.remove();
@@ -137,6 +145,7 @@ class DynamicGridUI {
 
         // Clear context menu
         this.contextMenu.destroy();
+        this.columnHeaderContextMenu = null; // Add this line
 
         // Clear properties
         this.table = null;
@@ -559,7 +568,14 @@ class DynamicGridUI {
             th.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                plugin.showMore(columnName, th, this.engine, this, header.config);
+
+                // Use the new context menu handler
+                this.columnHeaderContextMenu.showForColumn(
+                    columnName,
+                    th,
+                    e.clientX,
+                    e.clientY
+                );
             });
 
             tr.appendChild(th);
@@ -774,10 +790,16 @@ class DynamicGridUI {
     }
 
 
-    #_approximateColumnWidth() {
+    approximateColumnWidth(column) {
         function approximateWidth(sampleData) {
             const maxLength = Math.max(...sampleData.map((item) => String(item).length));
             return Math.max(50, maxLength * 8.75); // 8 pixels per character, minimum width of 50px
+        }
+
+        //if column name is passed, calculate width for that column only
+        if (column) {
+            const sampleData = this.engine.getData(0, true);
+            return approximateWidth([sampleData[column].toString()]);
         }
 
         const columns = this.engine.getColumns();
@@ -804,7 +826,7 @@ class DynamicGridUI {
     }
 
     autoFitCellWidth() {
-        this.#_setWidths(Object.values(this.#_approximateColumnWidth()))
+        this.#_setWidths(Object.values(this.approximateColumnWidth()))
     }
 
     setWidth(column, width) {

@@ -127,6 +127,7 @@ class SJQLEngine {
         const hint = typePlugin?.sortingHint || 'string';
 
         return [...data].sort((a, b) => {
+
             const aVal = typePlugin.parseValue(a[field]);
             const bVal = typePlugin.parseValue(b[field]);
 
@@ -263,7 +264,8 @@ class SJQLEngine {
                 this.data.filter((_, i) => validIndices.has(i)),
                 sortQuery.field,
                 sortQuery.value,
-                this.getPlugin(sortQuery.type)
+                //this.getPlugin(sortQuery.type)
+                this.headers[sortQuery.field]?.plugin || new this.getPlugin(sortQuery.type, true)
             );
             return sortedData.map(row => row.internal_id); // Return only internal_ids
         }
