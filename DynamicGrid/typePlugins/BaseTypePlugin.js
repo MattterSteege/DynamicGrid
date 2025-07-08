@@ -17,22 +17,6 @@ class BaseTypePlugin {
         //List of all available operators for this type plugin.
         this.operators = ['==', '!='];
 
-        //table of all available operators and their labels
-        this.operatorsLabels = {
-            '==': 'equals',
-            '!=': 'not equals',
-            '<': 'less than',
-            '<=': 'less than or equal to',
-            '>': 'greater than',
-            '>=': 'greater than or equal to',
-            '%=': 'starts with',
-            '=%': 'ends with',
-            '*=': 'contains',
-            '!*=': 'does not contain',
-            '!!': 'is empty',
-            '??': 'is not empty',
-        };
-
         //options are: 'boolean', 'date', 'number', 'string'
         this.sortingHint = 'string';
     }
@@ -175,6 +159,13 @@ class BaseTypePlugin {
         return input;
     }
 
+    /**
+     * Generates context menu items for the specified column.
+     * @param {string} columnName - The name of the column.
+     * @param {SJQLEngine} engine - The query engine instance.
+     * @param {DynamicGridUI} ui - The UI instance.
+     * @returns {Array} An array of context menu items.
+     */
     getContextMenuItems(columnName, engine, ui) {
         return [];
     }

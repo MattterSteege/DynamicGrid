@@ -1,7 +1,7 @@
 class NumberTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
-        this.operators = ['>', '<', '>=', '<='];
+        this.operators = ['>', '<', '>=', '<=', '><'];
         this.sortingHint = 'number';
     }
 

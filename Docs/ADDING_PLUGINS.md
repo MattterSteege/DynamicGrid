@@ -1,209 +1,169 @@
-# Adding Custom Type Plugins in DynamicGrid
+# 🔌 Writing Your Own Type Plugin (For Real)
 
-## Overview
+This guide walks you through **how to create your own Type Plugin**, how to register it, and what you absolutely MUST implement for it not to silently fail or blow up in your face. Based on real frustrations, not theory.
 
-DynamicGrid allows you to extend its functionality by creating custom type plugins. These plugins define how specific data types are validated, rendered, sorted, and filtered. This guide explains how to create and register custom type plugins, following the structure used in `InherentTypePlugin.js`.
+---
 
-## Plugin Structure
+## ⚙️ What Is a Type Plugin?
 
-Each type plugin extends the `TypePlugin` base class and overrides its methods to implement type-specific behavior. Below are the key methods you need to implement:
+A Type Plugin controls how a column **validates data, parses input, evaluates filter logic, builds UI**, and shows context menu options.
 
-### Required Methods
+All plugins extend `BaseTypePlugin` and are expected to override a few methods. If you skip them? You'll get runtime errors — *and you'll deserve them*.
 
-1. **`constructor()`**
-   - Initialize the plugin and define supported operators.
-   - Example:
-     ```javascript
-     constructor() {
-         super();
-         this.operators = ['==', '!=', '>', '<']; // Define operators
-     }
-     ```
+---
 
-2. **`validate(value)`**
-   - Validates if a value matches the plugin's type.
-   - Example:
-     ```javascript
-     validate(value) {
-         return typeof value === 'string'; // Example for string type
-     }
-     ```
+## 📦 Step-by-Step: How to Build One
 
-3. **`parseValue(value)`**
-   - Converts a value to the appropriate type.
-   - Example:
-     ```javascript
-     parseValue(value) {
-         return String(value); // Example for string type
-     }
-     ```
-
-4. **`evaluate(query, dataIndexes, data, indices)`**
-   - Filters data based on the query.
-   - Example:
-     ```javascript
-     evaluate(query, dataIndexes, data, indices) {
-         for (const index of indices) {
-             if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                 indices.delete(index);
-             }
-         }
-         return indices;
-     }
-     ```
-
-5. **`evaluateCondition(dataValue, operator, value)`**
-   - Compares a data value with a query value using the specified operator.
-   - Example:
-     ```javascript
-     evaluateCondition(dataValue, operator, value) {
-         switch (operator) {
-             case '==': return dataValue === value;
-             case '!=': return dataValue !== value;
-             // Add more operators as needed
-         }
-     }
-     ```
-
-6. **`sort(query, data)`**
-   - Sorts data based on the query.
-   - Example:
-     ```javascript
-     sort(query, data) {
-         const { field, value: direction } = query;
-         return data.sort((a, b) => direction === 'asc' ? a[field] - b[field] : b[field] - a[field]);
-     }
-     ```
-
-7. **`renderCell(value)`**
-   - Creates a table cell for displaying the value.
-   - Example:
-     ```javascript
-     renderCell(value) {
-         const cell = document.createElement('div');
-         cell.innerText = String(value);
-         return cell;
-     }
-     ```
-
-8. **`renderEditableCell(value, onEdit)`**
-   - Creates an editable table cell.
-   - Example:
-     ```javascript
-     renderEditableCell(value, onEdit) {
-         const cell = document.createElement('div');
-         cell.contentEditable = true;
-         cell.innerText = String(value);
-         cell.addEventListener('focusout', () => onEdit(cell.innerText));
-         return cell;
-     }
-     ```
-
-9. **`showMore(key, element, engine, UI)` (Optional)**
-   - Adds additional interactions for the column, such as context menus.
-   - Example:
-     ```javascript
-     showMore(key, element, engine, UI) {
-         const { x, y, height } = element.getBoundingClientRect();
-         UI.contextMenu.clear();
-         UI.contextMenu
-             .button('Sort ascending', () => {
-                 engine.setSort(key, 'asc');
-                 UI.render(engine.runCurrentQuery());
-             })
-             .button('Sort descending', () => {
-                 engine.setSort(key, 'desc');
-                 UI.render(engine.runCurrentQuery());
-             });
-         UI.contextMenu.showAt(x, y + height);
-     }
-     ```
-
-## Example: String Type Plugin
-
-Below is an example of a custom plugin for handling string data:
-
-```javascript
-class stringTypePlugin extends TypePlugin {
+```js
+class MyCustomTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
-        this.operators = ['==', '!=', '%=', '=%', '*=', '!*=']; // Define operators
+        this.operators = ['==', '!=', '>', '<']; // define supported operators
+        this.sortingHint = 'number'; // or 'string', 'boolean', 'date'
     }
 
     validate(value) {
-        return typeof value === 'string';
+        return typeof value === 'number' && !isNaN(value);
     }
 
     parseValue(value) {
-        return String(value);
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? null : parsed;
     }
 
-    evaluate(query, dataIndexes, data, indices) {
-        for (const index of indices) {
-            if (!this.evaluateCondition(data[index][query.field], query.operator, query.value)) {
-                indices.delete(index);
-            }
-        }
-        return indices;
-    }
-
-    evaluateCondition(dataValue, operator, value) {
+    evaluateCondition(dataValue, operator, compareValue) {
         switch (operator) {
-            case '==': return dataValue === value;
-            case '!=': return dataValue !== value;
-            case '%=': return dataValue.startsWith(value);
-            case '=%': return dataValue.endsWith(value);
-            case '*=': return dataValue.includes(value);
-            case '!*=': return !dataValue.includes(value);
+            case '>': return dataValue > compareValue;
+            case '<': return dataValue < compareValue;
+            case '==': return dataValue === compareValue;
+            case '!=': return dataValue !== compareValue;
+            default: return false;
         }
     }
 
-    sort(query, data) {
-        const { field, value: direction } = query;
-        return data.sort((a, b) => direction === 'asc' ? a[field].localeCompare(b[field]) : b[field].localeCompare(a[field]));
+    getInputComponent(currentValue, onChange) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentValue ?? '';
+        input.addEventListener('input', (e) => onChange(e.target.value));
+        return input;
+    }
+
+    getContextMenuItems(columnName, engine, ui) {
+        return [
+            {
+                type: 'filter',
+                label: 'Filter',
+                operators: this.operators
+            },
+            {
+                type: 'sort',
+                label: 'Sort',
+                sortingHint: this.sortingHint
+            }
+        ];
     }
 }
+````
+
+---
+
+## 🧠 What You MUST Implement
+
+| Method                     | Required                   | Description                                          |
+| -------------------------- | -------------------------- | ---------------------------------------------------- |
+| `validate(value)`          | ✅                          | Returns true if the value is valid                   |
+| `parseValue(value)`        | ✅                          | Converts raw value into parsed form                  |
+| `evaluateCondition(...)`   | ✅                          | Handles logic for operators other than `==` and `!=` |
+| `getInputComponent(...)`   | Optional (but recommended) | Returns an `<input>` or similar UI element           |
+| `getContextMenuItems(...)` | Optional                   | Defines filtering/sorting/actions per column         |
+
+---
+
+## 🧾 How to Register Your Plugin
+
+Assuming you have an `SJQLEngine` instance:
+
+```js
+engine.registerTypePlugin('myNumber', new MyCustomTypePlugin());
 ```
 
-## Registering Plugins
+Then when defining a column:
 
-To use your custom plugin, register it with the `DynamicGrid` instance:
+```js
+engine.addColumn('Price', { plugin: 'myNumber' });
+```
 
-```javascript
-const grid = new DynamicGrid({
-    plugins: {
-        string: new stringTypePlugin(), //is registered by default (can override by custom plugin)
-        number: new NumberTypePlugin(), //is registered by default (can override by custom plugin)
-        boolean: new BooleanTypePlugin(), //is registered by default (can override by custom plugin)
+If you don't set a plugin explicitly, the engine will try to guess. And it often guesses wrong.
+
+---
+
+## ⚠️ Things That Will Blow Up If You Forget
+
+* `this.operators` must exactly match what `evaluateCondition()` can handle.
+* `parseValue()` must return values that work with your evaluation logic.
+* `getContextMenuItems()` must define filters or sorts, or the UI will show\... nothing.
+* If you include `><` (between), make sure you know it maps to **two filters**: `>= left` and `<= right`. This is handled in `ColumnContextMenu.js`.
+
+---
+
+## 🧪 Example: The `NumberTypePlugin`
+
+See `NumberTypePlugin.js`.
+
+* Operators: `['>', '<', '>=', '<=', '><']`
+* `parseValue()` uses `parseFloat`
+* Adds a `Calculate Stats` context menu action
+* Defines input as numeric with `input.pattern = \d*` (clever mobile support)
+
+---
+
+## 🤖 How the Context Menu Works
+
+The column header context menu calls `plugin.getContextMenuItems(...)` to get filter/sort/action options.
+
+Example return value:
+
+```js
+return [
+    {
+        type: 'filter',
+        label: 'Filter',
+        operators: ['==', '!=', '><']
+    },
+    {
+        type: 'sort',
+        label: 'Sort',
+        sortingHint: 'number'
+    },
+    {
+        type: 'action',
+        label: 'Do Something',
+        action: () => this.doSomethingSpecial()
     }
-});
+];
 ```
 
-## Extending Existing Plugins
+**If you don't provide filter items, filtering won't appear. Your plugin is responsible.**
 
-You can extend existing plugins to modify or add functionality. For example, to create a custom money type plugin:
+---
 
-```javascript
-class moneyTypePlugin extends NumberTypePlugin {
-    renderCell(value) {
-        const parts = value.toFixed(2).split(".");
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        return '€' + parts.join(",");
-    }
-}
-```
+## 🧨 Common Mistakes
 
-## Best Practices
+* Forgetting to implement `evaluateCondition()` → hard crash.
+* Declaring unsupported operators → silent failure.
+* Inconsistent parsing (e.g. `"12abc"` becomes `NaN`) → filters silently break.
+* Not implementing `getInputComponent()` → default input appears, which may not work as expected.
 
-1. **Keep Plugins Modular**: Each plugin should handle only one type.
-2. **Optimize Performance**: Ensure `evaluate` and `evaluateCondition` are efficient.
-3. **Follow Patterns**: Use the structure and style of existing plugins for consistency.
+---
 
-## Debugging Tips
+## ✅ Plugin Builder Checklist
 
-- Use `console.log()` to debug your plugin during development.
-- Test your plugin with various datasets and queries.
-
-## Conclusion
-
-Custom plugins allow you to tailor DynamicGrid to your specific needs. By following the structure outlined above, you can create robust and reusable plugins for any data type.
+* [ ] Inherit from `BaseTypePlugin`
+* [ ] Implement `validate(value)`
+* [ ] Implement `parseValue(value)`
+* [ ] Implement `evaluateCondition(dataValue, operator, compareValue)`
+* [ ] (Optional) Implement `getInputComponent(...)`
+* [ ] (Optional) Add `getContextMenuItems(...)` with filters/sorts/actions
+* [ ] Register plugin via `engine.registerTypePlugin(...)`
+* [ ] Assign plugin to column via `plugin: 'yourPluginName'`

@@ -25,7 +25,8 @@ class ColumnHeaderContextMenu {
             '%=': 'Starts With',
             '=%': 'Ends With',
             '*=': 'Contains',
-            '!*=': 'Does Not Contain'
+            '!*=': 'Does Not Contain',
+            '><': 'Between',
         };
     }
 
@@ -73,6 +74,9 @@ class ColumnHeaderContextMenu {
                     item.render(this.contextMenu);
                 }
                 break;
+            default:
+                console.warn(`Unknown menu item type: ${item.type} for column: ${columnName}`);
+                break;
         }
     }
 
@@ -100,15 +104,52 @@ class ColumnHeaderContextMenu {
      * Adds filter options based on the plugin's available operators
      */
     _addFilterOptions(columnName, plugin, operators) {
+        var operator = '=='; // Default operator
         this.contextMenu.submenu('Filter', (filterSubmenu) => {
             filterSubmenu.dropdown('filter', operators.map((operator) => {
                 return {
                     label: this.operatorLabels[operator] || operator,
                     value: operator,
                 };
-            }, {onChange: (selectedOperator) => {}}))
+            }), {
+                value: operator,
+                onChange: (selectedOperator) => {
+                    operator = selectedOperator;
+                },
+                id: 'dropdown-id',
+            })
+            .input('Filter', {
+                placeholder: 'Filter',
+                onChange: (value) => {
+                    this.engine.setSelect(columnName, operator, value);
+                    this.ui.render(this.engine.runCurrentQuery());
+                },
+                showWhen: {
+                    elementId: 'dropdown-id',
+                    value: ['==', '!=', '>', '<', '>=', '<=', '%=', '=%', '*=', '!*='],
+                }
+            })
+            .doubleInput('From', 'To', {
+                placeholder: 'From',
+                placeholder_2: 'To',
+                onChange: ({left, right}) => {
+                    if (left === '' || right === '' || left === null || right === null || left === undefined || right === undefined) {
+                        this.engine.removeSelect(columnName) ? this.ui.render(this.engine.runCurrentQuery()) : null;
+                    }
+                    else {
+                        this.engine.setSelect(columnName, '>=', left);
+                        this.engine.addSelect(columnName, '<=', right);
+                        this.ui.render(this.engine.runCurrentQuery());
+                    }
+                },
+                showWhen: {
+                    elementId: 'dropdown-id',
+                    value: ['><'],
+                }
+            })
+
             .separator()
-            .button('Clear Filter', () => ColumnHeaderContextMenu.prototype._clearColumnFilter(columnName), { });
+            .button('Clear Filter', () => this.engine.removeSelect(columnName) ? this.ui.render(this.engine.runCurrentQuery()) : null, { });
         })
     }
 
@@ -126,55 +167,24 @@ class ColumnHeaderContextMenu {
     /**
      * Applies a filter to the specified column
      */
-    _applyFilter(columnName, operator, value, plugin) {
-        const query = {
-            field: columnName,
-            operator: operator,
-            value: value
-        };
-
-        // Apply filter through the engine
-        // This would depend on your specific engine implementation
-        console.log('Applying filter:', query);
-
-        // You might want to emit an event or call a method on your engine
-        if (this.engine.applyFilter) {
-            this.engine.applyFilter(query);
-        }
-
-        // Trigger UI update
-        if (this.ui.render) {
-            this.ui.render(this.engine.getFilteredData());
-        }
+    _applyFilter(columnName, operator, value) {
+        this.engine.setSelect(columnName, operator, value);
+        this.ui.render(this.engine.runCurrentQuery());
     }
 
     /**
      * Clears filter for the specified column
      */
     _clearColumnFilter(columnName) {
-        console.log('Clearing filter for column:', columnName);
-
-        if (this.engine.clearFilter) {
-            this.engine.clearFilter(columnName);
-        }
-
-        // Trigger UI update
-        if (this.ui.render) {
-            this.ui.render(this.engine.getFilteredData());
-        }
+        this.engine.removeSelect(columnName);
+        this.ui.render(this.engine.runCurrentQuery());
     }
 
     /**
      * Sorts the specified column
      */
-    _sortColumn(columnName, direction, sortingHint) {
-        console.log('Sorting column:', columnName, direction, sortingHint);
-
-
+    _sortColumn(columnName, direction) {
         this.engine.setSort(columnName, direction);
-
-        // Trigger UI update
-        //this.engine.runCurrentQuery();
         this.ui.render(this.engine.runCurrentQuery());
     }
 
@@ -182,9 +192,7 @@ class ColumnHeaderContextMenu {
      * Clears all sorting
      */
     _clearSort() {
-        console.log('Clearing sort');
         this.engine.removeSort();
-        // Trigger UI update
         this.ui.render(this.engine.runCurrentQuery());
     }
 

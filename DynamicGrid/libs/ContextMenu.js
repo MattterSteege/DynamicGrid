@@ -10,6 +10,7 @@ class ContextMenu {
         SEPARATOR: 'separator',
         SUBMENU: 'submenu',
         INPUT: 'input',
+        DOUBLE_INPUT: 'double-input',
         DROPDOWN: 'dropdown',
         CHECKBOX: 'checkbox',
         RADIO: 'radio',
@@ -22,6 +23,7 @@ class ContextMenu {
         SEPARATOR: 'context-menu-separator',
         MENU: 'context-menu',
         INPUT: 'context-menu-input',
+        DOUBLE_INPUT: 'context-menu-double-input',
         DROPDOWN: 'context-menu-dropdown',
         CHECKBOX: 'context-menu-checkbox',
         RADIO: 'context-menu-radio',
@@ -118,6 +120,20 @@ class ContextMenu {
             label,
             placeholder: config.placeholder,
             value: config.value,
+            onChange: config.onChange,
+            showWhen: config.showWhen,
+            id: config.id,
+        });
+    }
+
+    doubleInput(label, label_2, config = {}) {
+        return this.addItem(ContextMenu.ITEM_TYPES.DOUBLE_INPUT, {
+            label,
+            label_2: label_2,
+            placeholder: config.placeholder,
+            placeholder_2: config.placeholder_2,
+            value: config.value,
+            value_2: config.value_2,
             onChange: config.onChange,
             showWhen: config.showWhen,
             id: config.id,
@@ -344,6 +360,10 @@ class ContextMenu {
             case ContextMenu.ITEM_TYPES.INPUT:
                 if (!item.label || typeof item.label !== 'string') throw new Error('Input item must have a "label" property of type string.');
                 break;
+            case ContextMenu.ITEM_TYPES.DOUBLE_INPUT:
+                if (!item.label || typeof item.label !== 'string') throw new Error('DoubleInput item must have a "label" property of type string.');
+                if (!item.label_2 || typeof item.label_2 !== 'string') throw new Error('DoubleInput item must have a "label_2" property of type string.');
+                break;
             case ContextMenu.ITEM_TYPES.DROPDOWN:
                 if (!item.label || typeof item.label !== 'string') throw new Error('Dropdown item must have a "label" property of type string.');
                 if (!Array.isArray(item.options) || item.options.length === 0) throw new Error('Dropdown item must have a non-empty "options" array.');
@@ -380,7 +400,7 @@ class ContextMenu {
         // Set the indentation level as a data attribute
         menuContainer.dataset.indent = this.options.indentLevel;
 
-        this.items.forEach(item => {
+        this.items.forEach((item, index) => {
             let element;
 
             switch (item.type) {
@@ -388,13 +408,18 @@ class ContextMenu {
                     element = this.#_createButton(item);
                     break;
                 case ContextMenu.ITEM_TYPES.SEPARATOR:
-                    element = this.#_createSeparator();
+                    index < this.items.length - 1 ?         // Only create a separator if it's not the last item
+                        element = this.#_createSeparator()
+                        : null;
                     break;
                 case ContextMenu.ITEM_TYPES.SUBMENU:
                     element = this.#_createSubmenu(item);
                     break;
                 case ContextMenu.ITEM_TYPES.INPUT:
                     element = this.#_createInput(item);
+                    break;
+                case ContextMenu.ITEM_TYPES.DOUBLE_INPUT:
+                    element = this.#_createDoubleInput(item);
                     break;
                 case ContextMenu.ITEM_TYPES.DROPDOWN:
                     element = this.#_createDropdown(item);
@@ -425,7 +450,7 @@ class ContextMenu {
                     if (controllingElement) {
                         const toggleVisibility = () => {
                             const shouldShow = value.includes(controllingElement.value);
-                            element.style.display = shouldShow ? 'block' : 'none';
+                            element.style.display = shouldShow ? '' : 'none';
                         };
 
                         // Add event listener to monitor changes
@@ -512,6 +537,47 @@ class ContextMenu {
         input.id = item.id;
 
         inputContainer.appendChild(input);
+        return inputContainer;
+    }
+
+    #_createDoubleInput(item) {
+        //do a div and add 2 inputs to it
+        const inputContainer = document.createElement('div');
+        inputContainer.classList.add(ContextMenu.CLASSNAMES.DOUBLE_INPUT);
+        inputContainer.id = item.id;
+
+        var values = {left: item.value || '', right: item.value_2 || ''};
+
+        const generalChangeHandler = () => {
+            if ((values.left === '' && values.left === null || values.left === undefined) && (values.right === '' && values.right === null || values.right === undefined)) {
+                item.onChange?.({left: undefined, right: undefined});
+            } else {
+                item.onChange?.(values);
+            }
+        }
+
+        const input1 = this.#_createInput({
+            type: 'text',
+            placeholder: item.placeholder || '',
+            value: item.value || '',
+
+            onChange: (value) => {
+                values.left = value;
+                generalChangeHandler();
+            }, id: item.id + '-1'
+        });
+
+        const input2 = this.#_createInput({
+            type: 'text', placeholder: item.placeholder_2 || '', value: item.value_2 || '',
+
+            onChange: (value) => {
+                values.right = value;
+                generalChangeHandler();
+            }, id: item.id + '-2'
+        });
+
+        inputContainer.appendChild(input1);
+        inputContainer.appendChild(input2);
         return inputContainer;
     }
 
@@ -689,7 +755,7 @@ class ContextMenu {
         const styleElement = document.createElement('style');
         styleElement.id = 'context-menu-styles';
         styleElement.textContent = `:root {--context-menu-bg:` + (this.options.style.backgroundColor || '#ffffff') + `;--context-menu-text:` + (this.options.style.textColor || '#333333') + `;--context-menu-hover-bg:` + (this.options.style.backgroundHoverColor || '#f0f0f0') + `;--context-menu-border:` + (this.options.style.border || 'rgba(0, 0, 0, 0.08)') + `;--context-menu-shadow:` + (this.options.style.shadow || '0 10px 25px rgba(0, 0, 0, 0.1)') + `;--context-menu-accent:` + (this.options.style.accent || '#3b82f6') + `;--context-menu-separator:` + (this.options.style.separator || 'rgba(0, 0, 0, 0.08)') + `;--padding:` + (this.options.style.padding || '10px') + `;--padding-horizontal:` + (this.options.style.paddingHorizontal || '15px') + `;--gap:` + (this.options.style.gap || '10px') + `;--border-radius:` + (this.options.style.borderRadius || '8px') + `;--border-radius-input:` + (this.options.style.borderRadiusInput || '4px') + `;--font-size:` + (this.options.style.fontSize || '14px') + `;--transition:` + (this.options.style.transition || '0.2s') + ` ease;--transition-fast:` + (this.options.style.transitionFast || '0.1s') + ` ease;--transition-input:` + (this.options.style.transitionInput || '0.2s') + ` ease;}`;
-        styleElement.textContent += ".context-menu{background:var(--context-menu-bg);border:1px solid var(--context-menu-border);border-radius:var(--border-radius);box-shadow:var(--context-menu-shadow);padding:var(--padding) 0;min-width:220px;z-index:1000;font-family:Arial,sans-serif;color:var(--context-menu-text);animation:contextMenuSlideIn var(--transition-fast) forwards;transform-origin:top center}.context-menu .context-menu{position:relative;left:-5px}.context-menu:has(> .context-menu-dropdown)::after{content:'';position:absolute;inset:0 0 -400% 0;z-index:-1}.context-menu-button,.context-menu-checkbox,.context-menu-radio,.context-menu-submenu{display:flex;align-items:center;width:100%;padding:calc(var(--padding) + 2px) var(--padding-horizontal);border:none;background:0 0;font-size:var(--font-size);text-align:left;cursor:pointer;color:var(--context-menu-text);transition:background-color var(--transition-fast),color var(--transition-fast);position:relative;gap:var(--gap)}.context-menu-button:hover,.context-menu-checkbox:hover,.context-menu-radio:hover,.context-menu-search-select-list label:hover,.context-menu-submenu:hover{background-color:var(--context-menu-hover-bg)}.context-menu-button:focus,.context-menu-submenu:focus{outline:0;background-color:var(--context-menu-hover-bg)}.context-menu-button[data-marked=true],.context-menu-checkbox input:checked,.context-menu-radio input:checked{background-color:var(--context-menu-accent)}.context-menu-button:focus-visible,.context-menu-submenu:focus-visible{outline:2px solid var(--context-menu-accent);outline-offset:-2px}.context-menu-button:disabled{color:rgba(26,26,26,.4);cursor:not-allowed}.context-menu-button[data-marked=true]{font-weight:700;color:#fff;border-radius:calc(var(--border-radius)/ 2);border:1px solid var(--context-menu-accent)}.context-menu-button[data-marked=true]:hover{background-color:var(--context-menu-accent);color:#fff}.context-menu-button span,.context-menu-submenu span{display:flex;align-items:center;pointer-events:none}.context-menu-separator{height:1px;background-color:var(--context-menu-separator);margin:var(--padding) 0}.context-menu-dropdown,.context-menu-input input,.context-menu-search-select input{padding:var(--padding);border:1px solid var(--context-menu-border);border-radius:var(--border-radius-input);font-size:var(--font-size);background-color:#f9fafb;transition:border-color var(--transition-input),box-shadow var(--transition-input)}.context-menu-dropdown:focus,.context-menu-input input:focus,.context-menu-search-select input:focus{outline:0;border-color:var(--context-menu-accent);box-shadow:0 0 0 2px rgba(59,130,246,.2)}.context-menu-input{padding:var(--padding) var(--padding-horizontal)}.context-menu-input input{width:calc(100% - var(--padding-horizontal))}.context-menu-dropdown{width:calc(100% - calc(var(--padding-horizontal) * 2));margin:var(--padding) var(--padding-horizontal)}.context-menu-checkbox input,.context-menu-radio input,.context-menu-search-select-list input{margin-right:var(--gap);accent-color:var(--context-menu-accent)}.context-menu-checkbox input:focus,.context-menu-radio input:focus,.context-menu-search-select-list input:focus{outline:0;box-shadow:0 0 0 2px rgba(59,130,246,.2)}.context-menu-search-select{display:flex;flex-direction:column;padding:calc(var(--padding) + 2px) var(--padding-horizontal)}.context-menu-search-select-list{max-height:200px;overflow-y:auto;margin-top:var(--padding)}.context-menu-search-select-list button{width:100%;padding:var(--padding);background:#007bff;font-size:var(--font-size);text-align:left;cursor:pointer;color:#fff;transition:background-color var(--transition-fast),color var(--transition-fast)}.context-menu-search-select-list label{display:flex;flex-direction:row-reverse;gap:var(--gap);align-items:center;padding:var(--padding) 0;justify-content:flex-end}@keyframes contextMenuSlideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(calc(-1 * var(--padding)))}}.context-menu:focus{outline:0}"
+        styleElement.textContent += ".context-menu{background:var(--context-menu-bg);border:1px solid var(--context-menu-border);border-radius:var(--border-radius);box-shadow:var(--context-menu-shadow);padding:var(--padding) 0;min-width:220px;z-index:1000;font-family:Arial,sans-serif;color:var(--context-menu-text);animation:contextMenuSlideIn var(--transition-fast) forwards;transform-origin:top center}.context-menu .context-menu{position:relative;left:-5px}.context-menu:has(> .context-menu-dropdown)::after{content:'';position:absolute;inset:0 0 -400% 0;z-index:-1}.context-menu-button,.context-menu-checkbox,.context-menu-radio,.context-menu-submenu{display:flex;align-items:center;width:100%;padding:calc(var(--padding) + 2px) var(--padding-horizontal);border:none;background:0 0;font-size:var(--font-size);text-align:left;cursor:pointer;color:var(--context-menu-text);transition:background-color var(--transition-fast),color var(--transition-fast);position:relative;gap:var(--gap)}.context-menu-button:hover,.context-menu-checkbox:hover,.context-menu-radio:hover,.context-menu-search-select-list label:hover,.context-menu-submenu:hover{background-color:var(--context-menu-hover-bg)}.context-menu-button:focus,.context-menu-submenu:focus{outline:0;background-color:var(--context-menu-hover-bg)}.context-menu-button[data-marked=true],.context-menu-checkbox input:checked,.context-menu-radio input:checked{background-color:var(--context-menu-accent)}.context-menu-button:focus-visible,.context-menu-submenu:focus-visible{outline:2px solid var(--context-menu-accent);outline-offset:-2px}.context-menu-button:disabled{color:rgba(26,26,26,.4);cursor:not-allowed}.context-menu-button[data-marked=true]{font-weight:700;color:#fff;border-radius:calc(var(--border-radius)/ 2);border:1px solid var(--context-menu-accent)}.context-menu-button[data-marked=true]:hover{background-color:var(--context-menu-accent);color:#fff}.context-menu-button span,.context-menu-submenu span{display:flex;align-items:center;pointer-events:none}.context-menu-separator{height:1px;background-color:var(--context-menu-separator);margin:var(--padding) 0}.context-menu-dropdown,.context-menu-input input,.context-menu-search-select input{padding:var(--padding);border:1px solid var(--context-menu-border);border-radius:var(--border-radius-input);font-size:var(--font-size);background-color:#f9fafb;transition:border-color var(--transition-input),box-shadow var(--transition-input)}.context-menu-double-input,.context-menu-input{padding:var(--padding) var(--padding-horizontal)}.context-menu-dropdown:focus,.context-menu-input input:focus,.context-menu-search-select input:focus{outline:0;border-color:var(--context-menu-accent);box-shadow:0 0 0 2px rgba(59,130,246,.2)}.context-menu-input input{width:calc(100% - var(--padding-horizontal))}.context-menu-double-input{display:flex;gap:10px;align-items:center}.context-menu-double-input>.context-menu-input{padding:unset!important}.context-menu-dropdown{width:calc(100% - calc(var(--padding-horizontal) * 2));margin:var(--padding) var(--padding-horizontal)}.context-menu-checkbox input,.context-menu-radio input,.context-menu-search-select-list input{margin-right:var(--gap);accent-color:var(--context-menu-accent)}.context-menu-checkbox input:focus,.context-menu-radio input:focus,.context-menu-search-select-list input:focus{outline:0;box-shadow:0 0 0 2px rgba(59,130,246,.2)}.context-menu-search-select{display:flex;flex-direction:column;padding:calc(var(--padding) + 2px) var(--padding-horizontal)}.context-menu-search-select-list{max-height:200px;overflow-y:auto;margin-top:var(--padding)}.context-menu-search-select-list button{width:100%;padding:var(--padding);background:#007bff;font-size:var(--font-size);text-align:left;cursor:pointer;color:#fff;transition:background-color var(--transition-fast),color var(--transition-fast)}.context-menu-search-select-list label{display:flex;flex-direction:row-reverse;gap:var(--gap);align-items:center;padding:var(--padding) 0;justify-content:flex-end}@keyframes contextMenuSlideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(calc(-1 * var(--padding)))}}.context-menu:focus{outline:0}";
         document.head.appendChild(styleElement);
     }
 }

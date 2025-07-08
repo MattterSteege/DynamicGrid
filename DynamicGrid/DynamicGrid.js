@@ -65,7 +65,7 @@ class DynamicGrid {
                 };
 
                 this.engine.headers[key].plugin = this.engine.generatePluginInstance(value.type, this.engine.headers[key].options || {});
-                this.engine.headers[key].plugin.operators.push('==', '!='); // Ensure basic equality operators are always available
+                this.engine.headers[key].plugin.operators = ['==', '!=', ...this.engine.headers[key].plugin.operators]; // Ensure basic equality operators are always available
             });
         }
 

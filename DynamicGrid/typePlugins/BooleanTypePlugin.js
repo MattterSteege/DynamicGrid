@@ -20,4 +20,38 @@ class BooleanTypePlugin extends BaseTypePlugin {
         input.addEventListener('change', () => onChange(input.checked));
         return input;
     }
+
+    getContextMenuItems(columnName, engine, ui) {
+        return [
+            {
+                type: 'action',
+                label: 'Only True',
+                action: () => {
+                    engine.setSelect(columnName, '==', true);
+                    ui.render(engine.runCurrentQuery());
+                }
+            },
+            {
+                type: 'action',
+                label: 'Only False',
+                action: () => {
+                    engine.setSelect(columnName, '==', false);
+                    ui.render(engine.runCurrentQuery());
+                }
+            },
+            {
+                type: 'action',
+                label: 'Clear Filter',
+                action: () => {
+                    engine.removeSelect(columnName);
+                    ui.render(engine.runCurrentQuery());
+                }
+            },
+            {
+                type: 'sort',
+                label: 'Sort',
+                sortingHint: this.sortingHint
+            }
+        ]
+    }
 }

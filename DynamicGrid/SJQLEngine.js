@@ -212,8 +212,6 @@ class SJQLEngine {
             const plugin = this.getHeader(q.field)?.plugin || new this.getPlugin(q.type, true);
             if (!plugin) throw new GridError(`No plugin found for header (${q.type}) for key (${q.field})`);
 
-            console.log(plugin)
-
             validIndices = plugin.evaluate(q, this.dataIndexes[q.field], this.data, validIndices);
         }
 
@@ -283,8 +281,6 @@ class SJQLEngine {
             this.currentQueryStr = newClause;
         else
             this.currentQueryStr += ` and ${newClause}`;
-
-        console.log(this.currentQueryStr);
     }
 
     setSelect(key, operator, value) {
@@ -293,20 +289,21 @@ class SJQLEngine {
     }
 
     removeSelect(key, operator, value) {
+        let originalQueryStr = this.currentQueryStr;
+
         if (key !== undefined && operator === undefined && value === undefined) {
             // Remove all clauses with the specified key
             this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith(key)).join(' and ');
-        }
-
-        else if (key !== undefined && operator !== undefined && value === undefined) {
+        } else if (key !== undefined && operator !== undefined && value === undefined) {
             // Remove all clauses with the specified key and operator
             this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => !clause.trim().startsWith(`${key} ${operator}`)).join(' and ');
-        }
-        else if (key !== undefined && operator !== undefined && value !== undefined) {
+        } else if (key !== undefined && operator !== undefined && value !== undefined) {
             // Remove the specific clause
             const clauseToRemove = `${key} ${operator} ${value}`;
             this.currentQueryStr = this.currentQueryStr.split('and').filter(clause => clause.trim() !== clauseToRemove).join(' and ');
         }
+
+        return originalQueryStr !== this.currentQueryStr;
     }
 
     //================================================== SORT ==================================================

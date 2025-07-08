@@ -70,7 +70,9 @@ class QueryParser {
                 throw new GridError(this.formatOperatorError(operator, key + ' ' + operator + ' ' + value, plugin));
             }
 
-            if (!plugin.validate(value)) return;
+            if (!plugin.validate(value)) {
+                throw new GridError('Invalid value: ' + value + '\n' + 'For query: ' + key + ' ' + operator + ' ' + value + '\n' + this.formatOperatorError(operator, key, plugin));
+            }
 
             value = plugin.parseValue(value);
 
