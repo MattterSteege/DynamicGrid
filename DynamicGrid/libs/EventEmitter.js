@@ -8,7 +8,7 @@
  * // Output: Hello, world!
  * @author Matt ter Steege (Kronk)
  */
-class EventEmitter {
+export class EventEmitter {
     constructor() {
         this.events = {};
     }

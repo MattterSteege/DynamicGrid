@@ -1,4 +1,8 @@
-class DynamicGridUI {
+import {firstItem, FastHash} from "./DynamicGridUtils.js";
+import {ColumnHeaderContextMenu} from "./ColumnContextMenu.js";
+import {ContextMenu} from "./libs/ContextMenu.js";
+
+export class DynamicGridUI {
     /**
      * @param {string} ui_config.containerId - The ID of the container for the grid. (required)
      * @param {number} ui_config.minColumnWidth - Minimum width for columns. (default: 5%)
@@ -441,7 +445,7 @@ class DynamicGridUI {
         var width = 0;
         for (const key in headers) {
             if (typeof headers[key] !== 'string') continue;
-            const header = grid.engine.getHeader(headers[key]).config;
+            const header = this.engine.getHeader(headers[key]).config;
             // console.log(header)
             const col = document.createElement('col');
             width += header.width ?? 100;

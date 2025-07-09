@@ -4,7 +4,7 @@
  * Supports animations, custom styles, and nested submenus.
  * @author Matt ter Steege (Kronk)
 */
-class ContextMenu {
+export class ContextMenu {
     static ITEM_TYPES = {
         BUTTON: 'button',
         SEPARATOR: 'separator',

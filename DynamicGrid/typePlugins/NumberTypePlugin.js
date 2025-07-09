@@ -1,4 +1,6 @@
-class NumberTypePlugin extends BaseTypePlugin {
+import {BaseTypePlugin} from "./BaseTypePlugin.js";
+
+export class NumberTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
         this.operators = ['>', '<', '>=', '<=', '><'];

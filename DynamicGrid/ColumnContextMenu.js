@@ -8,7 +8,7 @@
  * based on the plugin's available operators and functionality.
  * @param {ContextMenu} contextMenu - The context menu instance to use
  */
-class ColumnHeaderContextMenu {
+export class ColumnHeaderContextMenu {
     constructor(contextMenu, engine, ui) {
         this.contextMenu = contextMenu;
         this.engine = engine;

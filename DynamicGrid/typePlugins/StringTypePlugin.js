@@ -1,4 +1,6 @@
-class StringTypePlugin extends BaseTypePlugin {
+import {BaseTypePlugin} from "./BaseTypePlugin.js";
+
+export class StringTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
         this.operators = ['%=', '=%', '*=', '!*='];

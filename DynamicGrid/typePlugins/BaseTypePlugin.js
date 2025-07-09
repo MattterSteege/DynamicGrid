@@ -7,7 +7,7 @@
  * @class BaseTypePlugin
  * @param {Object} [config={}] - Configuration options for the plugin.
  */
-class BaseTypePlugin {
+export class BaseTypePlugin {
 
     constructor(config = {}) {
         if (this.constructor === BaseTypePlugin) {

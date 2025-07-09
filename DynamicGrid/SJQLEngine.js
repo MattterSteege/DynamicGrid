@@ -1,8 +1,14 @@
+import {ExportConnector} from "./exportConnectors/ExportConnector.js";
+import {findMatchingIndexKey, GridError} from "./DynamicGridUtils.js";
+import {BaseTypePlugin} from "./typePlugins/BaseTypePlugin.js";
+import {EditTracker} from "./EditTracker.js";
+import {QueryParser} from "./QueryParser.js";
+
 /**
  * @file manages the SQL-like query engine for the grid, handling data parsing, indexing, and query execution.
  * @module SJQLEngine
  */
-class SJQLEngine {
+export class SJQLEngine {
     constructor(engine_config, eventEmitter) {
         this.data = [];
         this.headers = [];
@@ -373,7 +379,7 @@ class SJQLEngine {
     }
 
     runCurrentQuery() {
-        grid.eventEmitter.emit('engine-query-update', grid.engine.currentQueryStr);
+        this.eventEmitter.emit('engine-query-update', this.currentQueryStr);
         return this.query(this.currentQueryStr);
     }
 

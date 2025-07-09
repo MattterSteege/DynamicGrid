@@ -1,4 +1,4 @@
-class EditTracker {
+export class EditTracker {
     constructor() {
         this.updates = [];
     }

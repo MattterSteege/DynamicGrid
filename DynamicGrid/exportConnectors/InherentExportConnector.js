@@ -1,4 +1,6 @@
-class CSVExportConnector extends ExportConnector {
+import {ExportConnector} from "./ExportConnector.js";
+
+export class CSVExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'csv'
@@ -32,7 +34,7 @@ class CSVExportConnector extends ExportConnector {
     }
 }
 
-class XLSXExportConnector extends ExportConnector {
+export class XLSXExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'xlsx'
@@ -139,7 +141,7 @@ class XLSXExportConnector extends ExportConnector {
     }
 }
 
-class JSONExportConnector extends ExportConnector {
+export class JSONExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'json'
@@ -157,7 +159,7 @@ class JSONExportConnector extends ExportConnector {
     }
 }
 
-class XMLExportConnector extends ExportConnector {
+export class XMLExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'xml'
@@ -189,7 +191,7 @@ class XMLExportConnector extends ExportConnector {
     }
 }
 
-class HTMLExportConnector extends ExportConnector {
+export class HTMLExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'html'
@@ -232,7 +234,7 @@ class HTMLExportConnector extends ExportConnector {
     }
 }
 
-class TXTExportConnector extends ExportConnector {
+export class TXTExportConnector extends ExportConnector {
     constructor() {
         super();
         this.name = 'txt'

@@ -3,8 +3,20 @@
  * @author Matt ter Steege (Kronk)
  * @license MIT
  */
+import {CSVExportConnector, XLSXExportConnector, JSONExportConnector, XMLExportConnector, HTMLExportConnector, TXTExportConnector} from "./exportConnectors/InherentExportConnector.js";
+import {DynamicGridUI} from "./DynamicGridUI.js";
+import {EventEmitter} from "./libs/EventEmitter.js";
+import {KeyboardShortcuts} from "./libs/KeyboardShortcuts.js";
+import {SJQLEngine} from "./SJQLEngine.js";
+import {BooleanTypePlugin} from "./typePlugins/BooleanTypePlugin.js";
+import {DateTypePlugin} from "./typePlugins/DateTypePlugin.js";
+import {EmailTypePlugin} from "./typePlugins/EmailTypePlugin.js";
+import {EnumTypePlugin} from "./typePlugins/EnumTypePlugin.js";
+import {NumberTypePlugin} from "./typePlugins/NumberTypePlugin.js";
+import {PhoneNumberTypePlugin} from "./typePlugins/PhoneNumberTypePlugin.js";
+import {StringTypePlugin} from "./typePlugins/StringTypePlugin.js";
 
-class DynamicGrid {
+export class DynamicGrid {
     constructor(config) {
         // Initialize the event emitter
         this.eventEmitter = new EventEmitter();

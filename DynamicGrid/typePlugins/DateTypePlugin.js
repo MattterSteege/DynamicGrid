@@ -1,4 +1,6 @@
-class DateTypePlugin extends BaseTypePlugin {
+import {BaseTypePlugin} from "./BaseTypePlugin.js";
+
+export class DateTypePlugin extends BaseTypePlugin {
     constructor(options = {}) {
         super();
         this.sortingHint = 'date';

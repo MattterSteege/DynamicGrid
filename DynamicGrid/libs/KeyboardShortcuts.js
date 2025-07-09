@@ -14,7 +14,7 @@
  * shortcuts.destroy();
  * @author Matt ter Steege (Kronk)
  */
-class KeyboardShortcuts {
+export class KeyboardShortcuts {
     constructor() {
         this.shortcuts = new Map();
         this.listener = this.#_handleKeyPress.bind(this);

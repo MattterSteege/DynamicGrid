@@ -1,4 +1,6 @@
-class EnumTypePlugin extends BaseTypePlugin {
+import {BaseTypePlugin} from "./BaseTypePlugin.js";
+
+export class EnumTypePlugin extends BaseTypePlugin {
     constructor(config = []) {
         super();
         this.options = config;

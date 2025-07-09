@@ -100,32 +100,4 @@ Number.prototype.padLeft = function (n, str) {
     return s;
 }
 
-Date.prototype.addDays = function(days) {
-    var date = new Date(this.valueOf());
-    date.setDate(date.getDate() + days);
-    return date;
-}
-
-Date.prototype.addHours = function(hours) {
-    var date = new Date(this.valueOf());
-    date.setHours(date.getHours() + hours);
-    return date;
-}
-
-Date.prototype.addMinutes = function(minutes) {
-    var date = new Date(this.valueOf());
-    date.setMinutes(date.getMinutes() + minutes);
-    return date;
-}
-
-Date.prototype.addSeconds = function(seconds) {
-    var date = new Date(this.valueOf());
-    date.setSeconds(date.getSeconds() + seconds);
-    return date;
-}
-
-Date.prototype.addMilliseconds = function(milliseconds) {
-    var date = new Date(this.valueOf());
-    date.setMilliseconds(date.getMilliseconds() + milliseconds);
-    return date;
-}
+export { GridError, FastHash, findMatchingIndexKey, firstItem, waitState };
