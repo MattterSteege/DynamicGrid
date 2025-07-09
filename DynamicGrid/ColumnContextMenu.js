@@ -8,7 +8,7 @@
  * based on the plugin's available operators and functionality.
  * @param {ContextMenu} contextMenu - The context menu instance to use
  */
-export class ColumnHeaderContextMenu {
+class ColumnHeaderContextMenu {
     constructor(contextMenu, engine, ui) {
         this.contextMenu = contextMenu;
         this.engine = engine;
@@ -68,11 +68,8 @@ export class ColumnHeaderContextMenu {
             case 'action':
                 this.contextMenu.button(item.label, item.action, { icon: item.icon });
                 break;
-            case 'custom':
-                // Handle custom plugin-defined components
-                if (item.render) {
-                    item.render(this.contextMenu);
-                }
+            case 'separator':
+                this.contextMenu.separator();
                 break;
             default:
                 console.warn(`Unknown menu item type: ${item.type} for column: ${columnName}`);

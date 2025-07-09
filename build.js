@@ -13,7 +13,7 @@ const hasGithub = args.includes('--github');
 const dramaticBuild = args.includes('--dramatic-build') || args.includes('-db');
 
 // Entry point file - specify your main file here
-const entryPoint = './DynamicGrid/DynamicGrid.js';
+const entryPoint = path.resolve('./DynamicGrid/DynamicGrid.js');
 
 // Base directories to search for files
 const searchDirectories = [
@@ -29,7 +29,7 @@ const fileExtensions = ['.js'];
 const config = {
     compress: {
         dead_code: true,
-        drop_console: false,
+        drop_console: ['log', 'info'],
         drop_debugger: true,
         keep_classnames: false,
         keep_fargs: true,
@@ -46,7 +46,7 @@ const config = {
     },
     module: false,
     output: {
-        comments: 'some'
+        comments: false,
     }
 };
 
@@ -69,6 +69,18 @@ const events = [];
 const shortcutRegex = /\.addShortcut\('([^']*)',.*?'([^']*)'/g;
 const shortcuts = [];
 
+// Helper function to get relative path from project root
+function getRelativePath(absolutePath) {
+    return path.relative(process.cwd(), absolutePath);
+}
+
+function intToFileSize(bytes) {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes === 0) return '0 Bytes';
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+}
+
 /**
  * Scans directories recursively to find all JavaScript files
  */
@@ -89,7 +101,8 @@ function findAllFiles(directories, extensions) {
             } else if (stat.isFile()) {
                 const ext = path.extname(item);
                 if (extensions.includes(ext)) {
-                    allFiles.add(path.normalize(fullPath));
+                    // Normalize to absolute path for consistent comparison
+                    allFiles.add(path.resolve(fullPath));
                 }
             }
         }
@@ -109,26 +122,33 @@ function parseFileDependencies(filePath) {
     // Common import patterns to match
     const importPatterns = [
         // ES6 imports
-        /import\s+.*?from\s+['"]([^'"]+)['"];?/g,
-        /import\s+['"]([^'"]+)['"];?/g,
+        { pattern: /import\s+.*?from\s+['"](.+)['"];?/g, name: 'ES6 import from' },
+        { pattern: /import\s+['"](.+)['"];?/g, name: 'ES6 import' },
 
         // CommonJS requires
-        /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+        { pattern: /require\s*\(\s*['"](.+)['"]\s*\)/g, name: 'CommonJS require' },
 
         // Custom patterns you might use
-        /\/\/\s*@requires?\s+['"]?([^'"]+)['"]?/g,
-        /\/\*\s*@requires?\s+(['"]?)([^'"]+)\1\s*\*\//g,
+        { pattern: /\/\/\s*@requires?\s+['"]?(.+)['"]?/g, name: 'Comment @requires' },
+        { pattern: /\/\*\s*@requires?\s+(['"]?)(.+)\1\s*\*\//g, name: 'Block comment @requires' },
 
         // JSDoc-style dependencies
-        /\/\*\*[\s\S]*?@requires?\s+(['"]?)([^'"]+)\1[\s\S]*?\*\//g
+        { pattern: /\/\*\*[\s\S]*?@requires?\s+(['"]?)(.+)\1[\s\S]*?\*\//g, name: 'JSDoc @requires' },
+
+        // Additional patterns for more flexibility
+        { pattern: /\/\/\s*@dependency\s+['"]?(.+)['"]?/g, name: 'Comment @dependency' },
+        { pattern: /\/\/\s*@import\s+['"]?(.+)['"]?/g, name: 'Comment @import' },
+        { pattern: /\/\/\s*@include\s+['"]?(.+)['"]?/g, name: 'Comment @include' }
     ];
 
-    importPatterns.forEach(pattern => {
+    importPatterns.forEach(({ pattern, name }) => {
         let match;
         while ((match = pattern.exec(content)) !== null) {
             const importPath = match[1] || match[2];
-            if (importPath && !importPath.startsWith('.')) {
-                // Skip external modules (node_modules, etc.)
+            if (!importPath) continue;
+
+            // Skip external modules (those not starting with . or /)
+            if (!importPath.startsWith('./') && !importPath.startsWith('../') && !importPath.startsWith('/')) {
                 continue;
             }
 
@@ -140,6 +160,10 @@ function parseFileDependencies(filePath) {
         }
     });
 
+    // if (dependencies.length > 0) {
+    //     console.log(`    📦 Found (${dependencies.length}) dependencies`);
+    // }
+
     return dependencies;
 }
 
@@ -147,25 +171,28 @@ function parseFileDependencies(filePath) {
  * Resolves import paths relative to the importing file
  */
 function resolveImportPath(fromFile, importPath) {
-    if (!importPath.startsWith('./') && !importPath.startsWith('../')) {
+    if (!importPath.startsWith('./') && !importPath.startsWith('../') && !importPath.startsWith('/')) {
         return null; // External module
     }
 
     const fromDir = path.dirname(fromFile);
     let resolved = path.resolve(fromDir, importPath);
 
+
     // Try different extensions if no extension provided
     if (!path.extname(resolved)) {
         for (const ext of fileExtensions) {
             const withExt = resolved + ext;
             if (fs.existsSync(withExt)) {
-                return path.normalize(withExt);
+                // Return absolute path for consistent comparison
+                return path.resolve(withExt);
             }
         }
     } else if (fs.existsSync(resolved)) {
-        return path.normalize(resolved);
+        return path.resolve(resolved);
     }
 
+    console.log(`    ❌ Could not resolve: ${importPath} -> ${getRelativePath(resolved)}`);
     return null;
 }
 
@@ -229,7 +256,7 @@ function topologicalSort(dependencies) {
     // Check for circular dependencies
     if (result.length !== allFiles.size) {
         const remaining = Array.from(allFiles).filter(file => !result.includes(file));
-        throw new Error(`Circular dependency detected. Files involved: ${remaining.join(', ')}`);
+        throw new Error(`Circular dependency detected. Files involved: ${remaining.map(f => getRelativePath(f)).join(', ')}`);
     }
 
     return result;
@@ -242,8 +269,18 @@ function buildDependencyTree(entryPoint, allFiles) {
     const dependencies = {};
     const visited = new Set();
 
+    //console.log(`\n🔍 Building dependency tree...`);
+    //console.log(`📁 All available files (${allFiles.length}):`);
+    // allFiles.forEach((file, index) => {
+    //     console.log(`  ${index + 1}. ${getRelativePath(file)}`);
+    // });
+
     function traverse(filePath) {
-        if (visited.has(filePath)) return;
+        if (visited.has(filePath)) {
+            return;
+        }
+
+        //console.log(`🔍 Traversing: ${getRelativePath(filePath)}`);
         visited.add(filePath);
 
         const deps = parseFileDependencies(filePath);
@@ -252,6 +289,13 @@ function buildDependencyTree(entryPoint, allFiles) {
         deps.forEach(dep => {
             if (allFiles.includes(dep)) {
                 traverse(dep);
+            } else {
+                // Let's see what files are close to this path
+                const basename = path.basename(dep);
+                const matches = allFiles.filter(f => path.basename(f) === basename);
+                if (matches.length > 0) {
+                    matches.forEach(match => console.log(`    - ${getRelativePath(match)}`));
+                }
             }
         });
     }
@@ -264,14 +308,14 @@ function buildDependencyTree(entryPoint, allFiles) {
  * Creates the dynamic files array based on dependencies
  */
 function createDynamicFilesArray() {
-    console.log('🔍 Scanning for JavaScript files...');
+    console.log('\n🔍 Scanning for JavaScript files...');
 
     // Find all JavaScript files in the project
     const allFiles = findAllFiles(searchDirectories, fileExtensions);
     console.log(`📁 Found ${allFiles.length} JavaScript files`);
 
     // Build dependency tree starting from entry point
-    console.log(`🌳 Building dependency tree from entry point: ${entryPoint}`);
+    console.log(`🌳 Building dependency tree from entry point: ${getRelativePath(entryPoint)}`);
     const dependencies = buildDependencyTree(entryPoint, allFiles);
 
     // Perform topological sort to get correct build order
@@ -285,32 +329,27 @@ function createDynamicFilesArray() {
     );
 
     console.log(`📋 Build order determined (${relevantFiles.length} files):`);
-    relevantFiles.forEach((file, index) => {
-        console.log(`  ${index + 1}. ${file}`);
-    });
+    // relevantFiles.forEach((file, index) => {
+    //     console.log(`  ${index + 1}. ${getRelativePath(file)}`);
+    // });
 
     return relevantFiles;
 }
 
 // Helper function to inject version comment
 function injectVersionComment(code, version) {
-    if (!version) return code;
-
-    const licenseRegex = /(@license\s+MIT)/i;
-    const versionComment = `\n * @version ${version}`;
-
-    if (licenseRegex.test(code)) {
-        return code.replace(licenseRegex, `$1${versionComment}`);
-    } else {
-        const versionHeader = `/**\n * @version ${version}\n */\n`;
-        return versionHeader + code;
-    }
+    const comment =
+        "/**\n" +
+        " * DynamicGrid is a library for rendering data in a grid format with dynamic querying capabilities.\n" +
+        " * @author Matt ter Steege (Kronk)\n" +
+        " * @license MIT\n" +
+        (version ? ` * @version ${version}\n` : '') +
+        " */\n";
+    return comment + code;
 }
 
 // Helper function to add delay
 const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve, 0)) : new Promise(resolve => setTimeout(resolve, ms));
-
-/*---------===[ Main entry point ]===---------*/
 
 (async () => {
     console.clear();
@@ -318,8 +357,8 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
     console.log('=====================================');
     console.log(`📁 Output Directory: ${outputDir}`);
     console.log(`🔧 Full Build: ${hasFullBuild ? 'Enabled' : 'Disabled'}`);
-    console.log(`🏷️  Version: ${version ? version : 'Not specified'}`);
-    console.log(`🎯 Entry Point: ${entryPoint}`);
+    console.log(`🏷️ Version: ${version ? version : 'Not specified'}`);
+    console.log(`🎯 Entry Point: ${getRelativePath(entryPoint)}`);
     console.log('=====================================');
 
     // Remove output directory if it exists
@@ -353,35 +392,36 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
         await delay(200);
 
         for (const file of files) {
-            combinedCode += `// ${file}\n`;
+            const relativePath = getRelativePath(file);
+            combinedCode += `// ${relativePath}\n`;
             const currFile = fs.readFileSync(file, 'utf8') + '\n\n';
             combinedCode += currFile;
-            console.log(`✅ Added: ${file}`);
+            //console.log(`✅ Added: ${relativePath}`);
 
             // Extract events from the current file
             let match;
             while ((match = eventRegex.exec(currFile)) !== null) {
                 const eventName = match[1];
                 const lineNumber = currFile.substring(0, match.index).split('\n').length;
-                events.push({ eventName, file: file.split('/').pop(), line: lineNumber });
-                console.log(`  📡 Found event: ${eventName} in ${file} at line ${lineNumber}`);
+                events.push({ eventName, file: path.basename(file), line: lineNumber });
+                //console.log(`  📡 Found event: ${eventName} in ${path.basename(file)} at line ${lineNumber}`);
             }
 
-            if (file === "./DynamicGrid/libs/KeyboardShortcuts.js") continue;
+            if (file.includes("KeyboardShortcuts.js")) continue;
 
             // Extract shortcuts from the current file
             while ((match = shortcutRegex.exec(currFile)) !== null) {
                 const eventName = match[1];
                 const description = match[2] || '';
                 const lineNumber = currFile.substring(0, match.index).split('\n').length;
-                console.log(`  ⌨️  Found shortcut: ${eventName} in ${file} at line ${lineNumber}`);
+                //console.log(`  ⌨️ Found shortcut: ${eventName} in ${path.basename(file)} at line ${lineNumber}`);
 
                 if (!description || description.trim() === '') {
-                    console.log(`\x1b[33m    ⚠️  No description found for shortcut: ${eventName} in ${file} at line ${lineNumber} (SKIPPING)\x1b[0m`);
+                    console.log(`\x1b[33m    ⚠️  No description found for shortcut: ${eventName} in ${path.basename(file)} at line ${lineNumber} (SKIPPING)\x1b[0m`);
                     continue;
                 }
 
-                shortcuts.push({ keybind: eventName, description: description, file: file.split('/').pop(), line: lineNumber });
+                shortcuts.push({ keybind: eventName, description: description, file: path.basename(file), line: lineNumber });
             }
 
             await delay(100);
@@ -390,7 +430,7 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
         // Inject version comment if version is provided
         if (version) {
             combinedCode = injectVersionComment(combinedCode, version);
-            console.log(`🏷️  Version comment injected: ${version}`);
+            console.log(`🏷️ Version comment injected: ${version}`);
         }
 
         console.log('\n💾 Saving combined file...');
@@ -407,20 +447,23 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
         // Save shortcuts to a file
         const shortcutsFilePath = outputDir + 'shortcuts.json';
         fs.writeFileSync(shortcutsFilePath, JSON.stringify(shortcuts, null, 2));
-        console.log(`⌨️  Shortcuts saved: ${shortcutsFilePath} (${shortcuts.length})`);
+        console.log(`⌨️ Shortcuts saved: ${shortcutsFilePath} (${shortcuts.length})`);
         await delay(300);
 
-        console.log('\n🗜️  Minifying combined file...');
+        console.log('\n🗜️ Minifying combined file...');
         await delay(300);
         const minifiedCombined = await minify(combinedCode, {
             ...config,
         });
+
+        minifiedCombined.code = injectVersionComment(minifiedCombined.code, version);
+
         fs.writeFileSync(outputDir + 'DynamicGrid.min.js', minifiedCombined.code);
         hasFullBuild ? fs.writeFileSync(outputDir + 'DynamicGrid.min.js.map', minifiedCombined.map) : null;
         console.log('✅ Minified combined file and source map saved.');
         await delay(300);
-
-        console.log('\n🔧 Processing separate files...');
+        console.log(`📦 ${intToFileSize(Buffer.byteLength(combinedCode, 'utf8'))} combined vs ${intToFileSize(Buffer.byteLength(minifiedCombined.code, 'utf8'))} minified (${((Buffer.byteLength(combinedCode, 'utf8') - Buffer.byteLength(minifiedCombined.code, 'utf8')) / Buffer.byteLength(combinedCode, 'utf8') * 100).toFixed(2)}% reduction)\n`);
+        //console.log('\n🔧 Processing separate files...');
         await delay(200);
 
         for (const file of separateFiles) {
@@ -429,9 +472,8 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
 
             let fileCode = fs.readFileSync(file, 'utf8');
 
-            if (version) {
-                fileCode = injectVersionComment(fileCode, version);
-            }
+            //get author and license comment from file as a whole
+            const authorComment = fileCode.match(/(\/\/[^\n]*$|\/(?!\\)\*[\s\S]*?\*(?!\\)\/)/);
 
             const fileName = file.split('/').pop();
             const unminifiedFilePath = `${outputDir}${fileName}`;
@@ -439,30 +481,29 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
             const sourceMapPath = `${minifiedFilePath}.map`;
 
             hasFullBuild ? fs.writeFileSync(unminifiedFilePath, fileCode) : null;
-            console.log(`  💾 Unminified file saved`);
+            //console.log(`  💾 Unminified file saved`);
             await delay(100);
 
             const separateConfig = {
                 compress: true,
                 mangle: true,
                 output: {
-                    comments: function (node, comment) {
-                        const text = comment.value;
-                        return text.includes('@license') || text.includes('@version');
-                    }
+                    comments: false,
                 }
             };
 
             hasFullBuild ? separateConfig.sourceMap = { filename: `${fileName}.min.js`, url: `${fileName}.min.js.map` } : null;
             const minifiedFile = await minify(fileCode, separateConfig);
 
+            minifiedFile.code = authorComment[0] + '\n' + minifiedFile.code;
+
             fs.writeFileSync(minifiedFilePath, minifiedFile.code);
             hasFullBuild ? fs.writeFileSync(sourceMapPath, minifiedFile.map) : null;
-            console.log(`  🗜️  Minified file and source map saved\n`);
+            //console.log(`  🗜️  Minified file and source map saved\n`);
             await delay(200);
         }
 
-        console.log('\n🎨 Processing CSS files...');
+        //console.log('\n🎨 Processing CSS files...');
         await delay(200);
 
         for (const cssFile of cssFiles) {
@@ -476,7 +517,7 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
             const minifiedCssPath = `${outputDir}${cssFileName.replace('.css', '.min.css')}`;
 
             hasFullBuild ? fs.writeFileSync(unminifiedCssPath, cssCode) : null;
-            console.log(`  💾 Unminified CSS file saved: ${unminifiedCssPath}`);
+            //console.log(`  💾 Unminified CSS file saved: ${unminifiedCssPath}`);
 
             var minifiedCss = cssCode.replace(/\s+/g, ' ').trim();
             minifiedCss = minifiedCss.replace(/\/\*[\s\S]*?\*\//g, '').trim();
@@ -486,17 +527,18 @@ const delay = (ms) => !dramaticBuild ? new Promise(resolve => setTimeout(resolve
             }
 
             fs.writeFileSync(minifiedCssPath, minifiedCss);
-            console.log(`  🗜️  Minified CSS file saved: ${minifiedCssPath}\n`);
+            //console.log(`  🗜️  Minified CSS file saved: ${minifiedCssPath}\n`);
         }
 
         console.log('\n🎉 === Build Process Completed Successfully ===');
         console.log(`📦 Total files processed: ${files.length}`);
         console.log(`📡 Events found: ${events.length}`);
-        console.log(`⌨️  Shortcuts found: ${shortcuts.length}`);
+        console.log(`⌨️ Shortcuts found: ${shortcuts.length}`);
 
         if (hasGithub) {
-            console.log('\n🐙 GitHub package repository updated');
-            console.log('📋 Full package available at:');
+            console.log('\n🎉 === Publishing to GitHub package repository ===');
+            console.log('🐙 GitHub package repository updated');
+            console.log('📋 Full package is soon available at:');
             console.log(`🔗 https://cdn.jsdelivr.net/gh/matttersteege/dynamicgrid@${version ? version : 'latest'}/Dist/`);
         }
     } catch (error) {

@@ -1,8 +1,8 @@
-import {firstItem, FastHash} from "./DynamicGridUtils.js";
-import {ColumnHeaderContextMenu} from "./ColumnContextMenu.js";
-import {ContextMenu} from "./libs/ContextMenu.js";
+// @requires ./DynamicGridUtils.js
+// @requires ./ColumnContextMenu.js
+// @requires ./libs/ContextMenu.js
 
-export class DynamicGridUI {
+class DynamicGridUI {
     /**
      * @param {string} ui_config.containerId - The ID of the container for the grid. (required)
      * @param {number} ui_config.minColumnWidth - Minimum width for columns. (default: 5%)

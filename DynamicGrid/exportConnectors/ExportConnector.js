@@ -1,4 +1,4 @@
-export class ExportConnector {
+class ExportConnector {
     constructor() {
         this.name = 'ExportConnector';
         this.mimeType = 'application/octet-stream';

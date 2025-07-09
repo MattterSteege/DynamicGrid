@@ -1,6 +1,6 @@
-import {BaseTypePlugin} from "./BaseTypePlugin.js";
+// @requires ./BaseTypePlugin.js
 
-export class EmailTypePlugin extends BaseTypePlugin {
+class EmailTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
         this.sortingHint = 'string';

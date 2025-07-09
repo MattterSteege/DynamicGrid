@@ -1,0 +1,72 @@
+[
+  {
+    "eventName": "ui-initialized",
+    "file": "DynamicGridUI.js",
+    "line": 21
+  },
+  {
+    "eventName": "ui-rendered",
+    "file": "DynamicGridUI.js",
+    "line": 121
+  },
+  {
+    "eventName": "ui-row-range-hidden",
+    "file": "DynamicGridUI.js",
+    "line": 184
+  },
+  {
+    "eventName": "ui-row-range-hidden",
+    "file": "DynamicGridUI.js",
+    "line": 233
+  },
+  {
+    "eventName": "ui-row-range-shown",
+    "file": "DynamicGridUI.js",
+    "line": 250
+  },
+  {
+    "eventName": "ui-container-initialized",
+    "file": "DynamicGridUI.js",
+    "line": 344
+  },
+  {
+    "eventName": "ui-cell-edit",
+    "file": "DynamicGridUI.js",
+    "line": 729
+  },
+  {
+    "eventName": "engine-query-update",
+    "file": "SJQLEngine.js",
+    "line": 382
+  },
+  {
+    "eventName": "save-changes-requested",
+    "file": "DynamicGrid.js",
+    "line": 92
+  },
+  {
+    "eventName": "grid-initialized",
+    "file": "DynamicGrid.js",
+    "line": 98
+  },
+  {
+    "eventName": "grid-data-imported",
+    "file": "DynamicGrid.js",
+    "line": 110
+  },
+  {
+    "eventName": "ui-render-start",
+    "file": "DynamicGrid.js",
+    "line": 118
+  },
+  {
+    "eventName": "ui-render-end",
+    "file": "DynamicGrid.js",
+    "line": 120
+  },
+  {
+    "eventName": "ui-raw-rendered",
+    "file": "DynamicGrid.js",
+    "line": 129
+  }
+]

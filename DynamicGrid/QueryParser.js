@@ -1,6 +1,6 @@
-import {findMatchingIndexKey, GridError} from "./DynamicGridUtils.js";
+// @requires ./DynamicGridUtils.js
 
-export class QueryParser {
+class QueryParser {
     constructor(config) {
         this.config = {
             useStrictCase: config.useStrictCase || false,

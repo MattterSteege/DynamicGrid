@@ -1,6 +1,6 @@
-import {BaseTypePlugin} from "./BaseTypePlugin.js";
+// @requires ./BaseTypePlugin.js
 
-export class BooleanTypePlugin extends BaseTypePlugin {
+class BooleanTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
         this.sortingHint = 'boolean';

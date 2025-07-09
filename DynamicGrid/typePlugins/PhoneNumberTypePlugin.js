@@ -1,6 +1,6 @@
-import {BaseTypePlugin} from "./BaseTypePlugin.js";
+// @requires ./BaseTypePlugin.js
 
-export class PhoneNumberTypePlugin extends BaseTypePlugin {
+class PhoneNumberTypePlugin extends BaseTypePlugin {
     constructor() {
         super();
         this.operators = ['%=', '=%', '*=', '!*=', '==', '!='];
