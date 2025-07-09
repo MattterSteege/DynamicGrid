@@ -1,4 +1,6 @@
-when you want to create a new plugin, you can use the 'ExampleTypePlugin' as a template:
+# Plugin Development Guide
+
+When creating a new plugin, you can use the `ExampleTypePlugin` as a template:
 
 ```javascript
 // @requires ./BaseTypePlugin.js
@@ -37,84 +39,109 @@ class ExampleTypePlugin extends BaseTypePlugin {
     }
 }
 ```
-Ii will walk you trough the code step by step and show you how to implement the methods:
 
-# import
-`// @requires ./BaseTypePlugin.js`<br>
-this line is used to import the base class for the plugin. The base class provides common functionality that can be reused in your plugin.
-This line might not be necessary if you want to externally load this plugin into the engine, but when you want to alter the code and want this plugin to be bundled with the whole library, you need to import the base class. (and import it like all other plugins)
+This guide will walk you through the code step by step and show you how to implement each method properly.
 
-# constructor
+## Import Statement
+
+```javascript
+// @requires ./BaseTypePlugin.js
+```
+
+This line imports the base class for the plugin. The base class provides common functionality that can be reused in your plugin implementation.
+
+This import might not be necessary if you plan to externally load the plugin into the engine. However, if you want to modify the code and have this plugin bundled with the entire library, you need to import the base class (and import it like all other plugins).
+
+## Constructor
+
 ```javascript
 constructor(options = {}) {
     super();
-    this.sortingHint = 'date'; // or 'string', 'number', 'boolean', 'date'
+    this.sortingHint = 'date'; // Options: 'string', 'number', 'boolean', 'date'
     this.options = options;
     this.operators = ['>', '<', '>=', '<=', '><'];
 }
 ```
 
-In the constructor, you can set the `sortingHint` to indicate how the values should be sorted. The `options` object can be used to pass any additional configuration options to your plugin. You do this like this when you initialize the plugin in the engine:
+In the constructor, you can set the `sortingHint` to indicate how values should be sorted. The `options` object can be used to pass additional configuration options to your plugin.
+
+Here's how you would initialize a plugin with options in the engine:
+
 ```javascript
 let grid = new DynamicGrid({
     headers: {
-        registered: {type: 'date', options: {minDate: '2000-01-01', maxDate: '2025-12-31'}},
+        registered: {
+            type: 'date', 
+            options: {
+                minDate: '2000-01-01', 
+                maxDate: '2025-12-31'
+            }
+        },
     }
 });
 ```
 
-here we do assume that the plugin is registered as 'date' in the engine, so the engine will automatically load the `DateTypePlugin` when it encounters a column with type 'date'.
+In this example, we assume the plugin is registered as 'date' in the engine, so the engine will automatically load the `DateTypePlugin` when it encounters a column with type 'date'.
 
-The `operators` array defines the operators that can be used for filtering and sorting. You can customize this array to include any operators that are relevant for your plugin.
-There are a bunch of operators that are already implemented in the engine, so you can use those as a reference. The operators are used in the `evaluateCondition` method to compare the data value with the compare value.
+The `operators` array defines the operators that can be used for filtering and sorting. You can customize this array to include any operators relevant to your plugin. The engine already implements several operators that you can use as reference. These operators are used in the `evaluateCondition` method to compare the data value with the comparison value.
 
-# validate
+## validate Method
+
 ```javascript
 validate(value) {
     return true
 }
 ```
 
-The `validate` method is used to validate the value that is being set for the column. You can implement your own validation logic here to ensure that the value meets certain criteria. If the value is valid, return `true`, otherwise return `false`. This method is called when the user tries to set a value in the grid.
-The value passed to this method is already parsed by the `parseValue` method, so you can assume that the value is in the correct format.
-There are a bunch of validation methods that are already implemented in the engine, so you can use those as a reference (as i said before :) )
+The `validate` method is used to validate values being set for the column. You can implement your own validation logic here to ensure values meet certain criteria. Return `true` if the value is valid, otherwise return `false`. This method is called when the user attempts to set a value in the grid.
 
-# parseValue
+The value passed to this method has already been processed by the `parseValue` method, so you can assume it's in the correct format. The engine already implements several validation methods that you can use as reference.
+
+## parseValue Method
+
 ```javascript
 parseValue(value) {
     return true;
 }
 ```
-The `parseValue` method is used to parse the value that is being set for the column. You can implement your own parsing logic here to convert the value into the format that you need. This method is called when the user tries to set a value in the grid.
-The value passed to this method is the raw value that the user has entered in string format. You can return the parsed value, which will be used in the grid.
 
-# getInputComponent
+The `parseValue` method is used to parse values being set for the column. You can implement your own parsing logic here to convert the value into the format you need. This method is called when the user attempts to set a value in the grid.
+
+The value passed to this method is the raw value that the user has entered in string format. You should return the parsed value, which will be used in the grid.
+
+## getInputComponent Method
+
 ```javascript
 getInputComponent(currentValue, onChange) {
     const input = document.createElement('input');
-    input.type = ''; // set the type of the input, e.g. 'text', 'number', 'date', etc.
-    input.name = '_'; // set the name of the input, this is used to identify the input in the grid
-    input.value = this.parseValue(currentValue); // set the current value of the input
-    input.addEventListener('change', () => onChange(input.value)); // call onChange when the value changes
-    return input; // return the input element
+    input.type = ''; // Set the input type, e.g. 'text', 'number', 'date', etc.
+    input.name = '_'; // Set the input name, used to identify the input in the grid
+    input.value = this.parseValue(currentValue); // Set the current value of the input
+    input.addEventListener('change', () => onChange(input.value)); // Call onChange when value changes
+    return input; // Return the input element
 }
 ```
 
-The `getInputComponent` method is used to create the input component that will be used to edit the value in the grid. You can create any HTML element that you want, but it is recommended to use an input element for text-based values.
-When you set `{ type: 'string', isEditable: false}` the engine will not call this method, but instead with create a span with a stringified value.
-You can set the type of the input element to match the type of the value that you are working with, such as 'text', 'number', 'date', etc. The `currentValue` parameter is the current value of the column, and the `onChange` parameter is a callback function that should be called when the value changes. You can use this callback to update the value in the grid's internal database.
+The `getInputComponent` method creates the input component used to edit values in the grid. You can create any HTML element you want, but it's recommended to use an input element for text-based values.
 
-# getContextMenuItems
+When you set `{ type: 'string', isEditable: false}`, the engine will not call this method. Instead, it will create a span with a stringified value.
+
+You can set the input element type to match the type of value you're working with, such as 'text', 'number', 'date', etc. The `currentValue` parameter is the current value of the column, and the `onChange` parameter is a callback function that should be called when the value changes. Use this callback to update the value in the grid's internal database.
+
+## getContextMenuItems Method
+
 ```javascript
 getContextMenuItems(columnName, engine, ui) {
     return []
 }
 ```
 
-The `getContextMenuItems` method is used to add custom items to the context menu that appears when the user right-clicks on a cell in the grid. You can return an array of menu items that will be displayed in the context menu. Each item can have a label and a callback function that will be called when the item is clicked.
+The `getContextMenuItems` method adds custom items to the context menu that appears when users right-click on a cell in the grid. You can return an array of menu items that will be displayed in the context menu. Each item can have a label and a callback function that will be called when the item is clicked.
 
-there are 4 types of context menu items that you can return:
-### **Action item**:
+There are 4 types of context menu items you can return:
+
+### Action Item
+
 ```javascript
 {
     type: 'action',
@@ -123,11 +150,12 @@ there are 4 types of context menu items that you can return:
 }
 ```
 
-here we define an action item that will call the `calculateStats` inside the plugin when the user clicks on the item. The `columnName` is passed to the action so you can use it to identify which column the action is related to.
+This defines an action item that will call the `calculateStats` method inside the plugin when the user clicks on the item. The `columnName` is passed to the action so you can identify which column the action is related to.
 
-type `action` is used to define an action item that will execute a function when clicked. The `label` is the text that will be displayed in the context menu.
+Type `action` is used to define an action item that will execute a function when clicked. The `label` is the text that will be displayed in the context menu.
 
-### **Filter and/or sorting item**:
+### Filter and/or Sorting Items
+
 ```javascript
 {
     type: 'filter',
@@ -141,28 +169,34 @@ type `action` is used to define an action item that will execute a function when
 }
 ```
 
-These items are used to add filtering and sorting options to the context menu. The `operators` array is used to define the operators that can be used for filtering, and the `sortingHint` is used to indicate how the values should be sorted.
+These items add filtering and sorting options to the context menu. The `operators` array defines the operators that can be used for filtering, and the `sortingHint` indicates how values should be sorted.
 
-For the filter it might be possible that you use an operator that is not defined in the named list of operators, when this happens, the engine will just use the operator as a string instead of a named operator. `(== -> 'equals', != -> 'not equals', etc.)`
+For the filter, it's possible that you use an operator that is not defined in the named list of operators. When this happens, the engine will use the operator as a string instead of a named operator (e.g., `==` → 'equals', `!=` → 'not equals', etc.).
 
-### **Separator item**:
+### Separator Item
+
 ```javascript
 {
     type: 'separator'
 }
 ```
-A separator item is used to create a visual separation between different groups of items in the context menu. It does not have any functionality and is just used for layout purposes.
-Beware, this is meant to be used between custom actions etc. filter and sort automatically get separated by the engine, so you don't need to add a separator between them.
 
-# evaluateCondition
+A separator item creates a visual separation between different groups of items in the context menu. It has no functionality and is used purely for layout purposes.
+
+Note: This is meant to be used between custom actions. Filter and sort automatically get separated by the engine, so you don't need to add a separator between them.
+
+## evaluateCondition Method
+
 ```javascript
 evaluateCondition(dataValue, operator, compareValue) {
     return true; // or false
 }
 ```
-The `evaluateCondition` method is used to evaluate a condition based on the data value, operator, and compare value. You can implement your own logic here to compare the data value with the compare value using the specified operator. The method should return `true` if the condition is met, `false` if it is not met.
 
-an example of this would be:
+The `evaluateCondition` method evaluates a condition based on the data value, operator, and compare value. You can implement your own logic here to compare the data value with the compare value using the specified operator. The method should return `true` if the condition is met, `false` if it is not met.
+
+Here's an example implementation:
+
 ```javascript
 evaluateCondition(dataValue, operator, compareValue) {
     switch (operator) {
@@ -177,4 +211,4 @@ evaluateCondition(dataValue, operator, compareValue) {
 }
 ```
 
-The method is call with already parsed values, so you can assume that the `dataValue` and `compareValue` are in the correct (and thus same) format and type. The `operator` is a string that represents the operator that is being used for the comparison.
+The method is called with already parsed values, so you can assume that the `dataValue` and `compareValue` are in the correct (and same) format and type. The `operator` is a string that represents the operator being used for the comparison.
