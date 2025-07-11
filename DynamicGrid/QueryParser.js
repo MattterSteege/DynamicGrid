@@ -96,18 +96,18 @@ class QueryParser {
     /**
      * Parses the query string into a query plan
      * @param {string} query - The query string to parse
-     * @param {Object} plugins - Available plugins for query parsing
      * @param {Object} headers - Headers to validate against
+     * @param {number} dataLength - Length of the data to validate against
      * @returns {Array<Object>} Array of query objects
      * @throws {Error} If required parameters are missing
      */
-    parseQuery(query, plugins, headers) {
-        if (!query || !plugins || !headers) {
+    parseQuery(query, headers, dataLength) {
+        if (!query || !headers) {
             throw new Error('Query, plugins, and headers are required parameters');
         }
 
         const tokens = this.tokenize(query);
-        const subQueries = this.parseSubQuery(tokens, plugins, headers);
+        const subQueries = this.parseSubQuery(tokens, headers, dataLength);
 
         return subQueries.filter(query => query.queryType);
     }
@@ -115,11 +115,11 @@ class QueryParser {
     /**
      * Parses a sub-query string into a query object
      * @param {string[]} tokens - The array of tokens representing the sub-query
-     * @param {Object} plugins - The available plugins for query parsing
      * @param {Object} headers - The headers to validate against
+     * @param {Number} dataLength - The length of the data to validate against
      * @returns {Array<Object>} Array of parsed query objects
      */
-    parseSubQuery(tokens, plugins, headers) {
+    parseSubQuery(tokens, headers, dataLength) {
         if (!Array.isArray(tokens)) {
             throw new Error('Tokens must be an array');
         }
@@ -148,7 +148,7 @@ class QueryParser {
                     break;
 
                 case 'range':
-                    i = this._handleRangeQuery(tokens, i, queries, plugins, headers);
+                    i = this._handleRangeQuery(tokens, i, queries, dataLength);
                     break;
 
                 case 'sort':
@@ -157,7 +157,7 @@ class QueryParser {
 
                 case 'select': // Just for show, case 'select' is not a possible query
                 default:
-                    i = this._handleSelectQuery(tokens, i, queries, plugins, headers, namingToken);
+                    i = this._handleSelectQuery(tokens, i, queries, headers, namingToken);
                     break;
             }
         }
@@ -214,12 +214,12 @@ class QueryParser {
      * Handles range query parsing
      * @private
      */
-    _handleRangeQuery(tokens, index, queries, plugins, headers) {
+    _handleRangeQuery(tokens, index, queries, dataLength) {
         if (index + 1 < tokens.length) {
             const rangeMatch = tokens[index + 1].match(QueryParser.QUERIES.RANGE[1]);
             if (rangeMatch) {
-                const rangeQuery = this.parseRange([tokens[index], rangeMatch[1], rangeMatch[2]], 'RANGE', plugins, headers);
-                queries.push(rangeQuery);
+                const {lower, upper} = this.parseRange(rangeMatch[1], rangeMatch[2], dataLength);
+                queries.push({type: 'range', lower: lower, upper: upper, queryType: 'RANGE'});
                 return index + 1; // Skip the next token as it's part of the range query
             }
         } else {
@@ -261,7 +261,7 @@ class QueryParser {
      * Handles select query parsing
      * @private
      */
-    _handleSelectQuery(tokens, index, queries, plugins, headers, namingToken) {
+    _handleSelectQuery(tokens, index, queries, headers, namingToken) {
         if (index + 2 < tokens.length) {
             const operator = tokens[index + 1];
             const value = tokens[index + 2];
@@ -273,7 +273,7 @@ class QueryParser {
                 return index;
             }
 
-            const selectQuery = this.parseSelect([namingToken, key, operator, value], 'SELECT', plugins, headers);
+            const selectQuery = this.parseSelect([namingToken, key, operator, value], 'SELECT', headers);
             if (Object.keys(selectQuery).length > 0) {
                 queries.push(selectQuery);
             }
@@ -288,11 +288,10 @@ class QueryParser {
      * Parses a select query
      * @param {Array} match - Match array containing query components
      * @param {string} type - Query type
-     * @param {Object} plugins - Available plugins
      * @param {Object} headers - Headers to validate against
      * @returns {Object} Parsed select query object
      */
-    parseSelect(match, type, plugins, headers) {
+    parseSelect(match, type, headers) {
         const [, key, operator, value] = match;
         const validatedKey = findMatchingIndexKey(Object.keys(headers), key, this.config);
 
@@ -330,36 +329,54 @@ class QueryParser {
 
     /**
      * Parses a range query
-     * @param {Array} match - Match array containing query components
-     * @param {string} type - Query type
-     * @param {Object} plugins - Available plugins
-     * @param {Object} headers - Headers to validate against
      * @returns {Object} Parsed range query object
+     * @param {string} lower - The lower bound of the range (-?\d+-?)
+     * @param {string} upper - The upper bound of the range (-?\d+)
+     * @param {Number} dataLength - The length of the data to validate against
      */
-    parseRange(match, type, plugins, headers) {
-        const [, lower, upper, single] = match;
-        let parsedLower, parsedUpper;
+    parseRange(lower, upper, dataLength) {
+        /*
+        -100|-10    // 100 from end till 10 from end
+        10|-10      // 10 from start till 10 from end
+        1|10        // 1 from start till 10 from start
+        1|-100      // 1 from start till 100 from end
+        10          // first 10 from start
+        -10         // last 10 from end (now: lower = dataLength + 10, upper = dataLength)
+        10-         // 10 from start till end
+        */
 
-        if (single !== undefined) {
-            // Handle: range 10 or range -5
-            parsedLower = 0;
-            parsedUpper = parseInt(single, 10);
+        let parsedLower = lower ? parseInt(lower, 10) : null;
+        let endsWithMinus = lower && lower.endsWith('-');
+        let parsedUpper = null;
+
+        // Special case: "-N" means lower = dataLength + N, upper = dataLength
+        if (lower && lower.startsWith('-') && upper === undefined && !endsWithMinus) {
+            parsedLower = dataLength - Math.abs(parseInt(lower, 10));
+            parsedUpper = dataLength;
         } else {
-            // Handle: range A-B, range A-, etc.
-            parsedLower = parseInt(lower, 10);
-            if (upper === undefined) {
-                parsedUpper = Infinity;
-            } else {
-                parsedUpper = parseInt(upper, 10);
+            if (parsedLower < 0 && parsedLower + dataLength > 0)
+                parsedLower += dataLength; // Adjust negative lower bounds based on data length
+
+            parsedUpper = upper ? parseInt(upper, 10) : null;
+            if (parsedUpper < 0 && parsedUpper + dataLength > 0)
+                parsedUpper += dataLength; // Adjust negative upper bounds based on data length
+
+            if (endsWithMinus) {
+                parsedUpper = dataLength; // If lower ends with '-', it means range goes to the end of the data
             }
 
-            if (isNaN(parsedLower)) {
-                parsedLower = 0;
+            if (parsedLower > 0 && parsedUpper === null) {
+                parsedUpper = parsedLower; // If lower is positive and upper is not specified, set upper to lower
+                parsedLower = 0; // Reset lower to start
             }
+
+            return {
+                type: 'range',
+                lower: parsedLower,
+                upper: parsedUpper,
+                queryType: 'RANGE'
+            };
         }
-
-        // Convert to zero-based index
-        parsedLower = Math.max(0, parsedLower - 1);
 
         return {
             type: 'range',

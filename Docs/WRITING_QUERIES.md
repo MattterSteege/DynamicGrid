@@ -71,20 +71,22 @@ group created_date     # Group by date field
 - Can be combined with other query types
 
 ### 3. RANGE Limiting 📏
-**Pattern:** `range [number]` or `range [start]-[end]`  
+**Pattern:** `range [number]` or `range [start]|[end]`  
 **Purpose:** Limit the number of results returned
 
 ```
-range 10               # Limit to first 10 results (equals 1-10)
-range 20-30            # Results 20 through 30
-range 5-5              # Exactly the 5th result
-range 15-              # Results from 15 to end of dataset
-range -5               # Last 5 results
+range -100|-10      # Last 100 results, excluding the last 10
+range 10|-10        # First 10 results, excluding the last 10
+range 1|10          # Results from 1 to 10 (inclusive)
+range 1|-100        # Results from 1 to the last 100
+range 10            # First 10 results
+range -10           # Last 10 results
+range 10-           # Results from 10 to the end of dataset
 ```
 
 **Range Formats:**
 - `range N` → Results 0 to N
-- `range N-M` → Results N to M (inclusive)
+- `range N|M` → Results N to M (inclusive)
 - `range N-` → Results N to end of dataset
 - `range -N` → Last N results
 
@@ -93,7 +95,7 @@ range -5               # Last 5 results
 - Single number defaults to starting from 0, only when the single number is positive, otherwise the start value is the dataset length minus the single number
 - Start and end values are inclusive
 - Range is applied after all other query types
-- If the range exceeds available results, it will return all available data
+- If the range exceeds available results, it won't throw an error. if the dataset is 100 entries long and you request `range 200|300`, it will simply return nothing, since indexes 200-300 do not exist.
 
 ### 4. SORT Ordering 🔢
 **Pattern:** `sort [field] [direction]`  

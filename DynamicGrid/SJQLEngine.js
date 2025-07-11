@@ -184,7 +184,7 @@ class SJQLEngine {
             return this.data.map((_, index) => index);
         }
 
-        const parsedQuery = this.QueryParser.parseQuery(query, this.plugins, this.headers);
+        const parsedQuery = this.QueryParser.parseQuery(query, this.headers, this.data.length);
         return this.#_query(parsedQuery);
     }
 
