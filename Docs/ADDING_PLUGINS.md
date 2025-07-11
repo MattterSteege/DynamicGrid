@@ -50,7 +50,7 @@ This guide will walk you through the code step by step and show you how to imple
 
 This line imports the base class for the plugin. The base class provides common functionality that can be reused in your plugin implementation.
 
-This import might not be necessary if you plan to externally load the plugin into the engine. However, if you want to modify the code and have this plugin bundled with the entire library, you need to import the base class (and import it like all other plugins).
+This import might not be necessary if you plan to [externally load](#external-loading) the plugin into the engine. However, if you want to modify the code and have this plugin bundled with the entire library, you need to import the base class (and import it like all other plugins).
 
 ## Constructor
 
@@ -212,3 +212,56 @@ evaluateCondition(dataValue, operator, compareValue) {
 ```
 
 The method is called with already parsed values, so you can assume that the `dataValue` and `compareValue` are in the correct (and same) format and type. The `operator` is a string that represents the operator being used for the comparison.
+
+# External Loading
+So you've created a plugin and want to load it externally into the engine? Here's how you can do it:
+```javascript
+let grid = new DynamicGrid({
+    headers: {
+        registered: {
+            type: 'example', 
+            options: {}
+            ... // other options
+        },
+    },
+    plugins: {
+        example: ExampleTypePlugin,
+    }
+});
+```
+
+here `example` is the name of the type the plugin represents, and `ExampleTypePlugin` is the class you created. What you DON'T want to do is do `new ExampleTypePlugin()` here, because the engine will do that for you when it needs to create an instance of the plugin.
+
+# Good to Know's 
+Each column in the grid can have its own plugin instance, this means you can have different configurations for each column. The engine will create a new instance of the plugin for each column that uses it.
+This is handy when you, for example, need 2 date columns, one where the min/max date is set to a specific range, and another where the min/max date is set to a different range. You can achieve this by passing different options to each column's plugin instance.
+
+```javascriptlet grid = new DynamicGrid({
+    headers: {
+        registered: {
+            type: 'date', 
+            options: { minDate: '2000-01-01', maxDate: '2025-12-31' }
+        },
+        anotherDate: {
+            type: 'date', 
+            options: { minDate: '2010-01-01', maxDate: '2030-12-31' }
+        },
+    }
+});
+```
+
+It is also good to know that you can create more functions in your plugin class that can be called from the engine. For example, you can create a `calculateStats` function that calculates statistics for the column and logs them to the console. This function can be called from the context menu item you created earlier.
+since the `getContextMenuItems` function passes you the `columnName` and the `engine` and `ui` instances, you can pass these to your custom function as well.
+
+```javascript
+calculateStats(columnName, engine) {
+    const data = engine.getDataForColumn(columnName);
+    const stats = {
+        count: data.length,
+        min: Math.min(...data),
+        max: Math.max(...data),
+        average: data.reduce((sum, value) => sum + value, 0) / data.length
+    };
+    console.log(`Statistics for ${columnName}:`, stats);
+}
+```

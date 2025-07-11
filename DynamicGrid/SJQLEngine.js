@@ -98,6 +98,29 @@ class SJQLEngine {
         });
     }
 
+    getDataFromColumn(column, noPromise = false) {
+        if (!this.data || this.data.length === 0) {
+            console.warn('No data provided, returning empty array');
+            if (noPromise) return [];
+            return new Promise((resolve, reject) => {
+                resolve([]);
+            });
+        }
+
+        if (column === undefined || column === null) {
+            console.warn('No column provided, returning all data');
+            if (noPromise) return this.data;
+            return new Promise((resolve, reject) => {
+                resolve(this.data);
+            });
+        }
+
+        const data = this.data.map(row => row[column]);
+        if (noPromise) return data;
+        return new Promise((resolve, reject) => {
+            resolve(data);
+        });
+    }
 
     getHeader(key) {
         if (!this.headers || Object.keys(this.headers).length === 0) {

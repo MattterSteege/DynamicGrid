@@ -49,16 +49,7 @@ class NumberTypePlugin extends BaseTypePlugin {
                 type: 'sort',
                 label: 'Sort',
                 sortingHint: this.sortingHint
-            },
-            {
-                type: 'action',
-                label: 'Calculate Stats',
-                action: () => this.calculateStats(columnName)
             }
         ];
-    }
-
-    calculateStats(columnName) {
-        // Plugin-specific implementation
     }
 }
