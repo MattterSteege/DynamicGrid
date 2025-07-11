@@ -126,8 +126,6 @@ class QueryParser {
 
         const queries = [];
 
-        console.log('Parsing tokens:', tokens);
-
         if (tokens.length === 0) {
             console.warn('Empty query string');
             return [];
@@ -135,8 +133,6 @@ class QueryParser {
 
         for (let i = 0; i < tokens.length; i++) {
             const namingToken = tokens[i];
-
-            console.log('Processing token:', namingToken);
 
             switch (namingToken.toLowerCase()) {
                 case 'and':
@@ -173,7 +169,6 @@ class QueryParser {
             return [];
         }
 
-        console.log('Parsed queries:', queries);
         return queries;
     }
 
@@ -252,7 +247,7 @@ class QueryParser {
             queries.push({
                 type: 'sort',
                 field: sortKey,
-                order: sortOrder,
+                value: sortOrder,
                 queryType: 'SORT'
             });
             return index + skipCount;
