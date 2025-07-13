@@ -506,13 +506,27 @@ class DynamicGridUI {
             th.style.height = `${this.config.rowHeight}px`;
             th.style.position = 'relative';
 
-
             const div = document.createElement('div');
             div.className = 'header-cell-content';
 
             const button = document.createElement('button');
             button.className = 'header-cell-button';
             button.innerText = '▼';
+
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                const {x, y, height} = th.getBoundingClientRect();
+
+                // Use the new context menu handler
+                this.columnHeaderContextMenu.showForColumn(
+                    columnName,
+                    th,
+                    x,
+                    y + height + 4
+                );
+            });
 
             const span = document.createElement('span');
             span.className = 'header-cell-text';
@@ -570,15 +584,17 @@ class DynamicGridUI {
             }
 
             th.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
                 e.stopPropagation();
+                e.preventDefault();
+
+                const {x, y, height} = th.getBoundingClientRect();
 
                 // Use the new context menu handler
                 this.columnHeaderContextMenu.showForColumn(
                     columnName,
                     th,
-                    e.clientX,
-                    e.clientY
+                    x,
+                    y + height + 4
                 );
             });
 
@@ -731,7 +747,6 @@ class DynamicGridUI {
                 }
 
                 let td = document.createElement('td');
-                //td.append(plugin.renderCell(value, onEdit, header.config));
 
                 try {
                     if (header.config.isEditable) {
@@ -785,6 +800,7 @@ class DynamicGridUI {
                 }
 
                 td.classList.add('body-cell');
+                header.config.isEditable === false ? td.classList.add('disabled') : null;
                 td.style.height = `${this.config.rowHeight}px`;
                 tr.appendChild(td);
             });

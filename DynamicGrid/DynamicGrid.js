@@ -15,6 +15,7 @@
 // @requires ./typePlugins/NumberTypePlugin.js
 // @requires ./typePlugins/PhoneNumberTypePlugin.js
 // @requires ./typePlugins/StringTypePlugin.js
+// @requires ./typePlugins/ButtonTypePlugin.js
 
 class DynamicGrid {
     constructor(config) {
@@ -31,7 +32,8 @@ class DynamicGrid {
         this.engine.addPlugin(DateTypePlugin, true);
         this.engine.addPlugin(EmailTypePlugin, true);
         this.engine.addPlugin(EnumTypePlugin, true);
-        //this.engine.addPlugin(PhoneNumberTypePlugin, true);
+        this.engine.addPlugin(PhoneNumberTypePlugin, true);
+        this.engine.addPlugin(ButtonTypePlugin, true);
 
         this.engine.connectors = config.connectors || [];
         this.engine.addConnector(new CSVExportConnector(), true);

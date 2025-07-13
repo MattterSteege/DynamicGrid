@@ -148,7 +148,7 @@ class BaseTypePlugin {
      *
      * @param {*} currentValue - The current value of the input.
      * @param {Function} onChange - Callback function to handle input changes.
-     * @returns {HTMLInputElement} The generated input element.
+     * @returns {HTMLElement} The generated input element.
      */
     getInputComponent(currentValue, onChange) {
         const input = document.createElement('input');

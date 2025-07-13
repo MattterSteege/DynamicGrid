@@ -15,6 +15,7 @@
     <script src="DynamicGrid/typePlugins/EmailTypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/EnumTypePlugin.js"></script>
     <script src="DynamicGrid/typePlugins/PhoneNumberTypePlugin.js"></script>
+    <script src="DynamicGrid/typePlugins/ButtonTypePlugin.js"></script>
     <script src="DynamicGrid/EditTracker.js"></script>
     <script src="DynamicGrid/SJQLEngine.js"></script>
     <script src="DynamicGrid/QueryParser.js"></script>
@@ -179,7 +180,10 @@
             phone:      { type: 'phonenumber' },
             registered: { type: 'date', options: {minDate: '2000-01-01', maxDate: '2025-12-31' }},
             latitude:   { type: 'number' },
-            longitude:  { type: 'number' },
+            longitude:  { type: 'button', options: { label: 'Show Map', onClick: (cell) => {
+                    console.log(cell);
+                }
+            }},
         },
         ui: {
             containerId: '#gridContainer',
@@ -196,7 +200,7 @@
             SymbolsToIgnore: [' ', '_', '-']
         },
         plugins: {
-            phonenumber: PhoneNumberTypePlugin,
+            //phonenumber: PhoneNumberTypePlugin,
         },
         connectors: {
             //csv: new CSVExportConnector(),

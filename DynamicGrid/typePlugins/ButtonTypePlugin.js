@@ -1,10 +1,11 @@
 // @requires ./BaseTypePlugin.js
 
-class EnumTypePlugin extends BaseTypePlugin {
+class ButtonTypePlugin extends BaseTypePlugin {
     constructor(config = []) {
         super();
-        this.options = config;
-        this.sortingHint = 'string';
+        this.label = config.label || 'Button';
+        this.onClick = config.onClick || (() => {});
+        this.operatorLabels = [];
     }
 
     validate(value) {
@@ -16,17 +17,15 @@ class EnumTypePlugin extends BaseTypePlugin {
     }
 
     getInputComponent(currentValue, onChange) {
-        const select = document.createElement('select');
-        select.name = '_';
-        this.options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            option.textContent = opt;
-            if (opt === currentValue) option.selected = true;
-            select.appendChild(option);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.name = '_';
+        button.innerText = this.label;
+        button.addEventListener('click', (event) => {
+            onChange(currentValue);
+            this.onClick(currentValue);
         });
-        select.addEventListener('change', () => onChange(select.value));
-        return select;
+        return button;
     }
 
     getContextMenuItems(columnName, engine, ui) {
