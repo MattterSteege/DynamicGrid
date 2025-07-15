@@ -169,4 +169,14 @@ class BaseTypePlugin {
     getContextMenuItems(columnName, engine, ui) {
         return [];
     }
+
+    /**
+     * Sorts the provided data based on the specified column and order.
+     * @param {Object[]} data - The data to sort.
+     * @param {string} [order='asc'] - The sort order, either 'asc' or 'desc'.
+     * @returns {Object[]} The sorted data.
+     */
+    sortData(data, order = 'asc') {
+        throw new Error("sortData must be implemented in subclass when this.sortingHint is set to 'custom'");
+    }
 }

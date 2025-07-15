@@ -155,6 +155,14 @@ class SJQLEngine {
     sortData(data, field, direction, typePlugin) {
         const hint = typePlugin?.sortingHint || 'string';
 
+        if (hint === 'custom') {
+            if (typePlugin.sortData) {
+                return typePlugin.sortData(data, direction);
+            } else {
+                throw new GridError('sortData must be implemented in subclass when this.sortingHint is set to "custom"');
+            }
+        }
+
         return [...data].sort((a, b) => {
 
             const aVal = typePlugin.parseValue(a[field]);

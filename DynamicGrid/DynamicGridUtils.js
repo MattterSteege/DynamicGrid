@@ -99,3 +99,60 @@ Number.prototype.padLeft = function (n, str) {
     }
     return s;
 }
+
+/**
+ * Parses a formatted number string into a float based on locale settings.
+ * @param {string} input - The formatted number string to parse.
+ * @param {string|Object} [localeOrConfig='us'] - The locale identifier (e.g., 'us', 'eu') or a custom config object.
+ * @throws {Error} If the locale or config object is invalid.
+ * @example
+ * //The config object should have the following structure:
+ * {
+ *   decimal: string, // The decimal separator (e.g., '.', ',')
+ *   thousand: string, // The thousand separator (e.g., ',', '.')
+ * }
+ * @returns {number}
+ */
+function localeParseFloat(input, localeOrConfig = 'us') {
+    if (typeof input !== 'string') return NaN;
+
+    const trimmed = input.trim();
+
+    // Extended locale map
+    const localeConfig = {
+        us: { decimal: ".", thousand: "," },
+        eu: { decimal: ",", thousand: "." }
+        // You can add more presets here
+    };
+
+    // Resolve config
+    const config = typeof localeOrConfig === 'string'
+        ? localeConfig[localeOrConfig]
+        : localeOrConfig;
+
+    if (!config || !config.decimal || !config.thousand) {
+        throw new Error("Invalid locale or config object provided");
+    }
+
+    const { decimal, thousand } = config;
+
+    // Escape special chars
+    const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Regex for validating formatted number string
+    const pattern = new RegExp(
+        `^[+-]?((\\d{1,3}(${esc(thousand)}\\d{3})*)|\\d+)?(${esc(decimal)}\\d+)?$`
+    );
+
+    if (!pattern.test(trimmed)) return NaN;
+
+    // Normalize: remove thousand separators, replace decimal with "."
+    const normalized = trimmed
+        .split(thousand).join('')
+        .replace(decimal, '.');
+
+    const result = Number(normalized);
+
+    return Number.isNaN(result) ? NaN : result;
+}
+

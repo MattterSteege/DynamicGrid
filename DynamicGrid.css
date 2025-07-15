@@ -373,6 +373,7 @@ td.body-cell:not(:first-child) {
     overflow: hidden;
     text-overflow: ellipsis;
     outline: var(--bg-body);
+    position: relative;
 }
 
 td.body-cell:first-child {
@@ -387,7 +388,6 @@ td.body-cell:focus {
 
 td.body-cell.edited {
     background: var(--bg-hover);
-    color: var(--text-primary);
 }
 
 /* === Input Styles === */
@@ -485,6 +485,35 @@ td.body-cell.edited {
     color: var(--text-muted);
     background: var(--bg-primary);
 }
+
+/*when not 'editing' an input field*/
+.body-cell[data-value]:has(input[type="text"]:not(:focus)) > input ,
+.body-cell[data-value]:has(input[type="number"]:not(:focus)) > input ,
+.body-cell[data-value]:has(input[type="tel"]:not(:focus)) > input ,
+.body-cell[data-value]:has(input[type="email"]:not(:focus)) > input {
+    display: block;
+    content-visibility: hidden;
+    z-index: 1;
+    position: relative;
+}
+
+.body-cell[data-value]:has(input[type="text"]:not(:focus))::after,
+.body-cell[data-value]:has(input[type="number"]:not(:focus))::after,
+.body-cell[data-value]:has(input[type="tel"]:not(:focus))::after,
+.body-cell[data-value]:has(input[type="email"]:not(:focus))::after {
+    content: attr(data-value, '');
+    width: calc(100% - 8px);
+    height: 100%;
+    color: var(--text-secondary);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+}
+
 
 /* === CUSTOM CELL STYLES === */
 [ctrl] td.email-cell span {display: none;}

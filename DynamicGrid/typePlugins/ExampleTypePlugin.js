@@ -30,4 +30,8 @@ class ExampleTypePlugin extends BaseTypePlugin {
     evaluateCondition(dataValue, operator, compareValue) {
         return undefined;
     }
+
+    sortData(data, order = 'asc') {
+        return [];
+    }
 }

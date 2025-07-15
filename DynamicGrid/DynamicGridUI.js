@@ -744,6 +744,9 @@ class DynamicGridUI {
                     this.engine.alterData(index, key, callback);
                     this.eventEmitter.emit('ui-cell-edit', { column: key, row: data, previousValue: value, newValue: callback });
                     td.classList.add('edited'); // Add a class to indicate
+
+                    if (header.config.cellValueFormatter)
+                        td.dataset.value = header.config.cellValueFormatter(callback);
                 }
 
                 let td = document.createElement('td');
@@ -800,6 +803,12 @@ class DynamicGridUI {
                 }
 
                 td.classList.add('body-cell');
+                //td.dataset.value = 'test'; // For debugging purposes
+
+
+                if (header.config.cellValueFormatter)
+                    td.dataset.value = header.config.cellValueFormatter(value);
+
                 header.config.isEditable === false ? td.classList.add('disabled') : null;
                 td.style.height = `${this.config.rowHeight}px`;
                 tr.appendChild(td);

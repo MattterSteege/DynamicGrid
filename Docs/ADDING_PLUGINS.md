@@ -232,6 +232,16 @@ let grid = new DynamicGrid({
 
 here `example` is the name of the type the plugin represents, and `ExampleTypePlugin` is the class you created. What you DON'T want to do is do `new ExampleTypePlugin()` here, because the engine will do that for you when it needs to create an instance of the plugin.
 
+## sortData Method
+
+The `sortData` method is not explicitly defined in the plugin class, but it is a method that the engine will call when it needs to sort data in a column. The engine will automatically use the `sortingHint` you provided in the constructor to determine how to sort the data. When the `sortingHint` is set to `custom`, the engine will call the `sortData` method with the data for the column and the sorting options.
+
+```javascript
+sortData(data, order = 'asc') {
+    // Implement your custom sorting logic here, you will get all the data for the column
+}
+```
+
 # Good to Know's 
 Each column in the grid can have its own plugin instance, this means you can have different configurations for each column. The engine will create a new instance of the plugin for each column that uses it.
 This is handy when you, for example, need 2 date columns, one where the min/max date is set to a specific range, and another where the min/max date is set to a different range. You can achieve this by passing different options to each column's plugin instance.

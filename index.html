@@ -160,7 +160,7 @@
         resizable: false,                       // Whether column can be resized                    //WORKING
 
         // Styling
-        cellClass: 'custom-column',  // CSS classes for the cell                                    //WORKING
+        cellClass: 'custom-column',             // CSS classes for the                              //WORKING
         headerClass: 'custom-header-class',     // CSS class for column header                      //WORKING
     };
 
@@ -169,9 +169,9 @@
             index:      { type: 'number',  isUnique: true, isEditable: false},
             guid:       { type: 'string', isUnique: true, isEditable: false, },
             isActive:   { type: 'boolean'},
-            balance:    { type: 'number', isGroupable: false},
+            balance:    { type: 'number', isGroupable: false, cellValueFormatter: (value) => '€' + value.toFixed(2)},
             picture:    { type: 'string', isEditable: false, isGroupable: false, width: 150},
-            age:        { type: 'number' },
+            age:        { type: 'number' , cellValueFormatter: (value) => value + ' jaar'},
             eyeColor:   { type: 'enum', options: ['blue', 'brown', 'green', 'hazel']},
             name:       { type: 'string' },
             gender:     { type: 'string' },

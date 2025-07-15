@@ -72,7 +72,8 @@ class DynamicGrid {
                         resizable: value.resizable === undefined ? true : value.resizable,      // Default resizable to true
 
                         // Cell behavior
-                        cellValueValidator: value.cellValueValidator || ((val) => { return {valid: true, message: ''}}),// Function to validate the cell value
+                        cellValueValidator: value.cellValueValidator || undefined,// Function to validate the cell value
+                        cellValueFormatter: value.cellValueFormatter || undefined, // Function to format the cell value for display
                     },
 
                     options: value.options || {}, // Additional options for the header
